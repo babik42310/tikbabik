@@ -337,68 +337,168 @@ app.get("/import-icetok-gifts", async (req, res) => {
 
 app.get("/pricing", (req, res) => {
     res.send(`
-        <h1>Tarifs TikBabik</h1>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Tarifs - TikBabik</title>
+<style>
+body{font-family:Arial;background:#0f1117;color:white;padding:40px;}
+.card{background:#181b24;padding:25px;border-radius:15px;margin:20px 0;max-width:700px;}
+.price{font-size:28px;color:#ff0050;font-weight:bold;}
+a{color:#ff0050;}
+</style>
+</head>
+<body>
+<h1>Tarifs TikBabik</h1>
 
-        <h2>Version gratuite</h2>
-        <p>Accès aux fonctions de base TikBabik.</p>
+<div class="card">
+<h2>Version gratuite</h2>
+<p>Accès aux fonctionnalités de base de TikBabik.</p>
+<p class="price">0 €</p>
+</div>
 
-        <hr>
+<div class="card">
+<h2>🚀 TikBabik Pro</h2>
+<p>Abonnement mensuel donnant accès aux fonctionnalités avancées.</p>
+<ul>
+<li>Actions avancées</li>
+<li>Connexion Minecraft</li>
+<li>Connexion Streamer.bot</li>
+<li>Fonctions premium</li>
+</ul>
+<p class="price">7,99 € / mois</p>
+</div>
 
-        <h2>TikBabik Pro</h2>
-        <p>Abonnement mensuel donnant accès aux fonctions avancées.</p>
-        <p><strong>Prix : 7,99 € / mois</strong></p>
+<div class="card">
+<h2>Agence LFDLV</h2>
+<p>Offre spéciale agence et partenaires.</p>
+<p class="price">4,99 € / mois</p>
+</div>
 
-        <hr>
-
-        <h2>Agence LFDLV</h2>
-        <p>Offre spéciale partenaires et agences.</p>
-        <p><strong>Prix : 4,99 € / mois</strong></p>
+<p><a href="/">Retour à TikBabik</a></p>
+</body>
+</html>
     `);
 });
 
 app.get("/terms", (req, res) => {
     res.send(`
-        <h1>Conditions d'utilisation</h1>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Conditions d'utilisation - TikBabik</title>
+<style>
+body{font-family:Arial;background:#0f1117;color:white;padding:40px;line-height:1.6;}
+.container{max-width:850px;background:#181b24;padding:30px;border-radius:15px;}
+a{color:#ff0050;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Conditions d'utilisation</h1>
 
-        <p>
-            En utilisant TikBabik, vous acceptez d'utiliser l'application
-            conformément aux règles des plateformes utilisées.
-        </p>
+<p>En utilisant TikBabik, vous acceptez les présentes conditions d'utilisation.</p>
 
-        <p>
-            TikBabik n'est pas affilié à TikTok, OBS, Minecraft,
-            Streamer.bot ou Paddle.
-        </p>
+<h2>1. Service</h2>
+<p>TikBabik est un outil permettant d'améliorer l'interactivité des lives TikTok avec des alertes, actions, sons, points et intégrations externes.</p>
+
+<h2>2. Abonnement</h2>
+<p>L'abonnement TikBabik Pro donne accès aux fonctionnalités premium tant que l'abonnement est actif.</p>
+
+<h2>3. Utilisation</h2>
+<p>L'utilisateur s'engage à utiliser TikBabik légalement et conformément aux règles de TikTok, OBS, Minecraft, Streamer.bot et des plateformes utilisées.</p>
+
+<h2>4. Affiliation</h2>
+<p>TikBabik n'est pas affilié, associé ou approuvé par TikTok, OBS, Minecraft, Streamer.bot ou Paddle.</p>
+
+<h2>5. Suspension</h2>
+<p>Toute utilisation abusive, frauduleuse ou contraire aux règles peut entraîner une suspension de l'accès au service.</p>
+
+<p><a href="/">Retour à TikBabik</a></p>
+</div>
+</body>
+</html>
     `);
 });
 
 app.get("/privacy", (req, res) => {
     res.send(`
-        <h1>Politique de confidentialité</h1>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Confidentialité - TikBabik</title>
+<style>
+body{font-family:Arial;background:#0f1117;color:white;padding:40px;line-height:1.6;}
+.container{max-width:850px;background:#181b24;padding:30px;border-radius:15px;}
+a{color:#ff0050;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Politique de confidentialité</h1>
 
-        <p>
-            TikBabik stocke uniquement les informations nécessaires
-            au fonctionnement de l'application.
-        </p>
+<p>TikBabik respecte la confidentialité de ses utilisateurs.</p>
 
-        <p>
-            Les données ne sont pas revendues à des tiers.
-        </p>
+<h2>Données collectées</h2>
+<p>TikBabik peut stocker les paramètres de configuration nécessaires au fonctionnement de l'application, comme le pseudo TikTok, les réglages d'alertes, les points et les préférences utilisateur.</p>
+
+<h2>Paiements</h2>
+<p>Les paiements sont traités par Paddle. TikBabik ne stocke pas les informations bancaires des utilisateurs.</p>
+
+<h2>Utilisation des données</h2>
+<p>Les données sont utilisées uniquement pour faire fonctionner TikBabik et améliorer l'expérience utilisateur.</p>
+
+<h2>Partage des données</h2>
+<p>TikBabik ne revend pas les données personnelles à des tiers.</p>
+
+<h2>Contact</h2>
+<p>Pour toute demande liée aux données personnelles, contactez l'équipe TikBabik.</p>
+
+<p><a href="/">Retour à TikBabik</a></p>
+</div>
+</body>
+</html>
     `);
 });
 
 app.get("/refund", (req, res) => {
     res.send(`
-        <h1>Politique de remboursement</h1>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Remboursement - TikBabik</title>
+<style>
+body{font-family:Arial;background:#0f1117;color:white;padding:40px;line-height:1.6;}
+.container{max-width:850px;background:#181b24;padding:30px;border-radius:15px;}
+a{color:#ff0050;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Politique de remboursement</h1>
 
-        <p>
-            Les demandes de remboursement peuvent être étudiées
-            dans un délai de 14 jours après l'achat.
-        </p>
+<p>Les abonnements TikBabik Pro sont facturés mensuellement.</p>
 
-        <p>
-            Contactez le support TikBabik pour toute demande.
-        </p>
+<h2>Annulation</h2>
+<p>L'utilisateur peut annuler son abonnement à tout moment. L'accès Pro reste actif jusqu'à la fin de la période déjà payée.</p>
+
+<h2>Remboursement</h2>
+<p>Les demandes de remboursement peuvent être étudiées au cas par cas dans un délai de 14 jours après l'achat initial.</p>
+
+<h2>Exceptions</h2>
+<p>Un remboursement peut être refusé en cas d'abus, de fraude ou d'utilisation excessive du service après achat.</p>
+
+<h2>Contact</h2>
+<p>Pour toute demande de remboursement, contactez l'équipe TikBabik avec les informations liées à votre achat.</p>
+
+<p><a href="/">Retour à TikBabik</a></p>
+</div>
+</body>
+</html>
     `);
 });
 
