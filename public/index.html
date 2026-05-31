@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>TikBabik</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>TikBabik</h1>
+
+<div id="sideMenu">
+
+    <button id="startButton" class="menuButton">
+        <span class="menuIcon">🏠</span>
+        <span class="menuText">Start</span>
+    </button>
+
+    <button id="setupButton" class="menuButton">
+        <span class="menuIcon">🛠️</span>
+        <span class="menuText">Setup</span>
+    </button>
+
+    <button id="statsButton" class="menuButton">
+        <span class="menuIcon">📊</span>
+        <span class="menuText">Statistiques</span>
+    </button>
+
+    <button id="overlayButton" class="menuButton">
+        <span class="menuIcon">🖼️</span>
+        <span class="menuText">Overlays</span>
+    </button>
+
+    <button id="settingsButton" class="menuButton">
+        <span class="menuIcon">⚙️</span>
+        <span class="menuText">Actions</span>
+    </button>
+
+    <button id="soundButton" class="menuButton">
+        <span class="menuIcon">🔊</span>
+        <span class="menuText">Sons</span>
+    </button>
+
+    <button id="pointsButton" class="menuButton">
+        <span class="menuIcon">🏆</span>
+        <span class="menuText">Points</span>
+    </button>
+
+    <button id="chatButton" class="menuButton">
+        <span class="menuIcon">💬</span>
+        <span class="menuText">Chat</span>
+    </button>
+
+    <button id="toolsButton" class="menuButton">
+        <span class="menuIcon">🛠️</span>
+        <span class="menuText">Outils</span>
+    </button>
+
+</div>
+
+<button id="voiceButton">Voix ON</button>
+
+<div id="likeCounter">❤️ Likes : 0</div>
+
+<div id="giftAlert"></div>
+<img id="giftImage">
+<div id="followAlert"></div>
+<div id="messages"></div>
+
+<div id="settingsPanel" style="display:none;">
+
+    <h2>⚙️ Actions TikBabik</h2>
+
+    <div id="actionsTabs">
+        <button id="actionsTab" class="actionsTab active">⚙️ Actions</button>
+        <button id="eventsTab" class="actionsTab">📅 Événements</button>
+    </div>
+
+    <br><br>
+
+    <div id="actionsContent">
+
+        <button id="addGiftRule">➕ Créer une Action</button>
+
+        <br><br>
+
+        <table id="giftRulesTable">
+            <thead>
+                <tr>
+                    <th>Test</th>
+                    <th>Modifier</th>
+                    <th>Dupliquer</th>
+                    <th>Supprimer</th>
+                    <th>Nom Action</th>
+                    <th>Type</th>
+                    <th>Durée</th>
+                    <th>Son</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody id="giftRulesBody"></tbody>
+        </table>
+
+    </div>
+
+    <div id="eventsContent" style="display:none;">
+
+        <button id="addEventRule">➕ Créer un Événement</button>
+
+        <br><br>
+
+        <table id="eventsTable">
+            <thead>
+                <tr>
+                    <th>Modifier</th>
+                    <th>Actif</th>
+                    <th>Utilisateur</th>
+                    <th>Type</th>
+                    <th>Valeur</th>
+                    <th>Action associée</th>
+                    <th>Supprimer</th>
+                </tr>
+            </thead>
+            <tbody id="eventsBody"></tbody>
+        </table>
+
+    </div>
+
+    <br><br>
+
+    <button id="saveSettings">💾 Sauvegarder</button>
+
+</div>
+
+<div id="statsPanel" style="display:none;">
+
+    <h2>🏆 Statistiques Live</h2>
+
+    <button id="resetStats">🔄 Reset Statistiques</button>
+
+    <br><br>
+
+    <h3>🏆 Top donateurs</h3>
+    <ol id="topGiftersList"></ol>
+
+    <h3>🎁 Historique cadeaux</h3>
+    <div id="giftHistoryList"></div>
+
+</div>
+
+<div id="setupPanel" style="display:none;">
+
+    <div id="setupSidebar">
+
+        <button class="setupTab active" id="connectTikTokSetupTab">
+            Connexion TikTok LIVE
+        </button>
+
+        <button class="setupTab" id="pointsSystemSetupTab">
+            Système de points
+        </button>
+
+        <button class="setupTab" id="subscriberBonusSetupTab">
+            Bonus abonnés
+        </button>
+
+        <button class="setupTab" id="obsConnectionSetupTab">
+            Connexion OBS
+        </button>
+
+        <button class="setupTab" id="streamerBotSetupTab">
+🔒 Connexion Streamer.bot</button>
+        <button class="setupTab" id="minecraftSetupTab">
+🔒 Connexion Minecraft</button>
+<button class="setupTab" id="resetPointsSetupTab">
+    Réinitialiser les points
+</button>       
+         <button class="setupTab" id="tikBabikProSetupTab">
+    TikBabikPro 🚀
+</button>
+        <button class="setupTab">Votre compte</button>
+        <button class="setupTab">Importer / Exporter</button>
+        <button class="setupTab">Paramètres avancés</button>
+        <button class="setupTab">Options de debug</button>
+
+    </div>
+
+    <div id="setupContent">
+
+        <div id="tikBabikProSetupPage" style="display:none;">
+
+    <h2>🚀 TikBabik Pro</h2>
+
+    <div class="setupCard">
+
+        <table style="width:100%; text-align:center;">
+
+            <tr>
+                <th></th>
+                <th>Free</th>
+                <th>🚀 Pro</th>
+            </tr>
+
+            <tr>
+                <td>Actions & Événements</td>
+                <td>5</td>
+                <td>∞</td>
+            </tr>
+
+            <tr>
+                <td>Alertes sonores</td>
+                <td>5</td>
+                <td>∞</td>
+            </tr>
+
+            <tr>
+                <td>TTS quotidien</td>
+                <td>100</td>
+                <td>∞</td>
+            </tr>
+
+            <tr>
+                <td>Overlays Premium</td>
+                <td>❌</td>
+                <td>✅</td>
+            </tr>
+
+            <tr>
+                <td>Voix IA</td>
+                <td>❌</td>
+                <td>✅</td>
+            </tr>
+
+            <tr>
+                <td>Streamer.bot</td>
+                <td>❌</td>
+                <td>✅</td>
+            </tr>
+
+            <tr>
+                <td>Minecraft</td>
+                <td>❌</td>
+                <td>✅</td>
+            </tr>
+
+            <tr>
+                <td>Profils de stream</td>
+                <td>1</td>
+                <td>10</td>
+            </tr>
+
+            <tr>
+                <td>Utilisateurs système de points</td>
+                <td>2500</td>
+                <td>100000</td>
+            </tr>
+
+        </table>
+
+        <br><br>
+
+        <button id="upgradeProButton">
+            🚀 Passer à TikBabik Pro
+        </button>
+
+    </div>
+
+</div>
+
+        <div id="resetPointsSetupPage" style="display:none;">
+
+    <h2>🔄 Réinitialiser les points</h2>
+
+    <div class="setupCard">
+
+        <p>
+            Utilisez cette section pour remettre à zéro les points des utilisateurs.
+        </p>
+
+        <p>
+            Vous pouvez supprimer uniquement les points ou supprimer tous les points
+            et niveaux enregistrés.
+        </p>
+
+        <br>
+
+        <button id="resetPointsOnly">
+            🧹 Effacer uniquement les points
+        </button>
+
+        <button id="resetAllPointsLevels">
+            ⚠️ Effacer tous les points et niveaux
+        </button>
+
+        <br><br>
+
+        <div id="resetPointsStatus">
+            ⚪ Aucune action effectuée
+        </div>
+
+    </div>
+
+</div>
+
+        <div id="minecraftSetupPage" style="display:none;">
+
+    <h2>⛏️ Connexion Minecraft</h2>
+
+    <div class="setupCard">
+
+        <p>
+            Connectez TikBabik à votre serveur Minecraft afin de déclencher
+            des commandes, événements et interactions depuis TikTok LIVE.
+        </p>
+
+        <br>
+
+        <label>Pseudo Minecraft</label>
+        <br>
+        <input
+            type="text"
+            id="minecraftPlayer"
+            placeholder="Votre pseudo Minecraft"
+            class="ruleInput"
+            style="width:300px;"
+        >
+
+        <br><br>
+
+        <label>Adresse IP</label>
+        <br>
+        <input
+            type="text"
+            id="minecraftIp"
+            value="127.0.0.1"
+            class="ruleInput"
+            style="width:300px;"
+        >
+
+        <br><br>
+
+        <label>Port</label>
+        <br>
+        <input
+            type="number"
+            id="minecraftPort"
+            value="4567"
+            class="ruleInput"
+            style="width:300px;"
+        >
+
+        <br><br>
+
+        <label>Mot de passe</label>
+        <br>
+        <input
+            type="password"
+            id="minecraftPassword"
+            value="change_me"
+            class="ruleInput"
+            style="width:300px;"
+        >
+
+        <br><br>
+
+        <button id="testMinecraftConnection">
+            🔌 Tester la connexion
+        </button>
+
+        <button id="saveMinecraftSettings">
+            💾 Sauvegarder
+        </button>
+
+        <br><br>
+
+        <div id="minecraftStatus">
+            ⚪ Non connecté
+        </div>
+
+    </div>
+
+</div>
+
+        <div id="streamerBotSetupPage" style="display:none;">
+
+    <h2>🤖 Connexion Streamer.bot</h2>
+
+    <div class="setupCard">
+
+        <p>
+            Connectez TikBabik à Streamer.bot pour déclencher
+            automatiquement des actions depuis vos événements TikTok.
+        </p>
+
+        <br>
+
+        <label>Adresse IP</label>
+        <br>
+        <input
+            type="text"
+            id="streamerBotIp"
+            value="127.0.0.1"
+            class="ruleInput"
+            style="width:300px;"
+        >
+
+        <br><br>
+
+        <label>Port</label>
+        <br>
+        <input
+            type="number"
+            id="streamerBotPort"
+            value="8080"
+            class="ruleInput"
+            style="width:300px;"
+        >
+
+        <br><br>
+
+        <label>Endpoint</label>
+        <br>
+        <input
+            type="text"
+            id="streamerBotEndpoint"
+            value="/"
+            class="ruleInput"
+            style="width:300px;"
+        >
+
+        <br><br>
+
+        <button id="testStreamerBotConnection">
+            🔌 Tester la connexion
+        </button>
+
+        <button id="saveStreamerBotSettings">
+            💾 Sauvegarder
+        </button>
+
+        <br><br>
+
+        <div id="streamerBotStatus">
+            ⚪ Non connecté
+        </div>
+
+    </div>
+
+</div>
+
+        <div id="setupHome">
+            <h2>Setup</h2>
+            <p>Sélectionne un onglet à gauche.</p>
+        </div>
+
+        <div id="connectTikTokSetupPage" style="display:none;">
+
+            <h2>Connexion TikTok LIVE</h2>
+
+            <div class="setupCard">
+
+                <label>
+                    Votre pseudo TikTok <span style="color:#ff0050;">(obligatoire)</span>
+                </label>
+
+                <br><br>
+
+                <input
+                    type="text"
+                    id="tiktokUsernameInput"
+                    placeholder="@votre_pseudo"
+                    class="ruleInput"
+                    style="width:300px;"
+                >
+
+                <br><br>
+
+                <button id="saveTikTokUserButton">
+                    💾 Sauvegarder
+                </button>
+
+            </div>
+
+        </div>
+
+        <div id="pointsSystemSetupPage" style="display:none;">
+
+            <h2>🏆 Système de points</h2>
+
+            <div class="setupCard">
+
+                <label>Nom de votre monnaie</label>
+
+                <br><br>
+
+                <input
+                    type="text"
+                    id="pointsCurrencyName"
+                    value="Points"
+                    class="ruleInput"
+                    style="width:300px;"
+                >
+
+                <br><br>
+
+                <label>
+                    <input type="checkbox" id="pointsPerCoinEnabled" checked>
+                    Points par coin
+                </label>
+
+                <br>
+
+                <input
+                    type="number"
+                    id="pointsPerCoin"
+                    value="1"
+                    class="ruleInput"
+                    style="width:300px;"
+                >
+
+                <br><br>
+
+                <label>
+                    <input type="checkbox" id="pointsPerShareEnabled">
+                    Points par partage
+                </label>
+
+                <br>
+
+                <input
+                    type="number"
+                    id="pointsPerShare"
+                    value="3"
+                    class="ruleInput"
+                    style="width:300px;"
+                >
+
+                <br><br>
+
+                <label>
+                    <input type="checkbox" id="pointsPerChatMinuteEnabled">
+                    Points par minute de chat
+                </label>
+
+                <br>
+
+                <input
+                    type="number"
+                    id="pointsPerChatMinute"
+                    value="0.5"
+                    step="0.1"
+                    class="ruleInput"
+                    style="width:300px;"
+                >
+
+                <br><br>
+
+                <button id="savePointsSystem">
+                    💾 Sauvegarder
+                </button>
+
+            </div>
+
+        </div>
+
+        <div id="subscriberBonusSetupPage" style="display:none;">
+
+            <h2>⭐ Bonus abonnés</h2>
+
+            <div class="setupCard">
+
+                <p>
+                    Définis le bonus en pourcentage pour chaque type d'utilisateur.
+                </p>
+
+                <label>Utilisateur normal (%)</label><br>
+                <input type="number" id="pointsNormalUser" value="0" class="ruleInput" style="width:300px;">
+
+                <br><br>
+
+                <label>Abonné niveau 1 (%)</label><br>
+                <input type="number" id="pointsSub1" value="10" class="ruleInput" style="width:300px;">
+
+                <br><br>
+
+                <label>Abonné niveau 2 (%)</label><br>
+                <input type="number" id="pointsSub2" value="20" class="ruleInput" style="width:300px;">
+
+                <br><br>
+
+                <label>Abonné niveau 3 (%)</label><br>
+                <input type="number" id="pointsSub3" value="30" class="ruleInput" style="width:300px;">
+
+                <br><br>
+
+                <label>Abonné niveau 4 (%)</label><br>
+                <input type="number" id="pointsSub4" value="40" class="ruleInput" style="width:300px;">
+
+                <br><br>
+
+                <label>Abonné niveau 5 (%)</label><br>
+                <input type="number" id="pointsSub5" value="50" class="ruleInput" style="width:300px;">
+
+
+                <br><br>
+
+                <button id="saveSubscriberBonus">
+                    💾 Sauvegarder
+                </button>
+
+            </div>
+
+        </div>
+
+        <div id="obsConnectionSetupPage" style="display:none;">
+
+            <h2>📺 Connexion OBS</h2>
+
+            <div class="setupCard">
+
+                <p>
+                    Connectez TikBabik à OBS Studio pour contrôler automatiquement
+                    les scènes et les sources lors des événements TikTok.
+                </p>
+
+                <br>
+
+                <label>Adresse IP</label>
+                <br>
+                <input
+                    type="text"
+                    id="obsIp"
+                    value="127.0.0.1"
+                    class="ruleInput"
+                    style="width:300px;"
+                >
+
+                <br><br>
+
+                <label>Port</label>
+                <br>
+                <input
+                    type="number"
+                    id="obsPort"
+                    value="4455"
+                    class="ruleInput"
+                    style="width:300px;"
+                >
+
+                <br><br>
+
+                <label>Mot de passe</label>
+                <br>
+                <input
+                    type="password"
+                    id="obsPassword"
+                    placeholder="(optionnel)"
+                    class="ruleInput"
+                    style="width:300px;"
+                >
+
+                <br><br>
+
+                <button id="testObsConnection">
+                    🔌 Tester la connexion
+                </button>
+
+                <button id="saveObsSettings">
+                    💾 Sauvegarder
+                </button>
+
+                <br><br>
+
+                <div id="obsConnectionStatus">
+                    ⚪ Non connecté
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div id="overlayPanel" style="display:none;">
+
+    <div id="overlaySidebar">
+
+        <button class="overlayTab active">
+            <span>🖼️ Galerie des Overlays</span>
+            <span>›</span>
+        </button>
+
+        <button class="overlayTab">
+            <span>🎯 Objectifs</span>
+            <span>›</span>
+        </button>
+
+        <button class="overlayTab">
+            <span>🎁 Cadeaux</span>
+            <span>›</span>
+        </button>
+
+        <button class="overlayTab">
+            <span>❤️ Likes</span>
+            <span>›</span>
+        </button>
+
+        <button class="overlayTab">
+            <span>🎨 Graphiques</span>
+            <span>›</span>
+        </button>
+
+        <button class="overlayTab">
+            <span>📺 Docks OBS</span>
+            <span>›</span>
+        </button>
+
+        <button class="overlayTab">
+            <span>🔍 Explorateur Cadeaux</span>
+        </button>
+
+    </div>
+
+    <div id="overlayContent">
+
+        <h2>🎁 Explorateur Cadeaux</h2>
+
+        <button id="loadGiftLibrary">
+            📥 Charger la bibliothèque cadeaux
+        </button>
+
+        <br><br>
+
+        <table id="giftLibraryTable">
+            <thead>
+                <tr>
+                    <th>Image</th>
+                    <th>Nom</th>
+                    <th>Diamants</th>
+                    <th>Action associée</th>
+                </tr>
+            </thead>
+            <tbody id="giftLibraryBody"></tbody>
+        </table>
+
+    </div>
+
+</div>
+
+<div id="soundPanel" style="display:none;">
+
+    <div id="soundSidebar">
+
+        <button class="soundTab active">
+            <span>🔊 Alertes sonores</span>
+            <span>⌄</span>
+        </button>
+
+        <button class="soundSubTab active">
+            Paramètres
+        </button>
+
+        <button class="soundTab">
+            💬 TTS Chat
+        </button>
+
+    </div>
+
+    <div id="soundContent">
+
+        <h2>🔊 Alertes sonores</h2>
+
+        <p>
+            Gérez ici les sons et les paramètres audio de TikBabik.
+        </p>
+
+    </div>
+
+</div>
+
+<div id="chatPanel" style="display:none;">
+
+    <div id="chatSidebar">
+
+        <button class="chatTab active">
+            <span>💬 Commandes Chat</span>
+            <span>›</span>
+        </button>
+
+        <button class="chatTab">
+            <span>🤖 ChatBot</span>
+            <span>›</span>
+        </button>
+
+    </div>
+
+    <div id="chatContent">
+
+        <h2>💬 Commandes Chat</h2>
+
+        <p>
+            Configuration des commandes du chat TikBabik.
+        </p>
+
+    </div>
+
+</div>
+
+<div id="toolsPanel" style="display:none;">
+
+    <div id="toolsSidebar">
+
+        <button class="toolsTab active">
+            <span>❤️ Likeathon</span>
+            <span>›</span>
+        </button>
+
+        <button class="toolsTab">
+            <span>⏱️ Minuteur</span>
+            <span>›</span>
+        </button>
+
+        <button class="toolsTab">
+            <span>🎡 Roue de la chance</span>
+            <span>›</span>
+        </button>
+
+        <button class="toolsTab">
+            <span>🎁 Pluie de points</span>
+            <span>›</span>
+        </button>
+
+        <button class="toolsTab">
+            <span>🏆 Défis</span>
+            <span>›</span>
+        </button>
+
+        <button class="toolsTab">
+            <span>✂️ Réduction progressive</span>
+            <span>›</span>
+        </button>
+
+        <button class="toolsTab">
+            <span>🔌 API Événements</span>
+            <span>›</span>
+        </button>
+
+    </div>
+
+    <div id="toolsContent">
+
+        <h2>❤️ Likeathon</h2>
+
+        <p>
+            Affiche les viewers qui envoient le plus de likes dans un classement.
+        </p>
+
+    </div>
+
+</div>
+
+<div id="startPanel" style="display:none;">
+
+    <div id="startSidebar">
+
+        <button class="startTab active" id="homeStartButton">
+            <span>Start</span>
+            <span>⌄</span>
+        </button>
+
+        <button class="startSubTab">
+            Agences
+        </button>
+
+        <button class="startSubTab" id="faqButton">
+            FAQ
+        </button>
+
+        <button class="startSubTab" id="aboutButton">
+            À propos
+        </button>
+
+        <button class="startSubTab" id="contactButton">
+            Contact
+        </button>
+
+    </div>
+
+    <div id="startContent">
+
+        <div id="startMainPage">
+
+            <h2>Bienvenue !</h2>
+
+            <p>
+                Bienvenue dans TikBabik, ton outil pour gérer ton live TikTok.
+            </p>
+
+            <div class="startCard">
+
+                <h3>Connexion TikTok LIVE</h3>
+
+                <p>
+                    Une fois ton live lancé, connecte TikBabik à ton compte TikTok.
+                </p>
+
+                <button id="startConnectTikTokButton">
+                    Connecter à TikTok LIVE
+                </button>
+
+            </div>
+
+            <div class="startCard">
+
+                <h3>Accès rapide</h3>
+
+                <div class="quickGrid">
+
+                    <div class="quickCard">
+                        <h4>TTS Chat</h4>
+                        <label>
+                            <input type="checkbox" checked>
+                            Activé
+                        </label>
+                    </div>
+
+                    <div class="quickCard">
+                        <h4>Alertes sonores</h4>
+                        <label>
+                            <input type="checkbox" checked>
+                            Activé
+                        </label>
+                    </div>
+
+                    <div class="quickCard">
+                        <h4>Actions & Événements</h4>
+                        <label>
+                            <input type="checkbox" checked>
+                            Activé
+                        </label>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="startCard">
+
+                <h3>Agences</h3>
+
+                <p>
+                    Section réservée aux agences, partenaires et créateurs.
+                </p>
+
+                <div class="agencyBox">
+                    TikBabik Agency Gaming
+                </div>
+
+            </div>
+
+        </div>
+
+        <div id="faqPage" style="display:none;">
+
+            <h2>❓ FAQ TikBabik</h2>
+
+            <h3>Pourquoi TikBabik ne se connecte pas à mon LIVE ?</h3>
+            <p>
+                Vérifiez que votre pseudo TikTok est correctement renseigné et que vous êtes actuellement en LIVE.
+                Utilisez votre @pseudo TikTok et non votre nom d'affichage.
+                Vous pouvez configurer TikBabik même sans être connecté au LIVE.
+            </p>
+
+            <h3>Pourquoi mes alertes ne fonctionnent pas ?</h3>
+            <p>
+                Assurez-vous que votre Action est bien associée à un Événement.
+                Vérifiez également que l'overlay correspondant est ajouté dans OBS ou TikTok Live Studio.
+            </p>
+
+            <h3>Que sont les Actions et Événements ?</h3>
+            <p>
+                Les Actions permettent d'afficher des alertes, images, vidéos, sons ou commandes.
+                Les Événements déclenchent ces Actions lors d'un cadeau, d'un follow, d'un like, d'un partage ou d'un message.
+            </p>
+
+        </div>
+
+        <div id="aboutPage" style="display:none;">
+
+            <h2>ℹ️ À propos de TikBabik</h2>
+
+            <p>
+                TikBabik a été créé pour offrir aux créateurs TikTok un outil puissant,
+                simple et moderne afin de rendre leurs lives plus interactifs.
+            </p>
+
+            <p>
+                TikBabik n'est pas affilié, associé ou approuvé par TikTok.
+            </p>
+
+            <p>
+                Notre objectif est de rendre les lives TikTok plus interactifs,
+                amusants et engageants.
+            </p>
+
+            <p style="opacity:0.7;">
+                Version TikBabik 1.0
+            </p>
+
+        </div>
+
+        <div id="contactPage" style="display:none;">
+
+            <h2>📞 Contact</h2>
+
+            <p>
+                Besoin d'aide ou d'une collaboration ?
+            </p>
+
+            <p>
+                N'hésitez pas à nous contacter pour toute question concernant TikBabik,
+                les fonctionnalités ou les futures évolutions du projet.
+            </p>
+
+            <p>
+                Merci d'utiliser TikBabik ❤️
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div id="pointsPanel" style="display:none;">
+
+    <div id="pointsSidebar">
+
+        <button class="pointsTab active">
+            <span>🏆 Système de points</span>
+            <span>›</span>
+        </button>
+
+        <button class="pointsTab">
+            <span>⭐ Bonus abonnés</span>
+            <span>›</span>
+        </button>
+
+        <button class="pointsTab">
+            <span>📊 Classement</span>
+            <span>›</span>
+        </button>
+
+        <button class="pointsTab">
+            <span>🛍️ Boutique récompenses</span>
+            <span>›</span>
+        </button>
+
+        <button class="pointsTab">
+            <span>🔄 Réinitialisation</span>
+            <span>›</span>
+        </button>
+
+    </div>
+
+    <div id="pointsContent">
+
+        <h2>🏆 Système de points</h2>
+
+        <p>
+            Gérez ici les points, les bonus et les récompenses TikBabik.
+        </p>
+
+    </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+<script src="app.js"></script>
+
+
+</body>
+</html>
