@@ -335,47 +335,6 @@ app.get("/import-icetok-gifts", async (req, res) => {
 });
 
 
-            mode: "subscription",
-
-            line_items: [
-                {
-                    price_data: {
-                        currency: "eur",
-                        product_data: {
-                            name: "TikBabik Pro"
-                        },
-                        unit_amount: 999,
-                        recurring: {
-                            interval: "month"
-                        }
-                    },
-                    quantity: 1
-                }
-            ],
-
-            success_url:
-                "http://localhost:3000/payment-success",
-
-            cancel_url:
-                "http://localhost:3000/payment-cancel"
-
-       
-
-        res.json({
-            url: session.url
-        });
-
-     catch (error) {
-
-        console.error(error);
-
-        res.status(500).json({
-            error: error.message
-        });
-
-    }
-
-
 app.get("/pricing", (req, res) => {
     res.send(`
         <h1>Tarifs TikBabik</h1>
@@ -433,6 +392,48 @@ app.get("/refund", (req, res) => {
             Contactez le support TikBabik pour toute demande.
         </p>
     `);
+});
+
+app.post("/paddle-webhook", express.json(), (req, res) => {
+
+    const eventType = req.body.event_type || req.body.type;
+
+    console.log("Webhook Paddle reçu :", eventType);
+
+    if (
+        eventType === "transaction.paid" ||
+        eventType === "subscription.activated" ||
+        eventType === "abonnement.actif"
+    ) {
+        settings.pro = true;
+
+        fs.writeFileSync(
+            "settings.json",
+            JSON.stringify(settings, null, 2)
+        );
+
+        console.log("TikBabik Pro activé");
+    }
+
+    if (
+        eventType === "subscription.canceled" ||
+        eventType === "abonnement.annulé" ||
+        eventType === "transaction.annulé"
+    ) {
+        settings.pro = false;
+
+        fs.writeFileSync(
+            "settings.json",
+            JSON.stringify(settings, null, 2)
+        );
+
+        console.log("TikBabik Pro désactivé");
+    }
+
+    res.json({
+        received: true
+    });
+
 });
 
 server.listen(3000, () => {
