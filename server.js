@@ -342,9 +342,17 @@ app.get("/pricing", (req, res) => {
         <h2>Version gratuite</h2>
         <p>Accès aux fonctions de base TikBabik.</p>
 
+        <hr>
+
         <h2>TikBabik Pro</h2>
         <p>Abonnement mensuel donnant accès aux fonctions avancées.</p>
-        <p>Prix : 9,99 € / mois.</p>
+        <p><strong>Prix : 7,99 € / mois</strong></p>
+
+        <hr>
+
+        <h2>Agence LFDLV</h2>
+        <p>Offre spéciale partenaires et agences.</p>
+        <p><strong>Prix : 4,99 € / mois</strong></p>
     `);
 });
 

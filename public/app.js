@@ -173,6 +173,23 @@ const tikBabikProSetupPage =
 });
 console.log("Paddle initialisé");
 
+const legalButton =
+    document.getElementById("legalButton");
+
+const legalPage =
+    document.getElementById("legalPage");
+
+legalButton.onclick = () => {
+
+    startMainPage.style.display = "none";
+    faqPage.style.display = "none";
+    aboutPage.style.display = "none";
+    contactPage.style.display = "none";
+
+    legalPage.style.display = "block";
+
+};
+
     
 
 
@@ -512,6 +529,17 @@ upgradeProButton.onclick = () => {
     alert("Bouton cliqué");
 
     console.log("CLICK PRO");
+
+};
+
+homeStartButton.onclick = () => {
+
+    startMainPage.style.display = "block";
+
+    faqPage.style.display = "none";
+    aboutPage.style.display = "none";
+    contactPage.style.display = "none";
+    legalPage.style.display = "none";
 
 };
 
