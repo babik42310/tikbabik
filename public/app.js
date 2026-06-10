@@ -4588,9 +4588,15 @@ document.querySelectorAll(".copyOverlayUrl").forEach(button => {
             return;
         }
 
-        navigator.clipboard.writeText(input.value);
+        const finalUrl =
+    input.value.replace(
+        "http://localhost:3000",
+        window.location.origin
+    );
 
-        alert("URL copiée !");
+navigator.clipboard.writeText(finalUrl);
+
+        alert("URL copiée : " + finalUrl);
     };
 
 });
