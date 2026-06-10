@@ -2865,12 +2865,11 @@ body{
 </html>
 `);
 });
+
 app.get("/overlay/webcam-custom", (req, res) => {
 
     const custom =
-        (settings && settings.webcamCustom)
-            ? settings.webcamCustom
-            : {};
+        settings.webcamCustom || {};
 
     const style =
         custom.style || "neon";
