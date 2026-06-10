@@ -2869,7 +2869,7 @@ app.get("/overlay/webcam-custom", (req, res) => {
 
 
     const custom =
-    settings.webcamCustom || {};
+        Settings.webcamCustom || {};
 
     const style =
         custom.style || "neon";
