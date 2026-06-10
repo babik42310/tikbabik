@@ -2817,11 +2817,8 @@ loadSocial();
 
 app.get("/overlay/webcam-simple", (req, res) => {
 
-    const currentSettings =
-        JSON.parse(fs.readFileSync("settings.json", "utf8"));
-
     const webcam =
-        Settings.webcamSimple || {};
+    settings.webcamSimple || {};
 
     const color =
         webcam.color || "#35cfff";
@@ -2866,8 +2863,6 @@ body{
 });
 app.get("/overlay/webcam-custom", (req, res) => {
 
-    const currentSettings =
-        JSON.parse(fs.readFileSync("settings.json", "utf8"));
 
     const custom =
         Settings.webcamCustom || {};
@@ -3099,13 +3094,6 @@ app.get("/likes-goal/status", (req, res) => {
 
 app.get("/overlay/follow-goal", (req, res) => {
 
-    const currentSettings =
-        JSON.parse(
-    fs.readFileSync(
-        path.join(__dirname, "settings.json"),
-        "utf8"
-    )
-);
 
     const follow =
        Settings.followGoal || {};
@@ -3277,8 +3265,6 @@ app.get("/follow-goal/status", (req, res) => {
 
 app.get("/overlay/banner", (req, res) => {
 
-    const currentSettings =
-        JSON.parse(fs.readFileSync("settings.json", "utf8"));
 
     const banner =
         Settings.banner || {};
