@@ -2865,11 +2865,11 @@ body{
 </html>
 `);
 });
-
 app.get("/overlay/webcam-custom", (req, res) => {
 
+
     const custom =
-        settings.webcamCustom || {};
+    settings.webcamCustom || {};
 
     const style =
         custom.style || "neon";
@@ -2918,11 +2918,14 @@ body{
 </style>
 </head>
 <body>
+
 <div class="frame"></div>
+
 </body>
 </html>
 `);
 });
+
 app.get("/overlay/likes-goal", (req, res) => {
 
    const likes =
