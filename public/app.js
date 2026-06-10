@@ -4011,6 +4011,8 @@ const value =
         document.getElementById("webcamSimpleGlow")?.checked || false
 };
 
+console.log("SAUVEGARDE WEBCAM SIMPLE", appSettings.webcamSimple);
+
     fetch("/settings", {
         method: "POST",
         headers: {

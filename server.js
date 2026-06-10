@@ -12,6 +12,60 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+const { Pool } = require("pg");
+
+const db = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
+});
+
+async function initDatabase() {
+
+    async function loadSettings() {
+
+    const result = await db.query(
+        `
+        SELECT data
+        FROM app_settings
+        WHERE id = $1
+        `,
+        ["main"]
+    );
+
+    if (
+        result.rows.length &&
+        result.rows[0].data
+    ) {
+        settings = result.rows[0].data;
+    }
+
+    console.log("Settings chargés depuis PostgreSQL");
+
+}
+
+loadSettings();
+
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS app_settings (
+            id TEXT PRIMARY KEY,
+            data JSONB NOT NULL
+        )
+    `);
+
+    await db.query(`
+        INSERT INTO app_settings (id, data)
+        VALUES ('main', '{}')
+        ON CONFLICT (id) DO NOTHING
+    `);
+
+    console.log("Base PostgreSQL prête");
+
+}
+
+initDatabase();
+
 
 app.use(express.static("public"));
 app.use(express.json());
@@ -86,8 +140,23 @@ try {
 
 }
 
-app.get("/settings", (req, res) => {
+app.get("/settings", async (req, res) => {
+
+    const result = await db.query(
+        `
+        SELECT data
+        FROM app_settings
+        WHERE id = $1
+        `,
+        ["main"]
+    );
+
+    if (result.rows.length) {
+        settings = result.rows[0].data;
+    }
+
     res.json(settings);
+
 });
 
 function saveSettingsFile() {
@@ -96,14 +165,21 @@ function saveSettingsFile() {
         JSON.stringify(settings, null, 2)
     );
 }
-
-app.post("/settings", (req, res) => {
+app.post("/settings", async (req, res) => {
 
     settings = req.body;
 
-    fs.writeFileSync(
-        "settings.json",
-        JSON.stringify(settings, null, 2)
+    await db.query(
+        `
+        INSERT INTO app_settings (id, data)
+        VALUES ($1, $2)
+        ON CONFLICT (id)
+        DO UPDATE SET data = $2
+        `,
+        [
+            "main",
+            JSON.stringify(settings)
+        ]
     );
 
     res.json({
