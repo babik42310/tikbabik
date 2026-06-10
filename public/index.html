@@ -2,19 +2,29 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>TikBabik</title>
+    <title>TIKBABIK</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h1>TikBabik</h1>
+<h1>CreatorPilot
+</h1>
 
 <div id="sideMenu">
+    
+  <div class="topButtons">
 
     <button id="startButton" class="menuButton">
         <span class="menuIcon">🏠</span>
-        <span class="menuText">Start</span>
+        <span>Start</span>
     </button>
+
+    <button id="accountButton" class="menuButton">
+        <span class="menuIcon">🔑</span>
+        <span>Connexion</span>
+    </button>
+
+</div>
 
     <button id="setupButton" class="menuButton">
         <span class="menuIcon">🛠️</span>
@@ -28,8 +38,13 @@
 
     <button id="overlayButton" class="menuButton">
         <span class="menuIcon">🖼️</span>
-        <span class="menuText">Overlays</span>
+        <span class="menuText">Mini jeux</span>
     </button>
+
+<button id="graphicOverlayButton" class="menuButton">
+    <div>📺</div>
+    <span>Overlays</span>
+</button>
 
     <button id="settingsButton" class="menuButton">
         <span class="menuIcon">⚙️</span>
@@ -51,10 +66,7 @@
         <span class="menuText">Chat</span>
     </button>
 
-    <button id="toolsButton" class="menuButton">
-        <span class="menuIcon">🛠️</span>
-        <span class="menuText">Outils</span>
-    </button>
+
 
 </div>
 
@@ -69,7 +81,7 @@
 
 <div id="settingsPanel" style="display:none;">
 
-    <h2>⚙️ Actions TikBabik</h2>
+    <h2>⚙️ Actions CreatorPilot</h2>
 
     <div id="actionsTabs">
         <button id="actionsTab" class="actionsTab active">⚙️ Actions</button>
@@ -134,17 +146,29 @@
 
 <div id="statsPanel" style="display:none;">
 
-    <h2>🏆 Statistiques Live</h2>
+    <div class="statsContainer">
 
-    <button id="resetStats">🔄 Reset Statistiques</button>
+        <h2>🏆 Statistiques Live</h2>
 
-    <br><br>
+        <div class="statsGrid">
 
-    <h3>🏆 Top donateurs</h3>
-    <ol id="topGiftersList"></ol>
+            <div class="statsCard">
+                <h3>🏆 Top donateurs</h3>
+                <ol id="topGiftersList"></ol>
+            </div>
 
-    <h3>🎁 Historique cadeaux</h3>
-    <div id="giftHistoryList"></div>
+            <div class="statsCard">
+                <h3>🎁 Historique cadeaux</h3>
+                <div id="giftHistoryList"></div>
+            </div>
+
+        </div>
+
+        <button id="resetStats" class="dangerButton">
+            🔄 Reset Statistiques
+        </button>
+
+    </div>
 
 </div>
 
@@ -176,20 +200,96 @@
     Réinitialiser les points
 </button>       
          <button class="setupTab" id="tikBabikProSetupTab">
-    TikBabikPro 🚀
+    CreatorPilotPro 🚀
 </button>
-        <button class="setupTab">Votre compte</button>
-        <button class="setupTab">Importer / Exporter</button>
-        <button class="setupTab">Paramètres avancés</button>
-        <button class="setupTab">Options de debug</button>
+        <button class="setupTab" id="accountSetupTab">
+    Votre compte
+</button>
 
     </div>
 
     <div id="setupContent">
 
+        <div id="accountSetupPage" style="display:none;">
+
+    <div class="account-card">
+
+        <div class="account-header">
+            <strong>My Profile</strong>
+            <span id="accountEmail">rgouvet19@gmail.com</span>
+        </div>
+
+        <div class="account-info">
+
+    <p>
+        <strong>ID :</strong>
+        <span id="accountUserId">-</span>
+    </p>
+
+    <p>
+        <strong>Email :</strong>
+        <span id="accountEmailDisplay">-</span>
+    </p>
+
+    <p>
+        <strong>Inscription :</strong>
+        <span id="accountDate">-</span>
+    </p>
+
+</div>
+
+        <div class="account-row">
+
+    <span>🌐 Language</span>
+
+    <select id="languageSelector">
+
+        <option value="fr">🇫🇷 Français</option>
+        <option value="en">🇺🇸 English</option>
+        <option value="es">🇪🇸 Español</option>
+        <option value="de">🇩🇪 Deutsch</option>
+        <option value="it">🇮🇹 Italiano</option>
+        <option value="pt">🇵🇹 Português</option>
+        <option value="nl">🇳🇱 Nederlands</option>
+        <option value="pl">🇵🇱 Polski</option>
+
+    </select>
+
+</div>
+
+        <button class="account-action" id="connectTikTokAccountButton">
+            🔗 Connect TikTok Account
+        </button>
+
+        <button class="account-action" id="roadmapButton">
+            📋 Roadmap
+        </button>
+
+        <button class="account-action" id="featureRequestButton">
+            ➕ Feature Request
+        </button>
+
+        <button class="account-action" id="signOutButton">
+            ↪ Sign Out
+        </button>
+
+        <div class="account-footer">
+            <a href="/terms" target="_blank">ToS</a>
+            <span>·</span>
+            <a href="/privacy" target="_blank">Privacy</a>
+            <span>·</span>
+            <a href="/pricing" target="_blank">Pricing</a>
+            <span>·</span>
+            <span>v1.0.0</span>
+        </div>
+
+    </div>
+
+</div>
+
         <div id="tikBabikProSetupPage" style="display:none;">
 
-    <h2>🚀 TikBabik Pro</h2>
+    <h2>🚀 CreatorPilot Pro</h2>
 
     <div class="setupCard">
 
@@ -259,9 +359,9 @@
 
         <br><br>
 
-        <button id="upgradeProButton">
-            🚀 Passer à TikBabik Pro
-        </button>
+        <button id="accountUpgradeProButton">
+    🚀 Passer à CreatorPilot Pro
+</button>
 
     </div>
 
@@ -309,7 +409,7 @@
     <div class="setupCard">
 
         <p>
-            Connectez TikBabik à votre serveur Minecraft afin de déclencher
+            Connectez CreatorPilot à votre serveur Minecraft afin de déclencher
             des commandes, événements et interactions depuis TikTok LIVE.
         </p>
 
@@ -388,7 +488,7 @@
     <div class="setupCard">
 
         <p>
-            Connectez TikBabik à Streamer.bot pour déclencher
+            Connectez CreatorPilot à Streamer.bot pour déclencher
             automatiquement des actions depuis vos événements TikTok.
         </p>
 
@@ -619,7 +719,7 @@
             <div class="setupCard">
 
                 <p>
-                    Connectez TikBabik à OBS Studio pour contrôler automatiquement
+                    Connectez CreatorPilot à OBS Studio pour contrôler automatiquement
                     les scènes et les sources lors des événements TikTok.
                 </p>
 
@@ -671,7 +771,7 @@
 
                 <br><br>
 
-                <div id="obsConnectionStatus">
+                                <div id="obsConnectionStatus">
                     ⚪ Non connecté
                 </div>
 
@@ -684,68 +784,974 @@
 </div>
 
 <div id="overlayPanel" style="display:none;">
+    <div class="overlayContainer">
 
-    <div id="overlaySidebar">
+        <h2>🖼️Mini-jeux</h2>
 
-        <button class="overlayTab active">
-            <span>🖼️ Galerie des Overlays</span>
-            <span>›</span>
-        </button>
+        <div class="overlayGrid">
 
-        <button class="overlayTab">
-            <span>🎯 Objectifs</span>
-            <span>›</span>
-        </button>
+            <div class="overlayGameCard featuredGiftGallery">
+                <h3>🖼️ Galerie des Cadeaux TikTok</h3>
+                <p>
+                    Consultez tous les cadeaux TikTok disponibles avec leur image,
+                    leur nom et leur valeur en pièces.
+                </p>
+                <button id="openGiftGalleryButton">🎁 Ouvrir la galerie</button>
+                <button id="refreshGiftGalleryButton">🔄 Actualiser</button>
+            </div>
 
-        <button class="overlayTab">
-            <span>🎁 Cadeaux</span>
-            <span>›</span>
-        </button>
+            <div class="overlayGameCard">
+                <h3> Match <span class="proBadge">PRO</span></h3>
+                
+                <div class="coinMatchPreview">
+    <iframe
+        src="/overlay/coin-match"
+        class="coinMatchFrame">
+    </iframe>
+</div>
+                <p>Les viewers envoient des cadeaux pour monter dans le classement.</p>
+                <button id="coinMatchShowWinners">🏆 Show Winners</button>
+<button id="coinMatchStart">▶ Start Match</button>
+<button id="coinMatchEnd">⏹ End Match</button>
+<button id="coinMatchReset">🔄 Reset Match</button>
+<button id="coinMatchCopyUrl">🔗 Copy URL</button>
+<button id="coinMatchCustomize">⚙ Customize</button>
+<button id="coinMatchTestGift">🎁 Test Gift</button>
+<div id="coinMatchCustomizePanel" style="display:none;" class="customizePanel">
 
-        <button class="overlayTab">
-            <span>❤️ Likes</span>
-            <span>›</span>
-        </button>
+    <h3>⚙ Customize Coin Match</h3>
 
-        <button class="overlayTab">
-            <span>🎨 Graphiques</span>
-            <span>›</span>
-        </button>
+    <label>Couleur chrono</label>
+<input type="color" id="coinTimerColor" value="#35cfff">
 
-        <button class="overlayTab">
-            <span>📺 Docks OBS</span>
-            <span>›</span>
-        </button>
+<label>Forme de l’overlay</label>
+<select id="coinShape">
+    <option value="20px">Arrondi</option>
+    <option value="0px">Carré</option>
+    <option value="50px">Ovale</option>
+    <option value="999px">Très rond</option>
+</select>
 
-        <button class="overlayTab">
-            <span>🔍 Explorateur Cadeaux</span>
+<label>Taille de l’overlay</label>
+<input type="range" id="coinScale" min="0.6" max="1.5" step="0.1" value="1">
+
+    <label>Couleur du fond</label>
+    <input type="color" id="coinBgColor" value="#1f1f1f">
+
+    <label>Couleur bordure</label>
+    <input type="color" id="coinBorderColor" value="#ff0050">
+
+    <label>Couleur texte</label>
+    <input type="color" id="coinTextColor" value="#ffffff">
+
+    <label>Durée du match</label>
+<select id="coinDuration">
+    <option value="60">1 minute</option>
+    <option value="180">3 minutes</option>
+    <option value="300" selected>5 minutes</option>
+    <option value="600">10 minutes</option>
+    <option value="900">15 minutes</option>
+    <option value="1800">30 minutes</option>
+</select>
+
+<label>Son de victoire</label>
+
+<input
+    type="file"
+    id="coinVictorySound"
+    accept=".mp3,.wav,.ogg">
+
+    <button id="saveCoinCustomize">
+        💾 Sauvegarder
+    </button>
+
+</div>
+            </div>
+
+            <div class="overlayGameCard">
+                <h3> Battle <span class="proBadge">PRO</span></h3>
+               
+                <div class="giftBattlePreview">
+
+    <iframe
+        src="/overlay/gift-battle"
+        class="giftBattleFrame">
+    </iframe>
+
+</div>
+                <p>Deux équipes s'affrontent avec les cadeaux envoyés par les viewers.</p>
+                <button id="giftBattleStart">▶ Start Battle</button>
+<button id="giftBattleEnd">⏹ End Battle</button>
+<button id="giftBattleReset">🔄 Reset Battle</button>
+<button id="giftBattleCopyUrl">🔗 Copy URL</button>
+<button id="giftBattleCustomize">⚙ Customize</button>
+<div id="giftBattleCustomizePanel"
+     class="customizePanel"
+     style="display:none;">
+
+    <h3>⚙ Customize Gift Battle</h3>
+
+    <label>Nom équipe 1</label>
+    <input
+        type="text"
+        id="giftBattleRedName"
+        value="Team 1">
+
+    <label>Nom équipe 2</label>
+    <input
+        type="text"
+        id="giftBattleBlueName"
+        value="Team 2">
+
+    <label>Couleur équipe 1</label>
+    <input
+        type="color"
+        id="giftBattleRedColor"
+        value="#ff2a2a">
+
+    <label>Couleur équipe 2</label>
+    <input
+        type="color"
+        id="giftBattleBlueColor"
+        value="#1b8cff">
+
+        <label>Durée du battle</label>
+
+<select id="giftBattleDuration">
+    <option value="60">1 minute</option>
+    <option value="180">3 minutes</option>
+    <option value="300" selected>5 minutes</option>
+    <option value="600">10 minutes</option>
+    <option value="900">15 minutes</option>
+    <option value="1800">30 minutes</option>
+</select>
+
+<label>Cadeaux équipe Rouge</label>
+<input
+    type="text"
+    id="giftBattleRedGifts"
+    placeholder="Rose, Lion, GG">
+
+<label>Cadeaux équipe Bleue</label>
+<input
+    type="text"
+    id="giftBattleBlueGifts"
+    placeholder="Finger Heart, Donut, Galaxy">
+
+    <button id="openGiftBattleGiftPicker">
+    🎁 Choisir dans la galerie TikTok
+</button>
+
+<div id="giftBattleGiftPicker" style="display:none;">
+
+    <h4>🎁 Cadeaux Gift Battle</h4>
+
+    <div id="giftBattleGiftList"></div>
+
+</div>
+
+    <button id="saveGiftBattleCustomize">
+        💾 Sauvegarder
+    </button>
+
+</div>
+<button id="giftBattleTestRed">🔴 Test 1</button>
+<button id="giftBattleTestBlue">🔵 Test 2</button>
+            </div>
+
+            <div class="overlayGameCard">
+
+    <h3>Panneau Sociaux <span class="proBadge">PRO</span></h3>
+
+    <button id="socialCopyUrlButton">
+        🔗 Copy URL
+    </button>
+
+    <button id="socialCustomizeButton">
+        ⚙ Customize
+    </button>
+
+    <div class="socialPreviewBox">
+        <iframe
+            src="/overlay/social-panel"
+            class="socialFrame"
+            scrolling="no">
+        </iframe>
+    </div>
+
+<div id="socialCustomizePanel"
+     class="customizePanel"
+     style="display:none;">
+
+    <h2>Overlay Settings</h2>
+
+    <button id="closeSocialCustomize">
+        ✖
+    </button>
+
+    <label>Font</label>
+    <input id="socialFont" value="Arial">
+
+    <label>Font Size</label>
+    <input id="socialFontSize" type="number" value="45">
+
+    <label>Font Letter Spacing</label>
+    <input id="socialLetterSpacing" type="number" value="2">
+
+    <label>Couleur du texte</label>
+    <input id="socialFontColor" type="color" value="#000000">
+
+    <label>Fond du panneau</label>
+    <input id="socialBgColor" type="color" value="#00ff4d">
+
+    <label>Animation</label>
+    <select id="socialAnimation">
+        <option value="fade">Fade</option>
+        <option value="slide">Slide</option>
+        <option value="none">None</option>
+    </select>
+
+    <label>Display Time</label>
+    <input id="socialDisplayTime" type="number" value="4">
+
+    <label>Pause Time</label>
+    <input id="socialPauseTime" type="number" value="1">
+
+    <br><br>
+
+    <button id="socialAddField">
+        ➕ New Field
+    </button>
+
+    <table id="socialFieldsTable">
+        <thead>
+            <tr>
+                <th>Supprimer</th>
+                <th>Platform</th>
+                <th>Username</th>
+                <th>Icon Color</th>
+                <th>Icon Background</th>
+            </tr>
+        </thead>
+
+        <tbody id="socialFieldsBody"></tbody>
+    </table>
+
+    <br>
+
+    <button id="socialTest">
+        Test
+    </button>
+
+    <button id="saveSocialSettings">
+        OK
+    </button>
+    </div>
+
+</div>
+
+
+            <div class="overlayGameCard">
+
+    <h3>Roue des actions <span class="proBadge">PRO</span></h3>
+
+    <div class="wheelPreviewBox">
+        <iframe
+            src="/overlay/action-wheel"
+            class="wheelFrame"
+            scrolling="no">
+        </iframe>
+    </div>
+
+    <p>Faites tourner une roue avec vos actions personnalisées.</p>
+
+    <button id="wheelStart">▶ Lancer la roue</button>
+    <button id="wheelReset">🔄 Reset</button>
+    <button id="wheelCopyUrl">🔗 Copy URL</button>
+    <button id="wheelCustomize">⚙ Customize</button>
+
+    <div id="wheelCustomizePanel"
+     class="customizePanel wheelProPanel"
+     style="display:none;">
+
+     <div id="segmentSettingsPanel"
+     class="customizePanel"
+     style="display:none;">
+
+    <h3>Segment Settings</h3>
+
+    <button id="closeSegmentSettings">✖</button>
+
+    <button id="addWheelSegment">
+        ➕ Add Segment
+    </button>
+
+    <table id="segmentTable">
+        <thead>
+            <tr>
+                <th>↕</th>
+                <th>Supprimer</th>
+                <th>Text</th>
+                <th>Color</th>
+                <th>Action</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody id="segmentTableBody"></tbody>
+    </table>
+
+    <br>
+
+    <button id="saveSegmentsButton">
+        OK
+    </button>
+
+</div>
+
+    <h3>⚙ Paramètres de la roue</h3>
+
+    <div class="wheelSettingsGrid">
+
+        <label>Police</label>
+        <select id="wheelFont">
+            <option value="Arial">Arial</option>
+            <option value="Poppins">Poppins</option>
+            <option value="Orbitron">Orbitron</option>
+            <option value="Pacifico">Pacifico</option>
+            <option value="Impact">Impact</option>
+        </select>
+
+        <label>Taille police</label>
+        <input id="wheelFontSize" type="number" value="50">
+
+        <label>Espacement ligne</label>
+        <input id="wheelLineSpacing" type="number" value="50">
+
+        <label>Espacement lettres</label>
+        <input id="wheelLetterSpacing" type="number" value="50">
+
+        <label>Afficher le socle</label>
+        <input id="wheelShowBase" type="checkbox" checked>
+
+        <label>Son actif</label>
+        <input id="wheelSoundActive" type="checkbox" checked>
+
+        <label>Durée annonce</label>
+        <input id="wheelAnnounceDuration" type="number" value="3">
+
+        <label>Durée rotation</label>
+        <input id="wheelSpinDuration" type="number" value="10">
+
+        <label>Durée attente</label>
+        <input id="wheelWaitDuration" type="number" value="1">
+
+    </div>
+
+    <br>
+
+    <button id="wheelAddWheel">
+        ➕ Ajouter une roue
+    </button>
+
+    <table id="wheelListTable">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Activé</th>
+                <th>Nom</th>
+                <th>Déclencheur</th>
+                <th>Segments</th>
+            </tr>
+        </thead>
+
+        <tbody id="wheelListBody"></tbody>
+    </table>
+
+    <br>
+
+    <button id="saveWheelSettings">
+        💾 Sauvegarder la roue
+    </button>
+
+</div>
+
+</div>
+
+            <div class="overlayGameCard">
+
+    <h3>Top J'aime</h3>
+
+    <p>Classement des J'aimes.</p>
+
+    <iframe
+    src="/overlay/top-likes"
+    class="overlayPreview"
+    scrolling="no">
+</iframe>
+
+    <button id="topLikesCopyUrl">
+        🔗 Copy URL
+    </button>
+    <button id="topLikesTest">
+        ❤️ Test Like
+    </button>
+    <button id="topLikesCustomize">
+    ⚙ Customize
+</button>
+
+</div>
+
+            <div class="overlayGameCard">
+                <h3 style="color:#35cfff;">Chrono</h3>
+
+<p>Affiche le compte à rebours.</p>
+
+<div class="chronoPreviewBox">
+    <iframe
+        src="/overlay/chrono"
+        class="chronoFrame"
+        scrolling="no">
+    </iframe>
+</div>
+
+<div class="chronoControls">
+    <input
+        id="chronoUrl"
+        value="http://localhost:3000/overlay/chrono"
+        readonly>
+
+    <button id="chronoCopyUrl">Copy URL</button>
+    <button id="chronoStart">▶ Test</button>
+    <button id="chronoCustomize">⚙ Customize</button>
+</div>
+
+<div class="chronoControlBox">
+
+    <h3>Control</h3>
+
+    <button id="chronoResume">
+        ▶ Start
+    </button>
+
+    <button id="chronoPause">
+        ⏸ Pause
+    </button>
+
+    <button id="chronoReset">
+        ↩ Reset
+    </button>
+
+</div>
+
+<div class="chronoAdjustBox">
+
+    <input
+        id="chronoMinutes"
+        type="number"
+        value="1"
+        min="1">
+
+    <button id="chronoIncrease">
+        ➕ Ajouter
+    </button>
+
+    <button id="chronoDecrease">
+        ➖ Retiré
+    </button>
+
+</div>
+
+<div id="chronoCustomizePanel"
+     class="customizePanel"
+     style="display:none;">
+
+    <h3>⚙ Customize Chrono</h3>
+
+    <label>Police</label>
+<select id="chronoFont">
+    <option value="Arial">Arial</option>
+    <option value="Verdana">Verdana</option>
+    <option value="Tahoma">Tahoma</option>
+    <option value="Trebuchet MS">Trebuchet MS</option>
+    <option value="Impact">Impact</option>
+    <option value="Georgia">Georgia</option>
+    <option value="Courier New">Courier New</option>
+    <option value="Orbitron">Orbitron</option>
+    <option value="Poppins">Poppins</option>
+</select>
+    <label>Taille du texte</label>
+    <input id="chronoFontSize" type="number" value="42">
+
+    <label>Espacement lettres</label>
+    <input id="chronoLetterSpacing" type="number" value="4">
+
+    <label>Couleur chrono</label>
+    <input id="chronoTextColor" type="color" value="#b700ff">
+
+    <label>Fond chrono</label>
+    <input id="chronoBgColor" type="color" value="#2b2b2b">
+
+    <label>Valeur départ en minutes</label>
+    <input id="chronoDefaultMinutes" type="number" value="5">
+
+    <label>
+        <input
+            type="checkbox"
+            id="chronoGiftAutoEnabled"
+            checked>
+        Activer auto cadeaux TikTok
+    </label>
+
+    <label>Mode cadeaux</label>
+    <select id="chronoGiftModeCustom">
+        <option value="add">Ajouter du temps</option>
+        <option value="remove">Retirer du temps</option>
+        <option value="off">Ne rien faire</option>
+    </select>
+
+    <label>Par coin/cadeau</label>
+    <input id="chronoSecondsPerCoinCustom" type="number" value="1">
+
+    <label>Par follow</label>
+    <input id="chronoPerFollow" type="number" value="60">
+
+    <label>Par partage</label>
+    <input id="chronoPerShare" type="number" value="0">
+
+    <label>Par like</label>
+    <input id="chronoPerLike" type="number" value="0">
+
+    <label>Par message chat</label>
+    <input id="chronoPerChat" type="number" value="0">
+
+    <br><br>
+
+    <button id="chronoTestGift">
+        🎁 Test cadeau
+    </button>
+
+    <button id="saveChronoCustomize">
+        💾 Sauvegarder Chrono
+    </button>
+
+</div>
+
+            </div>
+
+        </div>
+
+        <div id="giftGalleryPanel" style="display:none;">
+
+            <h2>🎁 Galerie des Cadeaux TikTok</h2>
+
+            <button id="closeGiftGalleryButton">
+                ⬅ Retour aux overlays
+            </button>
+
+            <br><br>
+
+            <table id="giftLibraryTable">
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>Nom</th>
+                        <th>Diamants</th>
+                    </tr>
+                </thead>
+                <tbody id="giftLibraryBody"></tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div id="graphicOverlayPanel" style="display:none;">
+
+    <div id="graphicOverlaySidebar">
+
+
+
+    </div>
+
+    <div id="graphicOverlayContent">
+
+        <h2>🖼️ Bibliothèque de Cadres Webcam</h2>
+
+        <p>
+            Retrouvez ici une sélection de cadres webcam pour OBS et TikTok LIVE Studio.
+        </p>
+
+        <div class="webcamFramesGrid">
+
+            <div class="webcamFrameCard">
+
+                <h3>Cadre Webcam Simple</h3>
+
+                <input
+    type="text"
+    class="overlayUrlInput"
+    value="http://localhost:3000/overlay/webcam-simple"
+    readonly>
+
+                <button class="copyOverlayUrl">
+    📋 Copier URL
+</button>
+
+<button class="testOverlayUrl">
+    ▶ Tester
+</button>
+
+<button id="customizeWebcamSimple">
+    ⚙️ Personnaliser
+</button>
+
+<button id="saveWebcamSimple">
+    💾 Sauvegarder le cadre
+</button>
+
+<div id="webcamSimpleCustomize" style="display:none;">
+
+    <label>Couleur du cadre</label>
+    <input type="color" id="webcamSimpleColor" value="#35cfff">
+
+    <label>Épaisseur</label>
+    <input type="range" id="webcamSimpleBorder" min="2" max="20" value="6">
+
+    <label>Arrondi</label>
+    <input type="range" id="webcamSimpleRadius" min="0" max="60" value="12">
+
+    <label>
+        <input type="checkbox" id="webcamSimpleGlow" checked>
+        Effet néon
+    </label>
+
+</div>
+
+                <div class="webcamPreview">
+
+    <div class="webcamFramePreview" id="webcamSimplePreview"></div>
+
+</div>
+
+            </div>
+
+            <div class="webcamFrameCard">
+
+<h3>Cadre Webcam Personnalisé</h3>
+                <input
+                class="overlayUrlInput"
+                    type="text"
+                    value="http://localhost:3000/overlay/webcam-custom"
+                    readonly>
+<button class="copyOverlayUrl">📋 Copier URL</button>
+<button class="testOverlayUrl">▶ Tester</button>
+<button id="customizeWebcamCustom">⚙️ Personnaliser</button>
+
+<div id="webcamCustomCustomize" style="display:none;">
+
+    <label>Style</label>
+
+    <select id="webcamCustomStyle">
+
+        <option value="neon">Néon</option>
+        <option value="gaming">Gaming</option>
+        <option value="tiktok">TikTok</option>
+        <option value="rgb">RGB</option>
+
+    </select>
+
+    <br><br>
+
+    <button id="saveWebcamCustom">
+        💾 Sauvegarder
+    </button>
+
+</div>
+
+                <div class="webcamPreview">
+
+    <div id="webcamCustomFrame"></div>
+
+</div>
+
+            </div>
+            <div class="webcamFrameCard">
+
+
+    <h3>❤️ Objectif likes </h3>
+
+    <input
+    class="overlayUrlInput"
+        type="text"
+        value="http://localhost:3000/overlay/likes-goal"
+        readonly>
+
+    <button class="copyOverlayUrl">📋 Copier URL</button>
+    <button>▶ Tester</button>
+    
+
+    <button id="customizeLikesGoal">
+    ⚙️ Personnaliser
+</button>
+
+<div id="likesGoalCustomize" style="display:none;">
+<label>Texte de l'objectif</label>
+
+<input
+    type="text"
+    id="likesGoalText"
+    value="objectif 10k like et je vous répond">
+    <label>Objectif de likes</label>
+
+<input
+    type="number"
+    id="likesGoalTarget"
+    value="10000">
+
+    <label>
+    <input
+        type="checkbox"
+        id="likesGoalShowProgress"
+        checked>
+
+    Afficher la progression
+</label>
+
+    <label>Police</label>
+    <select id="likesGoalFont">
+        <option>Pacifico</option>
+        <option>Arial</option>
+        <option>Verdana</option>
+        <option>Tahoma</option>
+    </select>
+
+    <label>Taille du texte</label>
+    <input type="number" id="likesGoalFontSize" value="28">
+
+    <label>Espacement des lignes</label>
+    <input type="number" id="likesGoalLineSpacing" value="40">
+
+    <label>Espacement des lettres</label>
+    <input type="number" id="likesGoalLetterSpacing" value="2">
+
+    <label>Style</label>
+    <select id="likesGoalVariation">
+        <option>Clean Néon</option>
+        <option>Néon Rose</option>
+        <option>Néon Bleu</option>
+        <option>TikTok</option>
+    </select>
+
+    <label>Mise en page</label>
+    <select id="likesGoalLayout">
+        <option>Simple</option>
+        <option>Compact</option>
+        <option>Large</option>
+    </select>
+
+    <label>Couleur du texte</label>
+    <input type="color" id="likesGoalTextColor" value="#00ff22">
+
+    <label>Couleur progression</label>
+<input type="color" id="likesGoalProgressColor" value="#ea00ff">
+
+<label>Couleur restante</label>
+<input type="color" id="likesGoalRemainingColor" value="#010300">
+
+<label>Couleur de la barre</label>
+<input type="color" id="likesGoalBarColor" value="#baff4a">
+   
+    <button id="saveLikesGoal">
+    💾 Sauvegarder Objectif Likes
+</button>
+
+</div>
+
+    <div class="webcamPreview">
+
+    <div id="likesGoalPreview">
+        objectif 10k like et je vous répond : 0 / 0 (0%)
+    </div>
+
+</div>
+
+</div>
+
+
+
+<div class="webcamFrameCard">
+
+    <h3>👥 Objectif Abonnés</h3>
+
+    <input
+        type="text"
+        class="overlayUrlInput"
+        value="http://localhost:3000/overlay/follow-goal"
+        readonly>
+
+    <button class="copyOverlayUrl">📋 Copier URL</button>
+<button class="testOverlayUrl">▶ Tester</button>
+<button id="customizeFollowGoal">⚙️ Personnaliser</button>
+
+<div id="followGoalCustomize" style="display:none;">
+
+    <label>Texte de l'objectif</label>
+    <input
+        type="text"
+        id="followGoalText"
+        value="objectif 100 abonnés">
+
+    <label>Objectif abonnés</label>
+    <input
+        type="number"
+        id="followGoalTarget"
+        value="100">
+
+    <label>
+        <input
+            type="checkbox"
+            id="followGoalShowProgress"
+            checked>
+        Afficher la progression
+    </label>
+
+    <label>Police</label>
+    <select id="followGoalFont">
+        <option>Pacifico</option>
+        <option>Arial</option>
+        <option>Verdana</option>
+        <option>Tahoma</option>
+    </select>
+
+    <label>Taille du texte</label>
+    <input
+        type="number"
+        id="followGoalFontSize"
+        value="28">
+
+    <label>Espacement des lettres</label>
+    <input
+        type="number"
+        id="followGoalLetterSpacing"
+        value="2">
+
+    <label>Style</label>
+    <select id="followGoalVariation">
+        <option>Clean Néon</option>
+        <option>Néon Rose</option>
+        <option>Néon Bleu</option>
+        <option>TikTok</option>
+    </select>
+
+    <label>Couleur du texte</label>
+    <input
+        type="color"
+        id="followGoalTextColor"
+        value="#00ff22">
+
+    <label>Couleur progression</label>
+    <input
+        type="color"
+        id="followGoalProgressColor"
+        value="#ea00ff">
+
+    <label>Couleur restante</label>
+    <input
+        type="color"
+        id="followGoalRemainingColor"
+        value="#010300">
+
+    <label>Couleur de la barre</label>
+    <input
+        type="color"
+        id="followGoalBarColor"
+        value="#baff4a">
+
+    <br><br>
+
+    <button id="saveFollowGoal">
+        💾 Sauvegarder Objectif Abonnés
+    </button>
+
+</div>
+
+    <div class="webcamPreview">
+
+    <div id="followGoalPreview">
+        objectif 100 abonnés : 0 / 100 (0%)
+    </div>
+
+</div>
+
+</div>
+
+<div class="webcamFrameCard">
+
+    <h3>📢 Bannière Défilante</h3>
+
+    <input
+        type="text"
+        class="overlayUrlInput"
+        value="http://localhost:3000/overlay/banner"
+        readonly>
+
+    <button class="copyOverlayUrl">📋 Copier URL</button>
+    <button class="testOverlayUrl">▶ Tester</button>
+    <button id="customizeBanner">⚙️ Personnaliser</button>
+
+    <div class="webcamPreview">
+
+        <div id="bannerPreview">
+    <span id="bannerPreviewText">
+        Bienvenue sur mon live !
+    </span>
+</div>
+
+    </div>
+
+    <div id="bannerCustomize" style="display:none;">
+
+        <label>Texte</label>
+        <input
+            type="text"
+            id="bannerText"
+            value="Bienvenue sur mon live !">
+
+        <label>Vitesse</label>
+        <input
+            type="range"
+            id="bannerSpeed"
+            min="5"
+            max="50"
+            value="20">
+
+        <label>Couleur texte</label>
+        <input
+            type="color"
+            id="bannerTextColor"
+            value="#ffffff">
+
+        <label>Couleur fond</label>
+        <input
+            type="color"
+            id="bannerBgColor"
+            value="#ff0050">
+
+        <button id="saveBanner">
+            💾 Sauvegarder
         </button>
 
     </div>
 
-    <div id="overlayContent">
-
-        <h2>🎁 Explorateur Cadeaux</h2>
-
-        <button id="loadGiftLibrary">
-            📥 Charger la bibliothèque cadeaux
-        </button>
-
-        <br><br>
-
-        <table id="giftLibraryTable">
-            <thead>
-                <tr>
-                    <th>Image</th>
-                    <th>Nom</th>
-                    <th>Diamants</th>
-                    <th>Action associée</th>
-                </tr>
-            </thead>
-            <tbody id="giftLibraryBody"></tbody>
-        </table>
+</div>
 
     </div>
+
+</div>
+
 
 </div>
 
@@ -762,26 +1768,383 @@
             Paramètres
         </button>
 
-        <button class="soundTab">
-            💬 TTS Chat
-        </button>
+        <button class="soundTab" id="ttsChatTab">
+    💬 TTS Chat
+</button>
 
     </div>
 
     <div id="soundContent">
 
-        <h2>🔊 Alertes sonores</h2>
+    <div id="soundSettingsContent"style="display:none;">
 
-        <p>
-            Gérez ici les sons et les paramètres audio de TikBabik.
-        </p>
+        <h2>⚙️ Paramètres audio</h2>
+
+        <div class="soundSettingsCard">
+
+            <div class="soundSettingRow">
+                <label>Jouer plusieurs sons simultanément</label>
+                <input
+                    type="checkbox"
+                    id="playSoundsSimultaneously"
+                    checked>
+            </div>
+
+            <div class="soundSettingRow">
+                <label>Lire uniquement la première émote du message</label>
+                <input
+                    type="checkbox"
+                    id="playOnlyFirstEmote"
+                    checked>
+            </div>
+
+            <div class="soundSettingRow">
+                <label>Longueur maximale de la file d'attente</label>
+
+                <input
+                    type="number"
+                    id="maxSoundQueueLength"
+                    value="100"
+                    min="1">
+            </div>
+
+        </div>
 
     </div>
 
+    <div id="soundAlertsContent">
+
+        <h2>🔊 Alertes sonores</h2>
+
+        <div class="soundToolbar">
+
+
+        <button id="addSoundAlert">
+            ➕ Créer une alerte sonore
+        </button>
+
+        <label>
+            <input type="checkbox" id="soundsEnabled" checked>
+            Sons activés
+        </label>
+
+        <input
+            id="soundSearch"
+            placeholder="🔍 Rechercher..."
+        >
+        <button id="saveSoundAlerts">
+    💾 Sauvegarder les sons
+</button>
+
+    </div>
+
+    <table id="soundAlertsTable">
+
+    <thead>
+        <tr>
+            <th></th>
+            <th>Activé</th>
+            <th>Déclencheur</th>
+            <th>Son</th>
+            <th>Raccourci</th>
+            <th>Volume</th>
+        </tr>
+    </thead>
+
+    <tbody id="soundAlertsBody"></tbody>
+
+</table>
+
+</div> <!-- soundAlertsContent -->
+
+<div id="ttsChatContent" style="display:none;">
+
+    <h2>💬 Text-to-Speech Chat</h2>
+
+<p>
+    Ici vous pouvez lire automatiquement les messages du chat TikTok grâce à la synthèse vocale.
+</p>
+
+<div class="ttsGrid">
+
+    <div class="ttsCard">
+
+        <h3>⚙️ Paramètres généraux</h3>
+
+        <div class="ttsRow">
+            <label>Activé</label>
+            <input type="checkbox" id="ttsEnabled" checked>
+        </div>
+
+        <div class="ttsRow">
+            <label>Langue</label>
+
+            <select id="ttsLanguage">
+                <option>Français (France)</option>
+                <option>English (US)</option>
+            </select>
+        </div>
+
+        <div class="ttsRow">
+            <label>Voix</label>
+
+            <select id="ttsVoice">
+                <option>Voix féminine</option>
+                <option>Voix masculine</option>
+            </select>
+        </div>
+
+        <div class="ttsRow">
+            <label>Voix aléatoire</label>
+            <input type="checkbox" id="ttsRandomVoice">
+        </div>
+
+        <div class="ttsRow">
+            <label>Vitesse</label>
+
+            <input
+                type="number"
+                id="ttsSpeed"
+                value="50">
+        </div>
+
+        <div class="ttsRow">
+    <label>Volume</label>
+
+    <input
+        type="range"
+        id="ttsVolume"
+        min="0"
+        max="100"
+        value="100">
 </div>
 
-<div id="chatPanel" style="display:none;">
+</div> <!-- fin Paramètres généraux -->
 
+<div class="ttsCard">
+
+    <h3>👥 Utilisateurs autorisés</h3>
+
+    <div class="ttsRow">
+        <label>Tous les utilisateurs</label>
+        <input type="checkbox" id="ttsAllUsers">
+    </div>
+
+    <div class="ttsRow">
+        <label>Followers</label>
+        <input type="checkbox" id="ttsFollowers" checked>
+    </div>
+
+    <div class="ttsRow">
+        <label>Super Fans / Abonnés</label>
+        <input type="checkbox" id="ttsSubscribers" checked>
+    </div>
+
+    <div class="ttsRow">
+        <label>Modérateurs</label>
+        <input type="checkbox" id="ttsModerators" checked>
+    </div>
+
+    <div class="ttsRow">
+        <label>Membres de l'équipe</label>
+        <input type="checkbox" id="ttsTeam">
+    </div>
+
+    <div class="ttsRow">
+        <label>Top Donateurs</label>
+        <input type="checkbox" id="ttsTopGifters">
+    </div>
+
+    <div class="ttsRow">
+    <label>Liste blanche</label>
+    <input type="checkbox" id="ttsWhitelist">
+</div>
+
+</div> <!-- Utilisateurs autorisés -->
+
+<div class="ttsCard">
+
+    <h3>💬 Types de commentaires</h3>
+
+    <div class="ttsRow">
+        <label>Lire tous les commentaires</label>
+        <input type="radio" name="ttsCommentMode" value="all" checked>
+    </div>
+
+    <div class="ttsRow">
+        <label>Commentaires commençant par .</label>
+        <input type="radio" name="ttsCommentMode" value="dot">
+    </div>
+
+    <div class="ttsRow">
+        <label>Commentaires commençant par /</label>
+        <input type="radio" name="ttsCommentMode" value="slash">
+    </div>
+
+    <div class="ttsRow">
+        <label>Commande spécifique</label>
+        <input type="radio" name="ttsCommentMode" value="command">
+    </div>
+
+    <div class="ttsRow">
+        <label>Commande</label>
+        <input type="text" id="ttsCommand" value="!tts">
+    </div>
+
+</div>
+<div class="ttsCard">
+
+    <h3>💎 Coût en points</h3>
+
+    <div class="ttsRow">
+        <label>Lecture gratuite</label>
+        <input type="radio" name="ttsPointsMode" checked>
+    </div>
+
+    <div class="ttsRow">
+        <label>Faire payer des points</label>
+        <input type="radio" name="ttsPointsMode">
+    </div>
+
+    <div class="ttsRow">
+        <label>Coût par message</label>
+        <input type="number" id="ttsMessageCost" value="5">
+    </div>
+
+</div>
+<div class="ttsCard">
+
+    <h3>👤 Utilisateurs spéciaux</h3>
+
+    <div class="ttsRow">
+        <label>Nom utilisateur</label>
+        <input
+            type="text"
+            id="ttsSpecialUser"
+            placeholder="@pseudo">
+    </div>
+
+    <div class="ttsRow">
+        <label>Voix spéciale</label>
+
+        <select id="ttsSpecialVoice">
+            <option>Voix féminine</option>
+            <option>Voix masculine</option>
+            <option>Voix robot</option>
+            <option>Voix drôle</option>
+        </select>
+    </div>
+
+    <button id="ttsAddSpecialUser">
+        ➕ Ajouter utilisateur
+    </button>
+
+    <div id="ttsSpecialUsersList"></div>
+
+</div>
+<div class="ttsCard">
+
+    <h3>🎤 Testeur de voix</h3>
+
+    <div class="ttsRow">
+        <label>Texte de test</label>
+    </div>
+
+    <input
+        type="text"
+        id="ttsTestText"
+        value="Ceci est un test de la synthèse vocale."
+        style="width:100%;">
+
+    <br><br>
+
+    <button id="ttsTestButton">
+        ▶ Lire le texte
+    </button>
+
+</div>
+<div class="ttsCard">
+
+    <h3>📜 Journaux TTS</h3>
+
+    <div id="ttsLogs">
+        Aucun message lu
+    </div>
+
+    <button id="ttsClearQueue">
+    🗑 Vider la file
+</button>
+
+</div>
+<div class="ttsCard">
+
+    <h3>🛡️ Anti-spam</h3>
+
+    <div class="ttsRow">
+        <label>Temps entre 2 lectures (sec)</label>
+        <input
+            type="number"
+            id="ttsCooldown"
+            value="0">
+    </div>
+
+    <div class="ttsRow">
+        <label>Taille max file d'attente</label>
+        <input
+            type="number"
+            id="ttsQueueLength"
+            value="5">
+    </div>
+
+    <div class="ttsRow">
+        <label>Longueur max message</label>
+        <input
+            type="number"
+            id="ttsMaxLength"
+            value="300">
+    </div>
+
+    <div class="ttsRow">
+        <label>Filtrer répétitions</label>
+        <input
+            type="checkbox"
+            id="ttsFilterSpam">
+    </div>
+
+    <div class="ttsRow">
+        <label>Filtrer @mentions</label>
+        <input
+            type="checkbox"
+            id="ttsFilterMentions">
+    </div>
+
+    <div class="ttsRow">
+        <label>Filtrer commandes</label>
+        <input
+            type="checkbox"
+            id="ttsFilterCommands">
+    </div>
+
+</div>
+<div class="ttsCard">
+
+    <h3>💾 Sauvegarde TTS</h3>
+
+    <button id="saveTtsSettings">
+        💾 Sauvegarder les paramètres TTS
+    </button>
+
+</div>
+
+</div> <!-- ttsGrid -->
+
+</div>
+
+</div> <!-- soundContent -->
+
+</div> <!-- soundPanel -->
+
+<div id="chatPanel" style="display:none;">
     <div id="chatSidebar">
 
         <button class="chatTab active">
@@ -801,7 +2164,7 @@
         <h2>💬 Commandes Chat</h2>
 
         <p>
-            Configuration des commandes du chat TikBabik.
+            Configuration des commandes du chat CreatorPilot.
         </p>
 
     </div>
@@ -870,9 +2233,10 @@
             <span>⌄</span>
         </button>
 
-        <button class="startSubTab">
-            Agences
-        </button>
+        <button class="startSubTab" id="agencyButton">
+    Agences
+</button>
+
 
         <button class="startSubTab" id="faqButton">
             FAQ
@@ -892,89 +2256,144 @@
 
     </div>
 
-    <div id="startContent">
+<div id="startContent">
 
-        <div id="startMainPage">
+    <div id="loginPage" style="display:none;">
 
-            <h2>Bienvenue !</h2>
+    <h2>🔑 Connexion CreatorPilot</h2>
 
+    <div class="startCard">
+
+        <input
+            type="email"
+            id="loginEmail"
+            placeholder="Adresse e-mail"
+        >
+
+        <br><br>
+
+        <input
+            type="password"
+            id="loginPassword"
+            placeholder="Mot de passe"
+        >
+
+        <br><br>
+
+        <button id="loginBtn">
+            Se connecter
+        </button>
+
+        <hr>
+
+        <h3>Créer un compte</h3>
+
+        <input
+            type="email"
+            id="registerEmail"
+            placeholder="Adresse e-mail"
+        >
+
+        <br><br>
+
+        <input
+            type="password"
+            id="registerPassword"
+            placeholder="Mot de passe"
+        >
+
+        <br><br>
+
+        <button id="registerBtn">
+            Créer un compte
+        </button>
+
+    </div>
+
+</div>
+
+    <div id="startMainPage">
+
+        <h2>Bienvenue !</h2>
+
+        <p>
+            Bienvenue dans CreatorPilot, ton outil pour gérer ton live TikTok.
+        </p>
+
+        <div class="startCard">
+            <h3>Connexion TikTok LIVE</h3>
             <p>
-                Bienvenue dans TikBabik, ton outil pour gérer ton live TikTok.
+                Une fois ton live lancé, connecte CreatorPilot à ton compte TikTok.
             </p>
-
-            <div class="startCard">
-
-                <h3>Connexion TikTok LIVE</h3>
-
-                <p>
-                    Une fois ton live lancé, connecte TikBabik à ton compte TikTok.
-                </p>
-
-                <button id="startConnectTikTokButton">
-                    Connecter à TikTok LIVE
-                </button>
-
-            </div>
-
-            <div class="startCard">
-
-                <h3>Accès rapide</h3>
-
-                <div class="quickGrid">
-
-                    <div class="quickCard">
-                        <h4>TTS Chat</h4>
-                        <label>
-                            <input type="checkbox" checked>
-                            Activé
-                        </label>
-                    </div>
-
-                    <div class="quickCard">
-                        <h4>Alertes sonores</h4>
-                        <label>
-                            <input type="checkbox" checked>
-                            Activé
-                        </label>
-                    </div>
-
-                    <div class="quickCard">
-                        <h4>Actions & Événements</h4>
-                        <label>
-                            <input type="checkbox" checked>
-                            Activé
-                        </label>
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="startCard">
-
-                <h3>Agences</h3>
-
-                <p>
-                    Section réservée aux agences, partenaires et créateurs.
-                </p>
-
-                <div class="agencyBox">
-                    TikBabik Agency Gaming
-                </div>
-
-            </div>
-
+            <button id="startConnectTikTokButton">
+                Connecter à TikTok LIVE
+            </button>
         </div>
 
-        <div id="faqPage" style="display:none;">
+        <div class="startCard">
+            <h3>Accès rapide</h3>
 
-            <h2>❓ FAQ TikBabik</h2>
+            <div class="quickGrid">
+                <div class="quickCard">
+                    <h4>TTS Chat</h4>
+                    <label>
+    <input
+        type="checkbox"
+        id="quickTtsEnabled">
+    Activé
+</label>
+                </div>
 
-            <h3>Pourquoi TikBabik ne se connecte pas à mon LIVE ?</h3>
+                <div class="quickCard">
+                    <h4>Alertes sonores</h4>
+                    <label><input type="checkbox" checked> Activé</label>
+                </div>
+
+                <div class="quickCard">
+                    <h4>Actions & Événements</h4>
+                    <label><input type="checkbox" checked> Activé</label>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="agencyPage" style="display:none;">
+
+        <h2>🏢 Agences</h2>
+
+        <div class="startCard">
+            <img
+                src="/images/lfdlv-agency.png"
+                alt="LFDLV Agency"
+                style="width:280px; border-radius:15px; margin-bottom:15px;"
+            >
+
+            <h3>LFDLV</h3>
+
+            <p><strong>Les Frerot de la Vie Agency</strong></p>
+
+            <p>
+                L’agence LFDLV accompagne les créateurs dans le développement
+                de leurs lives, leur visibilité et leur monétisation.
+            </p>
+
+            <p>
+                Offre agence : <strong>4,99 € / mois</strong>
+            </p>
+        </div>
+
+    </div>
+
+    <div id="faqPage" style="display:none;">
+
+            <h2>❓ FAQ CreatorPilot</h2>
+
+            <h3>Pourquoi CreatorPilot ne se connecte pas à mon LIVE ?</h3>
             <p>
                 Vérifiez que votre pseudo TikTok est correctement renseigné et que vous êtes actuellement en LIVE.
                 Utilisez votre @pseudo TikTok et non votre nom d'affichage.
-                Vous pouvez configurer TikBabik même sans être connecté au LIVE.
+                Vous pouvez configurer CreatorPilot même sans être connecté au LIVE.
             </p>
 
             <h3>Pourquoi mes alertes ne fonctionnent pas ?</h3>
@@ -993,15 +2412,15 @@
 
         <div id="aboutPage" style="display:none;">
 
-            <h2>ℹ️ À propos de TikBabik</h2>
+            <h2>ℹ️ À propos de CreatorPilot</h2>
 
             <p>
-                TikBabik a été créé pour offrir aux créateurs TikTok un outil puissant,
+                CreatorPilot a été créé pour offrir aux créateurs TikTok un outil puissant,
                 simple et moderne afin de rendre leurs lives plus interactifs.
             </p>
 
             <p>
-                TikBabik n'est pas affilié, associé ou approuvé par TikTok.
+                CreatorPilot n'est pas affilié, associé ou approuvé par TikTok.
             </p>
 
             <p>
@@ -1010,7 +2429,7 @@
             </p>
 
             <p style="opacity:0.7;">
-                Version TikBabik 1.0
+                Version CreatorPilot 1.0
             </p>
 
         </div>
@@ -1020,7 +2439,7 @@
             <h2>📄 Informations légales</h2>
 
             <p>
-                Retrouvez ici les informations importantes concernant TikBabik Pro.
+                Retrouvez ici les informations importantes concernant CreatorPilot Pro.
             </p>
 
             <p>
@@ -1052,12 +2471,12 @@
             </p>
 
             <p>
-                N'hésitez pas à nous contacter pour toute question concernant TikBabik,
+                N'hésitez pas à nous contacter pour toute question concernant CreatorPilot,
                 les fonctionnalités ou les futures évolutions du projet.
             </p>
 
             <p>
-                Merci d'utiliser TikBabik ❤️
+                Merci d'utiliser CreatorPilot❤️
             </p>
 
         </div>
@@ -1070,49 +2489,203 @@
 
     <div id="pointsSidebar">
 
-        <button class="pointsTab active">
-            <span>🏆 Système de points</span>
-            <span>›</span>
-        </button>
+    <button class="pointsTab active" id="pointsUsersTab">
+        <span>👤 Points par utilisateur</span>
+        <span>›</span>
+    </button>
 
-        <button class="pointsTab">
-            <span>⭐ Bonus abonnés</span>
-            <span>›</span>
-        </button>
+    <button class="pointsTab" id="pointsTransactionsTab">
+        <span>💳 Transactions</span>
+        <span>›</span>
+    </button>
 
-        <button class="pointsTab">
-            <span>📊 Classement</span>
-            <span>›</span>
-        </button>
-
-        <button class="pointsTab">
-            <span>🛍️ Boutique récompenses</span>
-            <span>›</span>
-        </button>
-
-        <button class="pointsTab">
-            <span>🔄 Réinitialisation</span>
-            <span>›</span>
-        </button>
-
-    </div>
+</div>
 
     <div id="pointsContent">
 
-        <h2>🏆 Système de points</h2>
+    <div id="pointsUsersContent">
 
-        <p>
-            Gérez ici les points, les bonus et les récompenses TikBabik.
-        </p>
+    <h2>👤 Utilisateurs</h2>
+
+    <div class="pointsCard">
+
+        <input
+            type="text"
+            id="pointsUserSearch"
+            placeholder="🔍 Rechercher un utilisateur..."
+        >
+
+        <br><br>
+
+        <table id="pointsUsersTable">
+
+            <thead>
+    <tr>
+        <th>Rang</th>
+        <th>Utilisateur  /</th>
+        <th>Niveau  /</th>
+        <th>Pièces  / Points total  /</th> 
+        <th>Dernier cadeau  /</th>
+        <th>Date  / Heure  /</th>
+    </tr>
+</thead>
+
+            <tbody id="pointsUsersBody"></tbody>
+
+        </table>
 
     </div>
 
 </div>
 
+<div id="pointsTransactionsContent" style="display:none;">
+
+    <h2>💳 Transactions</h2>
+
+    <div class="pointsCard">
+
+    
+
+        <table id="pointsTransactionsTable">
+
+            <input
+    type="text"
+    id="transactionSearch"
+    placeholder="🔍 Rechercher une transaction...">
+
+<br><br>
+
+            <thead>
+    <tr>
+        <th>Action  /</th>
+        <th>Utilisateur  /</th>
+        <th>Points  /</th>
+        <th>Description  /</th>
+        <th>Compte pour le niveau  /</th>
+        <th>Ajout manuel  /</th>
+        <th>Date  / Heure  /</th>
+    </tr>
+</thead>
+
+            <tbody id="pointsTransactionsBody"></tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<div id="topLikesCustomizeModal" class="customizeModal">
+
+    <div class="customizeContent">
+
+        <h2>❤️ Paramètres Top J'aime</h2>
+
+        <label>Police</label>
+        <select id="topLikesFont">
+            <option>Arial</option>
+            <option>Poppins</option>
+            <option>Pacifico</option>
+            <option>Montserrat</option>
+        </select>
+
+        <label>Taille du texte</label>
+        <input
+            type="number"
+            id="topLikesFontSize"
+            value="24">
+
+        <label>Couleur des pseudos</label>
+        <input
+            type="color"
+            id="topLikesNameColor"
+            value="#ffffff">
+
+        <label>Couleur des likes</label>
+        <input
+            type="color"
+            id="topLikesLikesColor"
+            value="#ff4d6d">
+
+        <label>Couleur du classement</label>
+        <input
+            type="color"
+            id="topLikesRankColor"
+            value="#ffd700">
+
+        <label>
+            <input
+                type="checkbox"
+                id="topLikesShowAvatar"
+                checked>
+            Afficher les avatars
+        </label>
+
+        <label>
+            <input
+                type="checkbox"
+                id="topLikesShowCrown"
+                checked>
+            Afficher la couronne du Top 1
+        </label>
+
+        <label>
+            <input
+                type="checkbox"
+                id="topLikesShowHeart"
+                checked>
+            Afficher le cœur
+        </label>
+
+        <button id="saveTopLikesSettings">
+            💾 Sauvegarder
+        </button>
+
+        <button id="closeTopLikesSettings">
+            ❌ Fermer
+        </button>
+
+    </div>
+
+    
+</div> <!-- pointsContent -->
+</div> <!-- pointsPanel -->
+<div id="keySelectorPanel" style="display:none;">
+
+    <button id="closeKeySelector">✖</button>
+
+    <h3>Keystroke Configurator</h3>
+
+    <div class="keyModifiers">
+
+        <label>
+            <input type="checkbox" id="keyCtrl">
+            CTRL
+        </label>
+
+        <label>
+            <input type="checkbox" id="keyAlt">
+            ALT
+        </label>
+
+        <label>
+            <input type="checkbox" id="keyShift">
+            SHIFT
+        </label>
+
+    </div>
+
+    <div id="keyPreview">{}</div>
+
+    <div id="keyButtons"></div>
+
+    <button id="saveKeySelection">
+        ✔ Sauvegarder
+    </button>
+
+</div>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
 <script src="app.js"></script>
-
-
 </body>
 </html>
