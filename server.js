@@ -22,10 +22,6 @@ if (fs.existsSync("settings.json")) {
 
 }
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
 app.get("/settings", (req, res) => {
     res.json(settings);
 });
@@ -36,6 +32,13 @@ function saveSettingsFile() {
         JSON.stringify(settings, null, 2)
     );
 }
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+app.use(express.json());
+app.use(express.static("public"));
 
 app.post("/settings", (req, res) => {
 
