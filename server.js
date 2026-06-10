@@ -8,64 +8,46 @@ const multer = require("multer");
 const crypto = require("crypto");
 const path = require("path");
 
+
+let settings = {};
+
+if (fs.existsSync("settings.json")) {
+
+    settings = JSON.parse(
+        fs.readFileSync(
+            "settings.json",
+            "utf8"
+        )
+    );
+
+}
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-const { Pool } = require("pg");
-
-const db = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
-    }
+app.get("/settings", (req, res) => {
+    res.json(settings);
 });
 
-async function initDatabase() {
-
-    async function loadSettings() {
-
-    const result = await db.query(
-        `
-        SELECT data
-        FROM app_settings
-        WHERE id = $1
-        `,
-        ["main"]
+function saveSettingsFile() {
+    fs.writeFileSync(
+        "settings.json",
+        JSON.stringify(settings, null, 2)
     );
-
-    if (
-        result.rows.length &&
-        result.rows[0].data
-    ) {
-        settings = result.rows[0].data;
-    }
-
-    console.log("Settings chargés depuis PostgreSQL");
-
 }
 
-loadSettings();
+app.post("/settings", (req, res) => {
 
-    await db.query(`
-        CREATE TABLE IF NOT EXISTS app_settings (
-            id TEXT PRIMARY KEY,
-            data JSONB NOT NULL
-        )
-    `);
+    settings = req.body;
 
-    await db.query(`
-        INSERT INTO app_settings (id, data)
-        VALUES ('main', '{}')
-        ON CONFLICT (id) DO NOTHING
-    `);
+    saveSettingsFile();
 
-    console.log("Base PostgreSQL prête");
+    res.json({
+        success: true
+    });
 
-}
-
-initDatabase();
-
+});
 
 app.use(express.static("public"));
 app.use(express.json());
@@ -106,58 +88,6 @@ app.post("/upload", upload.single("file"), (req, res) => {
 
 });
 
-/* SETTINGS */
-
-let settings = {
-    voiceEnabled: true,
-    actions: [],
-    actionEvents: []
-};
-
-if (fs.existsSync("settings.json")) {
-
-    settings =
-        JSON.parse(
-            fs.readFileSync(
-                "settings.json",
-                "utf8"
-            )
-        );
-
-}
-
-try {
-
-    settings = JSON.parse(
-        fs.readFileSync("settings.json")
-    );
-
-    console.log("Paramètres chargés");
-
-} catch (error) {
-
-    console.log("settings.json introuvable, paramètres par défaut utilisés");
-
-}
-
-app.get("/settings", async (req, res) => {
-
-    const result = await db.query(
-        `
-        SELECT data
-        FROM app_settings
-        WHERE id = $1
-        `,
-        ["main"]
-    );
-
-    if (result.rows.length) {
-        settings = result.rows[0].data;
-    }
-
-    res.json(settings);
-
-});
 
 function saveSettingsFile() {
     fs.writeFileSync(
@@ -165,28 +95,6 @@ function saveSettingsFile() {
         JSON.stringify(settings, null, 2)
     );
 }
-app.post("/settings", async (req, res) => {
-
-    settings = req.body;
-
-    await db.query(
-        `
-        INSERT INTO app_settings (id, data)
-        VALUES ($1, $2)
-        ON CONFLICT (id)
-        DO UPDATE SET data = $2
-        `,
-        [
-            "main",
-            JSON.stringify(settings)
-        ]
-    );
-
-    res.json({
-        success: true
-    });
-
-});
 
 /* STATS */
 
@@ -2913,7 +2821,7 @@ app.get("/overlay/webcam-simple", (req, res) => {
         JSON.parse(fs.readFileSync("settings.json", "utf8"));
 
     const webcam =
-        currentSettings.webcamSimple || {};
+        Settings.webcamSimple || {};
 
     const color =
         webcam.color || "#35cfff";
@@ -2962,7 +2870,7 @@ app.get("/overlay/webcam-custom", (req, res) => {
         JSON.parse(fs.readFileSync("settings.json", "utf8"));
 
     const custom =
-        currentSettings.webcamCustom || {};
+        Settings.webcamCustom || {};
 
     const style =
         custom.style || "neon";
@@ -3021,11 +2929,8 @@ body{
 
 app.get("/overlay/likes-goal", (req, res) => {
 
-    const currentSettings =
-        JSON.parse(fs.readFileSync("settings.json", "utf8"));
-
-    const likes =
-        currentSettings.likesGoal || {};
+   const likes =
+    settings.likesGoal || {};
 
     const text =
         likes.text || "Objectif Likes";
@@ -3168,8 +3073,13 @@ async function updateLikesGoal(){
         percent +
         "%)";
 
-    document.querySelector(".fill").style.width =
+    const fill =
+    document.querySelector(".fill");
+
+if (fill) {
+    fill.style.width =
         percent + "%";
+}
 }
 
 setInterval(updateLikesGoal, 1000);
@@ -3198,7 +3108,7 @@ app.get("/overlay/follow-goal", (req, res) => {
 );
 
     const follow =
-        currentSettings.followGoal || {};
+       Settings.followGoal || {};
 
     const text =
         follow.text || "Objectif Abonnés";
@@ -3371,7 +3281,7 @@ app.get("/overlay/banner", (req, res) => {
         JSON.parse(fs.readFileSync("settings.json", "utf8"));
 
     const banner =
-        currentSettings.banner || {};
+        Settings.banner || {};
 
     const text =
         banner.text || "Bienvenue sur mon live !";
