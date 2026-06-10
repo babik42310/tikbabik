@@ -4011,8 +4011,7 @@ const value =
         document.getElementById("webcamSimpleGlow")?.checked || false
 };
 
-console.log("SAUVEGARDE WEBCAM SIMPLE", appSettings.webcamSimple);
-
+console.log("ENVOI SETTINGS :", appSettings);
     fetch("/settings", {
         method: "POST",
         headers: {
@@ -4020,11 +4019,8 @@ console.log("SAUVEGARDE WEBCAM SIMPLE", appSettings.webcamSimple);
         },
         body: JSON.stringify(appSettings)
     })
-    .then(response => response.json())
-    .then(() => {
-        alert("Paramètres sauvegardés !");
-    });
-};
+
+
 
 /* STATS */
 
