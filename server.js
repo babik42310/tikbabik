@@ -2867,14 +2867,9 @@ body{
 });
 app.get("/overlay/webcam-custom", (req, res) => {
 
-    const currentSettings =
-        JSON.parse(fs.readFileSync("settings.json", "utf8"));
+    const custom = settings.webcamCustom || {};
 
-    const custom =
-        currentSettings.webcamCustom || {};
-
-    const style =
-        custom.style || "neon";
+    const style = custom.style || "neon";
 
     let borderColor = "#00f2ea";
     let radius = 22;
@@ -2920,9 +2915,7 @@ body{
 </style>
 </head>
 <body>
-
 <div class="frame"></div>
-
 </body>
 </html>
 `);
