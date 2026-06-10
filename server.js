@@ -2867,9 +2867,13 @@ body{
 });
 app.get("/overlay/webcam-custom", (req, res) => {
 
-    const custom = settings.webcamCustom || {};
+    const custom =
+        (settings && settings.webcamCustom)
+            ? settings.webcamCustom
+            : {};
 
-    const style = custom.style || "neon";
+    const style =
+        custom.style || "neon";
 
     let borderColor = "#00f2ea";
     let radius = 22;
@@ -2920,7 +2924,6 @@ body{
 </html>
 `);
 });
-
 app.get("/overlay/likes-goal", (req, res) => {
 
    const likes =
