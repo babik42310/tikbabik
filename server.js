@@ -8,50 +8,10 @@ const multer = require("multer");
 const crypto = require("crypto");
 const path = require("path");
 
-
-let settings = {};
-
-if (fs.existsSync("settings.json")) {
-
-    settings = JSON.parse(
-        fs.readFileSync(
-            "settings.json",
-            "utf8"
-        )
-    );
-
-}
-
-
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.json());
-app.use(express.static("public"));
-
-app.get("/settings", (req, res) => {
-    res.json(settings);
-});
-
-function saveSettingsFile() {
-    fs.writeFileSync(
-        "settings.json",
-        JSON.stringify(settings, null, 2)
-    );
-}
-
-app.post("/settings", (req, res) => {
-
-    settings = req.body;
-
-    saveSettingsFile();
-
-    res.json({
-        success: true
-    });
-
-});
 
 app.use(express.static("public"));
 app.use(express.json());
@@ -92,6 +52,43 @@ app.post("/upload", upload.single("file"), (req, res) => {
 
 });
 
+/* SETTINGS */
+
+let settings = {
+    voiceEnabled: true,
+    actions: [],
+    actionEvents: []
+};
+
+if (fs.existsSync("settings.json")) {
+
+    settings =
+        JSON.parse(
+            fs.readFileSync(
+                "settings.json",
+                "utf8"
+            )
+        );
+
+}
+
+try {
+
+    settings = JSON.parse(
+        fs.readFileSync("settings.json")
+    );
+
+    console.log("Paramètres chargés");
+
+} catch (error) {
+
+    console.log("settings.json introuvable, paramètres par défaut utilisés");
+
+}
+
+app.get("/settings", (req, res) => {
+    res.json(settings);
+});
 
 function saveSettingsFile() {
     fs.writeFileSync(
@@ -99,6 +96,21 @@ function saveSettingsFile() {
         JSON.stringify(settings, null, 2)
     );
 }
+
+app.post("/settings", (req, res) => {
+
+    settings = req.body;
+
+    fs.writeFileSync(
+        "settings.json",
+        JSON.stringify(settings, null, 2)
+    );
+
+    res.json({
+        success: true
+    });
+
+});
 
 /* STATS */
 
@@ -2821,8 +2833,11 @@ loadSocial();
 
 app.get("/overlay/webcam-simple", (req, res) => {
 
+    const currentSettings =
+        JSON.parse(fs.readFileSync("settings.json", "utf8"));
+
     const webcam =
-    settings.webcamSimple || {};
+        currentSettings.webcamSimple || {};
 
     const color =
         webcam.color || "#35cfff";
@@ -2867,9 +2882,11 @@ body{
 });
 app.get("/overlay/webcam-custom", (req, res) => {
 
+    const currentSettings =
+        JSON.parse(fs.readFileSync("settings.json", "utf8"));
 
     const custom =
-        Settings.webcamCustom || {};
+        currentSettings.webcamCustom || {};
 
     const style =
         custom.style || "neon";
@@ -2928,8 +2945,11 @@ body{
 
 app.get("/overlay/likes-goal", (req, res) => {
 
-   const likes =
-    settings.likesGoal || {};
+    const currentSettings =
+        JSON.parse(fs.readFileSync("settings.json", "utf8"));
+
+    const likes =
+        currentSettings.likesGoal || {};
 
     const text =
         likes.text || "Objectif Likes";
@@ -3072,13 +3092,8 @@ async function updateLikesGoal(){
         percent +
         "%)";
 
-    const fill =
-    document.querySelector(".fill");
-
-if (fill) {
-    fill.style.width =
+    document.querySelector(".fill").style.width =
         percent + "%";
-}
 }
 
 setInterval(updateLikesGoal, 1000);
@@ -3098,9 +3113,16 @@ app.get("/likes-goal/status", (req, res) => {
 
 app.get("/overlay/follow-goal", (req, res) => {
 
+    const currentSettings =
+        JSON.parse(
+    fs.readFileSync(
+        path.join(__dirname, "settings.json"),
+        "utf8"
+    )
+);
 
     const follow =
-       Settings.followGoal || {};
+        currentSettings.followGoal || {};
 
     const text =
         follow.text || "Objectif Abonnés";
@@ -3269,9 +3291,11 @@ app.get("/follow-goal/status", (req, res) => {
 
 app.get("/overlay/banner", (req, res) => {
 
+    const currentSettings =
+        JSON.parse(fs.readFileSync("settings.json", "utf8"));
 
     const banner =
-        Settings.banner || {};
+        currentSettings.banner || {};
 
     const text =
         banner.text || "Bienvenue sur mon live !";
