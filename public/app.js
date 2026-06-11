@@ -2467,11 +2467,13 @@ topLikesTest.onclick = async () => {
 
 topLikesCopyUrl.onclick = async () => {
 
-    await navigator.clipboard.writeText(
-        "http://localhost:3000/overlay/top-likes"
-    );
+    const url =
+        window.location.origin +
+        "/overlay/top-likes";
 
-    alert("URL copiée");
+    await navigator.clipboard.writeText(url);
+
+    alert("URL copiée : " + url);
 
 };
 
@@ -5477,9 +5479,16 @@ document.addEventListener("click", event => {
         return;
     }
 
-    navigator.clipboard.writeText(input.value);
+    let url = input.value;
 
-    alert("URL copiée !");
+if (url.startsWith("/")) {
+    url = window.location.origin + url;
+}
+
+navigator.clipboard.writeText(url);
+
+alert("URL copiée : " + url);
+
 });
 
 console.log("FIN APP JS");
