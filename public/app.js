@@ -5541,4 +5541,45 @@ function isProUser() {
     );
 }
 
+function applyProDisplay() {
+
+    const isPro = isProUser();
+
+    document.querySelectorAll("[data-pro='true']").forEach(element => {
+
+        if (isPro) {
+            element.innerHTML =
+                element.innerHTML.replace("🔒 ", "");
+        } else if (!element.innerHTML.includes("🔒")) {
+            element.innerHTML =
+                "🔒 " + element.innerHTML;
+        }
+
+    });
+
+}
+
+window.addEventListener("load", () => {
+
+    applyProDisplay();
+
+    document.querySelectorAll("[data-pro='true']").forEach(element => {
+
+        element.addEventListener("click", event => {
+
+            if (isProUser()) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            goToProCheckout();
+
+        }, true);
+
+    });
+
+});
+
 console.log("FIN APP JS");
