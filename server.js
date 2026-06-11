@@ -17,19 +17,7 @@ const pool = new Pool({
     }
 });
 
-async function initDatabase() {
-
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS pro_access (
-            id SERIAL PRIMARY KEY,
-            code TEXT UNIQUE NOT NULL,
-            created_at TIMESTAMP DEFAULT NOW()
-        )
-    `);
-
-    console.log("Base PostgreSQL prête");
-
-}
+async function initDatabase
 
 initDatabase().catch(console.error);
 pool.query("SELECT NOW()")
@@ -64,7 +52,7 @@ app.use(express.static("public"));
 app.post(
     "/stripe-webhook",
     express.raw({ type: "application/json" }),
-    (req, res) => {
+    async (req, res) => {
 
         const sig =
             req.headers["stripe-signature"];
@@ -84,11 +72,52 @@ app.post(
         }
 
         if (event.type === "checkout.session.completed") {
-            settings.pro = true;
-            saveSettingsFile();
 
-            console.log("CreatorPilot Pro activé via Stripe");
-        }
+    const session =
+        event.data.object;
+
+    const email =
+        (
+            session.customer_details?.email ||
+            session.customer_email ||
+            ""
+        )
+        .toLowerCase()
+        .trim();
+
+    if (email) {
+
+        await pool.query(
+            `
+            INSERT INTO pro_users (
+                email,
+                pro,
+                source
+            )
+            VALUES ($1, true, 'stripe')
+            ON CONFLICT (email)
+            DO UPDATE SET
+                pro = true,
+                source = 'stripe',
+                updated_at = NOW()
+            `,
+            [email]
+        );
+
+        console.log(
+            "CreatorPilot Pro activé via Stripe pour :",
+            email
+        );
+
+    } else {
+
+        console.log(
+            "Stripe webhook reçu mais aucun email trouvé"
+        );
+
+    }
+
+}
 
         res.json({
             received: true
@@ -147,8 +176,8 @@ app.post("/create-checkout-session", async (req, res) => {
                 ],
 
                 success_url:
-                    process.env.APP_URL +
-                    "/?stripe=success",
+    process.env.APP_URL +
+    "/?stripe=success&session_id={CHECKOUT_SESSION_ID}",
 
                 cancel_url:
                     process.env.APP_URL +
@@ -186,6 +215,64 @@ app.post("/activate-free-pro", (req, res) => {
 
     settings.pro = true;
     saveSettingsFile();
+
+    res.json({
+        success: true
+    });
+
+});
+
+app.post("/check-pro", async (req, res) => {
+
+    const email =
+        (req.body.email || "").toLowerCase().trim();
+
+    if (!email) {
+        return res.json({
+            pro: false
+        });
+    }
+
+    const result =
+        await pool.query(
+            "SELECT pro FROM pro_users WHERE email = $1",
+            [email]
+        );
+
+    res.json({
+        pro:
+            result.rows[0]?.pro === true
+    });
+
+});
+
+app.post("/grant-pro", async (req, res) => {
+
+    const email =
+        (req.body.email || "")
+            .toLowerCase()
+            .trim();
+
+    if (!email) {
+        return res.status(400).json({
+            success: false
+        });
+    }
+
+    await pool.query(
+        `
+        INSERT INTO pro_users (
+            email,
+            pro
+        )
+        VALUES ($1, true)
+        ON CONFLICT (email)
+        DO UPDATE SET
+            pro = true,
+            updated_at = NOW()
+        `,
+        [email]
+    );
 
     res.json({
         success: true
