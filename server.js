@@ -17,6 +17,22 @@ const pool = new Pool({
     }
 });
 
+async function initDatabase() {
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS pro_access (
+            id SERIAL PRIMARY KEY,
+            code TEXT UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    `);
+
+    console.log("Base PostgreSQL prête");
+
+}
+
+initDatabase().catch(console.error);
+
 const stripeSecretKey =
     process.env.STRIPE_SECRET_KEY || "";
 
