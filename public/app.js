@@ -5533,4 +5533,21 @@ function isProUser() {
     );
 }
 
+document.querySelectorAll("[data-pro='true']").forEach(element => {
+
+    element.addEventListener("click", event => {
+
+        if (isProUser()) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        goToProCheckout();
+
+    }, true);
+
+});
+
 console.log("FIN APP JS");

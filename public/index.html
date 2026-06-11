@@ -810,13 +810,13 @@
     </iframe>
 </div>
                 <p>Les viewers envoient des cadeaux pour monter dans le classement.</p>
-                <button id="coinMatchShowWinners">🏆 Show Winners</button>
-<button id="coinMatchStart">▶ Start Match</button>
-<button id="coinMatchEnd">⏹ End Match</button>
-<button id="coinMatchReset">🔄 Reset Match</button>
-<button id="coinMatchCopyUrl">🔗 Copy URL</button>
-<button id="coinMatchCustomize">⚙ Customize</button>
-<button id="coinMatchTestGift">🎁 Test Gift</button>
+                <button id="coinMatchShowWinners" data-pro="true">🔒 Show Winners</button>
+<button id="coinMatchStart" data-pro="true">🔒 Start Match</button>
+<button id="coinMatchEnd" data-pro="true">🔒 End Match</button>
+<button id="coinMatchReset" data-pro="true">🔒 Reset Match</button>
+<button class="copyOverlayUrl" data-pro="true">🔒 Copier URL</button>
+<button id="coinMatchCustomize" data-pro="true">🔒 Customize</button>
+<button id="coinMatchTestGift" data-pro="true">🔒 Test Gift</button>
 <div id="coinMatchCustomizePanel" style="display:none;" class="customizePanel">
 
     <h3>⚙ Customize Coin Match</h3>
@@ -880,11 +880,13 @@
 
 </div>
                 <p>Deux équipes s'affrontent avec les cadeaux envoyés par les viewers.</p>
-                <button id="giftBattleStart">▶ Start Battle</button>
-<button id="giftBattleEnd">⏹ End Battle</button>
-<button id="giftBattleReset">🔄 Reset Battle</button>
-<button id="giftBattleCopyUrl">🔗 Copy URL</button>
-<button id="giftBattleCustomize">⚙ Customize</button>
+               <button id="giftBattleStart" data-pro="true">🔒 Start Battle</button>
+<button id="giftBattleEnd" data-pro="true">🔒 End Battle</button>
+<button id="giftBattleReset" data-pro="true">🔒 Reset Battle</button>
+<button id="giftBattleCopyUrl" data-pro="true">🔒 Copy URL</button>
+<button id="giftBattleCustomize" data-pro="true">🔒 Customize</button>
+<button id="giftBattleTestRed" data-pro="true">🔒 Test 1</button>
+<button id="giftBattleTestBlue" data-pro="true">🔒 Test 2</button>
 <div id="giftBattleCustomizePanel"
      class="customizePanel"
      style="display:none;">
@@ -963,11 +965,11 @@
 
     <h3>Panneau Sociaux <span class="proBadge">PRO</span></h3>
 
-    <button id="socialCopyUrlButton">
+    <button id="socialCopyUrlButton" data-pro="true">
         🔗 Copy URL
     </button>
 
-    <button id="socialCustomizeButton">
+    <button id="socialCustomizeButton" data-pro="true">
         ⚙ Customize
     </button>
 
@@ -1065,10 +1067,10 @@
 
     <p>Faites tourner une roue avec vos actions personnalisées.</p>
 
-    <button id="wheelStart">▶ Lancer la roue</button>
-    <button id="wheelReset">🔄 Reset</button>
-    <button id="wheelCopyUrl">🔗 Copy URL</button>
-    <button id="wheelCustomize">⚙ Customize</button>
+<button id="wheelStart" data-pro="true">🔒 Lancer la roue</button>
+<button id="wheelReset" data-pro="true">🔒 Reset</button>
+<button id="wheelCopyUrl" data-pro="true">🔒 Copy URL</button>
+<button id="wheelCustomize" data-pro="true">🔒 Customize</button>
 
     <div id="wheelCustomizePanel"
      class="customizePanel wheelProPanel"
