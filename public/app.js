@@ -5582,4 +5582,52 @@ window.addEventListener("load", () => {
 
 });
 
+const activateFreeProCode =
+    document.getElementById("activateFreeProCode");
+
+if (activateFreeProCode) {
+
+    activateFreeProCode.onclick = async () => {
+
+        const code =
+            document.getElementById("freeProCode")?.value || "";
+
+        const response =
+            await fetch("/activate-free-pro", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    code
+                })
+
+            });
+
+        const data =
+            await response.json();
+
+        if (data.success) {
+
+            alert("CreatorPilot Pro activé !");
+
+            appSettings.pro = true;
+
+            location.reload();
+
+        } else {
+
+            alert(
+                data.error || "Code invalide"
+            );
+
+        }
+
+    };
+
+}
+
 console.log("FIN APP JS");

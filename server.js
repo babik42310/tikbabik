@@ -135,6 +135,27 @@ app.post("/create-checkout-session", async (req, res) => {
 
 });
 
+app.post("/activate-free-pro", (req, res) => {
+
+    const code =
+        req.body.code || "";
+
+    if (code !== process.env.FREE_PRO_CODE) {
+        return res.json({
+            success: false,
+            error: "Code invalide"
+        });
+    }
+
+    settings.pro = true;
+    saveSettingsFile();
+
+    res.json({
+        success: true
+    });
+
+});
+
 app.post("/upload", upload.single("file"), (req, res) => {
 
     res.json({
