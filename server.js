@@ -17,7 +17,20 @@ const pool = new Pool({
     }
 });
 
-async function initDatabase
+async function initDatabase() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS pro_users (
+            id SERIAL PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            pro BOOLEAN DEFAULT false,
+            source TEXT DEFAULT 'manual',
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    `);
+
+    console.log("Base PostgreSQL prête");
+}
 
 initDatabase().catch(console.error);
 pool.query("SELECT NOW()")
