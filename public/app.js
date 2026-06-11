@@ -4649,9 +4649,10 @@ document.querySelectorAll(".testOverlayUrl").forEach(button => {
         const input =
             button.parentElement.querySelector(".overlayUrlInput");
 
-        if (!input) {
-            return;
-        }
+        if (!input && !button.dataset.url) {
+    alert("URL introuvable");
+    return;
+}
 
         window.open(input.value, "_blank");
 
@@ -5508,7 +5509,8 @@ document.addEventListener("click", event => {
         return;
     }
 
-    let url = input.value;
+    let url =
+    button.dataset.url || input.value;
 
 if (url.startsWith("/")) {
     url = window.location.origin + url;
