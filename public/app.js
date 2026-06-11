@@ -884,9 +884,9 @@ if (saveSocialSettings) {
         function refreshSocialPreview() {
     const frame = document.querySelector(".socialFrame");
 
-    if (frame) {
-        frame.src = "/overlay/social-panel?t=" + Date.now();
-    }
+   if (frame && frame.src !== window.location.origin + "/overlay/social-panel") {
+    frame.src = "/overlay/social-panel";
+}
 }
 
         await fetch("/social-panel/settings", {
@@ -896,7 +896,9 @@ if (saveSocialSettings) {
             },
             body: JSON.stringify(settings)
         });
-        refreshSocialPreview();
+        setTimeout(() => {
+    refreshSocialPreview();
+}, 300);;
         
 
         alert("Panneau sociaux sauvegardé !");
