@@ -86,149 +86,132 @@ app.post(
 
         if (event.type === "checkout.session.completed") {
 
-    const session =
-        event.data.object;
+            const session =
+                event.data.object;
 
-    const email =
-        (
-            session.customer_details?.email ||
-            session.customer_email ||
-            ""
-        )
-        .toLowerCase()
-        .trim();
+            const email =
+                (
+                    session.customer_details?.email ||
+                    session.customer_email ||
+                    ""
+                )
+                .toLowerCase()
+                .trim();
 
-    if (email) {
+            if (email) {
 
-        await pool.query(
-            `
-            INSERT INTO pro_users (
-                email,
-                pro,
-                source
-            )
-            VALUES ($1, true, 'stripe')
-            ON CONFLICT (email)
-            DO UPDATE SET
-                pro = true,
-                source = 'stripe',
-                updated_at = NOW()
-            `,
-            [email]
-        );
+                await pool.query(
+                    `
+                    INSERT INTO pro_users (
+                        email,
+                        pro,
+                        source
+                    )
+                    VALUES ($1, true, 'stripe')
+                    ON CONFLICT (email)
+                    DO UPDATE SET
+                        pro = true,
+                        source = 'stripe',
+                        updated_at = NOW()
+                    `,
+                    [email]
+                );
 
-        console.log(
-            "CreatorPilot Pro activé via Stripe pour :",
-            email
-        );
+                console.log(
+                    "CreatorPilot Pro activé via Stripe pour :",
+                    email
+                );
 
-    } else {
+            } else {
 
-        console.log(
-            "Stripe webhook reçu mais aucun email trouvé"
-        );
+                console.log(
+                    "Stripe webhook reçu mais aucun email trouvé"
+                );
 
-    }
+            }
 
-}
+        }
 
+        if (event.type === "customer.subscription.deleted") {
 
-        if (event.type === "checkout.session.completed") {
+            const subscription =
+                event.data.object;
 
-    const session =
-        event.data.object;
+            const customer =
+                await stripe.customers.retrieve(
+                    subscription.customer
+                );
 
-    const email =
-        (
-            session.customer_details?.email ||
-            session.customer_email ||
-            ""
-        )
-        .toLowerCase()
-        .trim();
+            const email =
+                (customer.email || "")
+                    .toLowerCase()
+                    .trim();
 
-    if (email) {
+            if (email) {
 
-        await pool.query(
-            `
-            INSERT INTO pro_users (
-                email,
-                pro,
-                source
-            )
-            VALUES ($1, true, 'stripe')
-            ON CONFLICT (email)
-            DO UPDATE SET
-                pro = true,
-                source = 'stripe',
-                updated_at = NOW()
-            `,
-            [email]
-        );
+                await pool.query(
+                    `
+                    UPDATE pro_users
+                    SET
+                        pro = false,
+                        updated_at = NOW()
+                    WHERE email = $1
+                    `,
+                    [email]
+                );
 
-        console.log(
-            "CreatorPilot Pro activé via Stripe pour :",
-            email
-        );
+                console.log(
+                    "Abonnement annulé :",
+                    email
+                );
 
-    } else {
+            }
 
-        console.log(
-            "Stripe webhook reçu mais aucun email trouvé"
-        );
+        }
 
-    }
+        if (event.type === "invoice.payment_failed") {
 
-}
+            const invoice =
+                event.data.object;
+
+            const customer =
+                await stripe.customers.retrieve(
+                    invoice.customer
+                );
+
+            const email =
+                (customer.email || "")
+                    .toLowerCase()
+                    .trim();
+
+            if (email) {
+
+                await pool.query(
+                    `
+                    UPDATE pro_users
+                    SET
+                        pro = false,
+                        updated_at = NOW()
+                    WHERE email = $1
+                    `,
+                    [email]
+                );
+
+                console.log(
+                    "Paiement échoué :",
+                    email
+                );
+
+            }
+
+        }
 
         res.json({
             received: true
         });
+
     }
 );
-app.use(express.json());
-
-if (event.type === "invoice.payment_failed") {
-
-    const invoice =
-        event.data.object;
-
-    const customer =
-        await stripe.customers.retrieve(
-            invoice.customer
-        );
-
-    const email =
-        (customer.email || "")
-            .toLowerCase()
-            .trim();
-
-    if (email) {
-
-        await pool.query(
-            `
-            UPDATE pro_users
-            SET
-                pro = false,
-                updated_at = NOW()
-            WHERE email = $1
-            `,
-            [email]
-        );
-
-        console.log(
-            "Paiement échoué :",
-            email
-        );
-
-    }
-
-}
-
-        res.json({
-            received: true
-        });
- 
 app.use(express.json());
 
 /* UPLOAD MEDIAS */
