@@ -5443,20 +5443,25 @@ const accountUpgradeProButton =
 
 if (accountUpgradeProButton) {
 
-    accountUpgradeProButton.onclick = event => {
+    accountUpgradeProButton.onclick = async event => {
 
         event.preventDefault();
 
-        console.log("CLICK PRO OK");
+        console.log("CLICK STRIPE PRO OK");
 
-        Paddle.Checkout.open({
-            items: [
-                {
-                    priceId: "pri_01ksx3z7y7bs2xvjz5x5ye20d1",
-                    quantity: 1
-                }
-            ]
-        });
+        const response =
+            await fetch("/create-checkout-session", {
+                method: "POST"
+            });
+
+        const data =
+            await response.json();
+
+        if (data.url) {
+            window.location.href = data.url;
+        } else {
+            alert(data.error || "Erreur Stripe");
+        }
 
     };
 
