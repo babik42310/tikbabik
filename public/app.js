@@ -1248,9 +1248,18 @@ function applyCoinMatchStyle() {
     "coinScale"
 ].forEach(id => {
 
-    document.getElementById(id).oninput = () => {
-        applyCoinMatchStyle();
-    };
+    const element =
+        document.getElementById(id);
+
+    if (element) {
+
+        element.oninput = () => {
+
+            applyCoinMatchStyle();
+
+        };
+
+    }
 
 });
 
