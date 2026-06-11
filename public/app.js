@@ -1945,13 +1945,21 @@ coinMatchShowWinners.onclick = async () => {
     alert("Gagnants affichés !");
 };
 
-coinMatchCopyUrl.onclick = () => {
-    const url = window.location.origin + "/overlay/coin-match";
+if (coinMatchCopyUrl) {
 
-    navigator.clipboard.writeText(url);
+    coinMatchCopyUrl.onclick = () => {
 
-    alert("URL copiée : " + url);
-};
+        const url =
+            window.location.origin +
+            "/overlay/coin-match";
+
+        navigator.clipboard.writeText(url);
+
+        alert("URL copiée : " + url);
+
+    };
+
+}
 
 coinMatchTestGift.onclick = async () => {
 
