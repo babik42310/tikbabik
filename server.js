@@ -2882,8 +2882,7 @@ body{
 });
 app.get("/overlay/webcam-custom", (req, res) => {
 
-    const currentSettings =
-        JSON.parse(fs.readFileSync("settings.json", "utf8"));
+    const currentSettings = settings || {};
 
     const custom =
         currentSettings.webcamCustom || {};
