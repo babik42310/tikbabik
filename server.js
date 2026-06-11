@@ -8,6 +8,14 @@ const multer = require("multer");
 const crypto = require("crypto");
 const path = require("path");
 const Stripe = require("stripe");
+const { Pool } = require("pg");
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
+});
 
 const stripeSecretKey =
     process.env.STRIPE_SECRET_KEY || "";
