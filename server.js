@@ -32,6 +32,19 @@ async function initDatabase() {
 }
 
 initDatabase().catch(console.error);
+pool.query("SELECT NOW()")
+    .then(result => {
+        console.log(
+            "PostgreSQL connecté :",
+            result.rows[0]
+        );
+    })
+    .catch(error => {
+        console.error(
+            "Erreur PostgreSQL :",
+            error
+        );
+    });
 
 const stripeSecretKey =
     process.env.STRIPE_SECRET_KEY || "";
