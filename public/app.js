@@ -896,9 +896,7 @@ if (saveSocialSettings) {
             },
             body: JSON.stringify(settings)
         });
-        setTimeout(() => {
-    refreshSocialPreview();
-}, 300);;
+       // refreshSocialPreview désactivé pour éviter erreur preview
         
 
         alert("Panneau sociaux sauvegardé !");
