@@ -4657,7 +4657,7 @@ document.querySelectorAll(".testOverlayUrl").forEach(button => {
 let url =
     button.dataset.url || input.value;
 
-        window.open(input.value, "_blank");
+        window.open(url, "_blank");
 
     };
 
