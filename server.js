@@ -100,6 +100,7 @@ app.post("/create-checkout-session", async (req, res) => {
             await stripe.checkout.sessions.create({
 
                 mode: "subscription",
+                allow_promotion_codes: true,
 
                 line_items: [
                     {
