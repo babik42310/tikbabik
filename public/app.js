@@ -4595,6 +4595,14 @@ document.querySelectorAll(".copyOverlayUrl").forEach(button => {
 
     button.onclick = () => {
 
+        if (
+    button.dataset.pro === "true" &&
+    !isProUser()
+) {
+    goToProCheckout();
+    return;
+}
+
         const input =
             button.parentElement.querySelector(".overlayUrlInput");
 
@@ -4621,6 +4629,14 @@ document.querySelectorAll(".copyOverlayUrl").forEach(button => {
 document.querySelectorAll(".testOverlayUrl").forEach(button => {
 
     button.onclick = () => {
+
+        if (
+    button.dataset.pro === "true" &&
+    !isProUser()
+) {
+    goToProCheckout();
+    return;
+}
 
         const input =
             button.parentElement.querySelector(".overlayUrlInput");
@@ -5495,5 +5511,26 @@ navigator.clipboard.writeText(url);
 alert("URL copiée : " + url);
 
 });
+
+function goToProCheckout() {
+    const button =
+        document.getElementById("accountUpgradeProButton");
+
+    if (button) {
+        button.click();
+    } else {
+        alert("Passe à CreatorPilot Pro pour débloquer cette fonction.");
+    }
+}
+
+function isProUser() {
+    return (
+        appSettings &&
+        (
+            appSettings.pro === true ||
+            appSettings.pro === "true"
+        )
+    );
+}
 
 console.log("FIN APP JS");
