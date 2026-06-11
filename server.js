@@ -24,6 +24,40 @@ const io = new Server(server);
 
 
 app.use(express.static("public"));
+app.post(
+    "/stripe-webhook",
+    express.raw({ type: "application/json" }),
+    (req, res) => {
+
+        const sig =
+            req.headers["stripe-signature"];
+
+        let event;
+
+        try {
+            event =
+                stripe.webhooks.constructEvent(
+                    req.body,
+                    sig,
+                    process.env.STRIPE_WEBHOOK_SECRET
+                );
+        } catch (error) {
+            console.log("Erreur webhook Stripe :", error.message);
+            return res.status(400).send("Webhook Error");
+        }
+
+        if (event.type === "checkout.session.completed") {
+            settings.pro = true;
+            saveSettingsFile();
+
+            console.log("CreatorPilot Pro activé via Stripe");
+        }
+
+        res.json({
+            received: true
+        });
+    }
+);
 app.use(express.json());
 
 /* UPLOAD MEDIAS */
