@@ -4649,10 +4649,13 @@ document.querySelectorAll(".testOverlayUrl").forEach(button => {
         const input =
             button.parentElement.querySelector(".overlayUrlInput");
 
-        if (!input && !button.dataset.url) {
+       if (!input && !button.dataset.url) {
     alert("URL introuvable");
     return;
 }
+
+let url =
+    button.dataset.url || input.value;
 
         window.open(input.value, "_blank");
 
@@ -5504,13 +5507,14 @@ document.addEventListener("click", event => {
     const input =
         card?.querySelector(".overlayUrlInput");
 
-    if (!input) {
-        alert("URL introuvable");
-        return;
-    }
+    if (!input && !event.target.dataset.url) {
+    alert("URL introuvable");
+    return;
+}
 
-    let url =
-    button.dataset.url || input.value;
+let url =
+    event.target.dataset.url ||
+    input?.value;
 
 if (url.startsWith("/")) {
     url = window.location.origin + url;
