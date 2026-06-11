@@ -7,6 +7,16 @@ const fs = require("fs");
 const multer = require("multer");
 const crypto = require("crypto");
 const path = require("path");
+const Stripe = require("stripe");
+
+const stripeSecretKey =
+    process.env.STRIPE_SECRET_KEY || "";
+
+const stripe =
+    stripeSecretKey
+        ? Stripe(stripeSecretKey)
+        : null;
+
 
 const app = express();
 const server = http.createServer(app);
@@ -40,6 +50,54 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage: storage
+});
+
+app.post("/create-checkout-session", async (req, res) => {
+
+    if (!stripe) {
+    return res.status(500).json({
+        error: "Stripe n'est pas configuré"
+    });
+}
+    
+     try {
+
+        const session =
+            await stripe.checkout.sessions.create({
+
+                mode: "subscription",
+
+                line_items: [
+                    {
+                        price: process.env.STRIPE_PRICE_ID,
+                        quantity: 1
+                    }
+                ],
+
+                success_url:
+                    process.env.APP_URL +
+                    "/?stripe=success",
+
+                cancel_url:
+                    process.env.APP_URL +
+                    "/?stripe=cancel"
+
+            });
+
+        res.json({
+            url: session.url
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        res.status(500).json({
+            error: error.message
+        });
+
+    }
+
 });
 
 app.post("/upload", upload.single("file"), (req, res) => {
