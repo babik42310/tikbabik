@@ -4580,6 +4580,53 @@ signOutButton.onclick = () => {
     alert("Déconnexion bientôt disponible");
 };
 
+async function checkProFromDatabase(email) {
+
+    if (!email) {
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch("/check-pro", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    email
+                })
+            });
+
+        const data =
+            await response.json();
+
+        appSettings.pro =
+            data.pro === true;
+
+        updateProLocks();
+
+        if (typeof applyProDisplay === "function") {
+            applyProDisplay();
+        }
+
+        console.log(
+            "PRO DATABASE :",
+            appSettings.pro
+        );
+
+    } catch (error) {
+
+        console.log(
+            "Erreur check pro :",
+            error
+        );
+
+    }
+
+}
+
 const savedUser =
     JSON.parse(localStorage.getItem("tikbabikUser"));
 
@@ -4596,8 +4643,11 @@ if (savedUser) {
 
     document.getElementById("accountDate").textContent =
         savedUser.createdAt;
-
+        
+checkProFromDatabase(savedUser.email);
 }
+
+
 
 document.querySelectorAll(".copyOverlayUrl").forEach(button => {
 
