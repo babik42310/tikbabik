@@ -4012,15 +4012,20 @@ const value =
 };
 
 console.log("ENVOI SETTINGS :", appSettings);
-    fetch("/settings", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(appSettings)
-    })
 
+fetch("/settings", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify(appSettings)
+})
+.then(response => response.json())
+.then(() => {
+    alert("Paramètres sauvegardés !");
+});
 
+};
 
 /* STATS */
 
@@ -5099,27 +5104,7 @@ barColor:
 
         });
 
-        document.addEventListener("click", event => {
-
-    if (!event.target.classList.contains("copyOverlayUrl")) {
-        return;
-    }
-
-    const card =
-        event.target.closest(".webcamFrameCard");
-
-    const input =
-        card?.querySelector(".overlayUrlInput");
-
-    if (!input) {
-        alert("URL introuvable");
-        return;
-    }
-
-    navigator.clipboard.writeText(input.value);
-
-    alert("URL copiée !");
-});
+    
 
     };
 
@@ -5442,24 +5427,50 @@ if (saveBanner) {
     };
 
 }
-document.getElementById("accountUpgradeProButton")
+const accountUpgradeProButton =
+    document.getElementById("accountUpgradeProButton");
+
+if (accountUpgradeProButton) {
+
+    accountUpgradeProButton.onclick = event => {
+
+        event.preventDefault();
+
+        console.log("CLICK PRO OK");
+
+        Paddle.Checkout.open({
+            items: [
+                {
+                    priceId: "pri_01ksx3z7y7bs2xvjz5x5ye20d1",
+                    quantity: 1
+                }
+            ]
+        });
+
+    };
+
+}
+
 document.addEventListener("click", event => {
 
-    if (event.target.id !== "accountUpgradeProButton") {
+    if (!event.target.classList.contains("copyOverlayUrl")) {
         return;
     }
 
-    event.preventDefault();
+    const card =
+        event.target.closest(".webcamFrameCard");
 
-    console.log("CLICK PRO OK");
+    const input =
+        card?.querySelector(".overlayUrlInput");
 
-    Paddle.Checkout.open({
-        items: [
-            {
-                priceId: "pri_01ksx3z7y7bs2xvjz5x5ye20d1",
-                quantity: 1
-            }
-        ]
-    });
+    if (!input) {
+        alert("URL introuvable");
+        return;
+    }
 
-})
+    navigator.clipboard.writeText(input.value);
+
+    alert("URL copiée !");
+});
+
+console.log("FIN APP JS");
