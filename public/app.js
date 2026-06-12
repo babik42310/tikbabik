@@ -3036,31 +3036,15 @@ giftBattleCustomize.onclick = () => {
 function applyGiftBattleStyle() {
 
     const settings = {
-        duration:
-    document.getElementById("giftBattleDuration").value,
+        duration: document.getElementById("giftBattleDuration").value,
         redName: document.getElementById("giftBattleRedName").value,
         blueName: document.getElementById("giftBattleBlueName").value,
         redColor: document.getElementById("giftBattleRedColor").value,
         blueColor: document.getElementById("giftBattleBlueColor").value
     };
 
-
-    [
-    "giftBattleRedName",
-    "giftBattleBlueName",
-    "giftBattleRedColor",
-    "giftBattleBlueColor"
-].forEach(id => {
-
-    document.getElementById(id).oninput = () => {
-
-        applyGiftBattleStyle();
-
-    };
-
-});
-
-    const frame = document.querySelector(".giftBattleFrame");
+    const frame =
+        document.querySelector(".giftBattleFrame");
 
     frame.src =
         "/overlay/gift-battle" +
@@ -3071,6 +3055,25 @@ function applyGiftBattleStyle() {
 
     return settings;
 }
+[
+    "giftBattleDuration",
+    "giftBattleRedName",
+    "giftBattleBlueName",
+    "giftBattleRedColor",
+    "giftBattleBlueColor"
+].forEach(id => {
+
+    const element =
+        document.getElementById(id);
+
+    if (!element) return;
+
+    element.addEventListener(
+        "input",
+        applyGiftBattleStyle
+    );
+
+});
 
 saveGiftBattleCustomize.onclick = () => {
 
