@@ -2141,3 +2141,37 @@ select:focus {
     }
 
 }
+
+.eventGiftDropdown,
+.giftDropdown {
+    position: relative;
+    overflow: visible;
+}
+
+.eventGiftOptions,
+.giftOptions {
+    position: absolute;
+    top: 45px;
+    left: 0;
+    width: 320px;
+    max-height: 350px;
+    overflow-y: auto;
+    z-index: 99999;
+    background: #111;
+    border: 2px solid #00f5ff;
+    border-radius: 10px;
+    padding: 8px;
+}
+
+.giftOption {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    cursor: pointer;
+}
+
+.giftOption img {
+    width: 35px;
+    height: 35px;
+}
