@@ -1973,6 +1973,8 @@ if (coinMatchCopyUrl) {
     alert("URL copiée : " + url);
 };
 
+}
+
 coinMatchTestGift.onclick = async () => {
 
     await fetch(
