@@ -1341,16 +1341,64 @@ coinMatch.winners = winners;
     res.json({ success: true, coinMatch });
 });
 
+app.get("/coin-match/settings", (req, res) => {
+    res.json(
+        settings.coinMatch || {
+            bg: "#1f1f1f",
+            border: "#ff0050",
+            text: "#ffffff",
+            timer: "#35cfff",
+            shape: "20",
+            scale: "1",
+            victorySound: "victory.mp3"
+        }
+    );
+});
+
+app.post("/coin-match/settings", (req, res) => {
+    settings.coinMatch = {
+        bg: req.body.bg || "#1f1f1f",
+        border: req.body.border || "#ff0050",
+        text: req.body.text || "#ffffff",
+        timer: req.body.timer || "#35cfff",
+        shape: req.body.shape || "20",
+        scale: req.body.scale || "1",
+        victorySound: req.body.victorySound || "victory.mp3"
+    };
+
+    saveSettingsFile();
+
+    res.json({
+        success: true,
+        settings: settings.coinMatch
+    });
+});
+
 app.get("/overlay/coin-match", (req, res) => {
 
-    const bg = req.query.bg || "1f1f1f";
-    const border = req.query.border || "ff0050";
-    const text = req.query.text || "ffffff";
-    const timerColor = req.query.timer || "35cfff";
-    const shape = req.query.shape || "20";
-    const scale = req.query.scale || "1";
-    const sound =
-    req.query.sound || "victory.mp3";
+   const coinSettings =
+    settings.coinMatch || {};
+
+const bg =
+    (coinSettings.bg || "#1f1f1f").replace("#", "");
+
+const border =
+    (coinSettings.border || "#ff0050").replace("#", "");
+
+const text =
+    (coinSettings.text || "#ffffff").replace("#", "");
+
+const timerColor =
+    (coinSettings.timer || "#35cfff").replace("#", "");
+
+const shape =
+    coinSettings.shape || "20";
+
+const scale =
+    coinSettings.scale || "1";
+
+const sound =
+    coinSettings.victorySound || "victory.mp3";
 
     res.send(`
 <!DOCTYPE html>

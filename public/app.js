@@ -1310,6 +1310,14 @@ if (soundInput.files.length > 0) {
     })
 });
 
+fetch("/coin-match/settings", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify(settings)
+});
+
     alert("Style Coin Match sauvegardé !");
 };
 const savedCoinStyle =
@@ -1953,31 +1961,16 @@ coinMatchShowWinners.onclick = async () => {
 
 if (coinMatchCopyUrl) {
     coinMatchCopyUrl.onclick = async () => {
-        const bg = document.getElementById("coinBgColor")?.value || "#1f1f1f";
-        const border = document.getElementById("coinBorderColor")?.value || "#ff0050";
-        const text = document.getElementById("coinTextColor")?.value || "#ffffff";
-        const timer = document.getElementById("coinTimerColor")?.value || "#35cfff";
-        const shape = document.getElementById("coinShape")?.value || "20";
-        const scale = document.getElementById("coinScale")?.value || "1";
-        const sound = localStorage.getItem("coinVictorySound") || "victory.mp3";
 
-        const url =
-            window.location.origin +
-            "/overlay/coin-match" +
-            "?bg=" + bg.substring(1) +
-            "&border=" + border.substring(1) +
-            "&text=" + text.substring(1) +
-            "&timer=" + timer.substring(1) +
-            "&shape=" + shape.replace("px", "") +
-            "&scale=" + scale +
-            "&sound=" + encodeURIComponent(sound);
+    const url =
+        window.location.origin +
+        "/overlay/coin-match";
 
-        await navigator.clipboard.writeText(url);
+    await navigator.clipboard.writeText(url);
 
-        alert("URL copiée : " + url);
-    };
-}
+    alert("URL copiée : " + url);
 
+};
 coinMatchTestGift.onclick = async () => {
 
     await fetch(
