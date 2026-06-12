@@ -1915,19 +1915,63 @@ app.post("/gift-battle/reset", (req, res) => {
     res.json({ success: true, giftBattle });
 });
 
+app.get("/gift-battle/settings", (req, res) => {
+    res.json(
+        settings.giftBattle || {
+            redName: "Team 1",
+            blueName: "Team 2",
+            redColor: "#ff2a2a",
+            blueColor: "#1b8cff",
+            duration: 300,
+            redGifts: "",
+            blueGifts: ""
+        }
+    );
+});
+
+app.post("/gift-battle/settings", express.json(), (req, res) => {
+    settings.giftBattle = {
+        redName: req.body.redName || "Team 1",
+        blueName: req.body.blueName || "Team 2",
+        redColor: req.body.redColor || "#ff2a2a",
+        blueColor: req.body.blueColor || "#1b8cff",
+        duration: Number(req.body.duration || 300),
+        redGifts: req.body.redGifts || "",
+        blueGifts: req.body.blueGifts || ""
+    };
+
+    giftBattle.duration = settings.giftBattle.duration;
+
+    saveSettingsFile();
+
+    res.json({
+        success: true,
+        settings: settings.giftBattle
+    });
+});
+
 app.get("/overlay/gift-battle", (req, res) => {
 
-    const redName =
-    req.query.redName || "Team 1";
+const battleSettings =
+    settings.giftBattle || {};
+
+const redName =
+    req.query.redName ||
+    battleSettings.redName ||
+    "Team 1";
 
 const blueName =
-    req.query.blueName || "Team 2";
+    req.query.blueName ||
+    battleSettings.blueName ||
+    "Team 2";
 
 const redColor =
-    req.query.redColor || "ff2a2a";
+    req.query.redColor ||
+    (battleSettings.redColor || "#ff2a2a").replace("#", "");
 
 const blueColor =
-    req.query.blueColor || "1b8cff";
+    req.query.blueColor ||
+    (battleSettings.blueColor || "#1b8cff").replace("#", "");
 
     res.send(`
 <!DOCTYPE html>

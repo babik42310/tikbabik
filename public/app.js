@@ -2990,13 +2990,13 @@ giftBattleReset.onclick = async () => {
 
 };
 
-giftBattleCopyUrl.onclick = () => {
+giftBattleCopyUrl.onclick = async () => {
 
     const url =
         window.location.origin +
         "/overlay/gift-battle";
 
-    navigator.clipboard.writeText(url);
+    await navigator.clipboard.writeText(url);
 
     alert("URL copiée : " + url);
 
@@ -3117,6 +3117,14 @@ settings.redGifts =
 
 settings.blueGifts =
     document.getElementById("giftBattleBlueGifts").value;
+
+fetch("/gift-battle/settings", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify(settings)
+});
 
     localStorage.setItem(
         "giftBattleStyle",
