@@ -1984,6 +1984,9 @@ coinMatchTestGift.onclick = async () => {
 
 };
 
+}
+
+
 settingsButton.onclick = () => {
     openPanel(settingsPanel);
 };
