@@ -1231,14 +1231,14 @@ function applyCoinMatchStyle() {
     const frame =
         document.querySelector(".coinMatchFrame");
 
-    frame.src =
-    "/overlay/coin-match" +
+   frame.src =
+    "/overlay/coin-match-preview" +
     "?bg=" + settings.bg.substring(1) +
     "&border=" + settings.border.substring(1) +
     "&text=" + settings.text.substring(1) +
     "&timer=" + settings.timer.substring(1) +
     "&shape=" + settings.shape.replace("px", "") +
-    "&scale=0.55" +
+    "&scale=" + settings.scale +
     "&sound=" + encodeURIComponent(settings.victorySound);
     return settings;
 }

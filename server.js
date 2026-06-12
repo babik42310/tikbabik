@@ -1380,25 +1380,35 @@ app.get("/overlay/coin-match", (req, res) => {
     settings.coinMatch || {};
 
 const bg =
+    req.query.bg ||
     (coinSettings.bg || "#1f1f1f").replace("#", "");
 
 const border =
+    req.query.border ||
     (coinSettings.border || "#ff0050").replace("#", "");
 
 const text =
+    req.query.text ||
     (coinSettings.text || "#ffffff").replace("#", "");
 
 const timerColor =
+    req.query.timer ||
     (coinSettings.timer || "#35cfff").replace("#", "");
 
 const shape =
-    coinSettings.shape || "20";
+    req.query.shape ||
+    coinSettings.shape ||
+    "20";
 
 const scale =
-    coinSettings.scale || "1";
+    req.query.scale ||
+    coinSettings.scale ||
+    "1";
 
 const sound =
-    coinSettings.victorySound || "victory.mp3";
+    req.query.sound ||
+    coinSettings.victorySound ||
+    "victory.mp3";
 
     res.send(`
 <!DOCTYPE html>
@@ -1761,6 +1771,29 @@ load();
 </body>
 </html>
     `);
+
+});
+
+app.get("/overlay/coin-match-preview", (req, res) => {
+
+    const bg = req.query.bg || "1f1f1f";
+    const border = req.query.border || "ff0050";
+    const text = req.query.text || "ffffff";
+    const timerColor = req.query.timer || "35cfff";
+    const shape = req.query.shape || "20";
+    const scale = req.query.scale || "1";
+    const sound = req.query.sound || "victory.mp3";
+
+    res.redirect(
+        "/overlay/coin-match" +
+        "?bg=" + bg +
+        "&border=" + border +
+        "&text=" + text +
+        "&timer=" + timerColor +
+        "&shape=" + shape +
+        "&scale=" + scale +
+        "&sound=" + encodeURIComponent(sound)
+    );
 
 });
 
