@@ -438,12 +438,12 @@ function addWheelRow(data = {}) {
 
     
 
-    fetch("/gift-library?t=" + Date.now())
+    fetch("/giftLibrary.json?t=" + Date.now())
         .then(response => response.json())
         .then(gifts => {
 
             console.log("CADEAUX EVENTS :", gifts.length, gifts);
-            
+
             gifts.forEach((gift, index) => {
 
                 const option = document.createElement("div");
@@ -1798,7 +1798,7 @@ if (keyButton) {
 };
 
 
-fetch("/gift-library?t=" + Date.now())
+fetch("/giftLibrary.json?t=" + Date.now())
     .then(response => response.json())
     .then(gifts => {
 
@@ -3868,7 +3868,7 @@ const giftOptions =
             : "block";
 };
 
-    fetch("/gift-library?t=" + Date.now())
+    fetch("/giftLibrary.json?t=" + Date.now())
     .then(response => response.json())
     .then(gifts => {
 
@@ -4461,7 +4461,7 @@ if (openGiftGalleryButton) {
     list.innerHTML = "Chargement...";
 
     const response =
-        await fetch("/gift-library");
+    await fetch("/giftLibrary.json");
 
     const gifts =
         await response.json();
