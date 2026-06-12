@@ -1952,27 +1952,30 @@ coinMatchShowWinners.onclick = async () => {
 };
 
 if (coinMatchCopyUrl) {
+    coinMatchCopyUrl.onclick = async () => {
+        const bg = document.getElementById("coinBgColor")?.value || "#1f1f1f";
+        const border = document.getElementById("coinBorderColor")?.value || "#ff0050";
+        const text = document.getElementById("coinTextColor")?.value || "#ffffff";
+        const timer = document.getElementById("coinTimerColor")?.value || "#35cfff";
+        const shape = document.getElementById("coinShape")?.value || "20";
+        const scale = document.getElementById("coinScale")?.value || "1";
+        const sound = localStorage.getItem("coinVictorySound") || "victory.mp3";
 
-   coinMatchCopyUrl.onclick = async () => {
-    const settings =
-        JSON.parse(localStorage.getItem("coinMatchStyle") || "{}");
+        const url =
+            window.location.origin +
+            "/overlay/coin-match" +
+            "?bg=" + bg.substring(1) +
+            "&border=" + border.substring(1) +
+            "&text=" + text.substring(1) +
+            "&timer=" + timer.substring(1) +
+            "&shape=" + shape.replace("px", "") +
+            "&scale=" + scale +
+            "&sound=" + encodeURIComponent(sound);
 
-    const url =
-        window.location.origin +
-        "/overlay/coin-match" +
-        "?bg=" + (settings.bg || "#1f1f1f").substring(1) +
-        "&border=" + (settings.border || "#ff0050").substring(1) +
-        "&text=" + (settings.text || "#ffffff").substring(1) +
-        "&timer=" + (settings.timer || "#35cfff").substring(1) +
-        "&shape=" + (settings.shape || "20").replace("px", "") +
-        "&scale=" + (settings.scale || "1") +
-        "&sound=" + encodeURIComponent(settings.victorySound || "victory.mp3");
+        await navigator.clipboard.writeText(url);
 
-    await navigator.clipboard.writeText(url);
-
-    alert("URL copiée : " + url);
-};
-
+        alert("URL copiée : " + url);
+    };
 }
 
 coinMatchTestGift.onclick = async () => {
