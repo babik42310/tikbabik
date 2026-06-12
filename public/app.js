@@ -1349,6 +1349,28 @@ if (savedCoinStyle) {
     applyCoinMatchStyle();
 }
 
+[
+    "coinBgColor",
+    "coinBorderColor",
+    "coinTextColor",
+    "coinTimerColor",
+    "coinShape",
+    "coinScale",
+    "coinDuration"
+].forEach(id => {
+
+    const element =
+        document.getElementById(id);
+
+    if (!element) return;
+
+    element.addEventListener(
+        "input",
+        applyCoinMatchStyle
+    );
+
+});
+
 const chronoMinutes =
     document.getElementById("chronoMinutes");
 
