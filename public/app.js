@@ -3855,6 +3855,13 @@ const giftSelected =
 const giftOptions =
     row.querySelector(".eventGiftOptions");
 
+    giftSelected.onclick = () => {
+    giftOptions.style.display =
+        giftOptions.style.display === "block"
+            ? "none"
+            : "block";
+};
+
     fetch("/gift-library")
     .then(response => response.json())
     .then(gifts => {
