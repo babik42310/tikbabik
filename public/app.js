@@ -1953,19 +1953,25 @@ coinMatchShowWinners.onclick = async () => {
 
 if (coinMatchCopyUrl) {
 
-    coinMatchCopyUrl.onclick = () => {
+   coinMatchCopyUrl.onclick = async () => {
+    const settings =
+        JSON.parse(localStorage.getItem("coinMatchStyle") || "{}");
 
-        const url =
-            window.location.origin +
-            "/overlay/coin-match";
+    const url =
+        window.location.origin +
+        "/overlay/coin-match" +
+        "?bg=" + (settings.bg || "#1f1f1f").substring(1) +
+        "&border=" + (settings.border || "#ff0050").substring(1) +
+        "&text=" + (settings.text || "#ffffff").substring(1) +
+        "&timer=" + (settings.timer || "#35cfff").substring(1) +
+        "&shape=" + (settings.shape || "20").replace("px", "") +
+        "&scale=" + (settings.scale || "1") +
+        "&sound=" + encodeURIComponent(settings.victorySound || "victory.mp3");
 
-        navigator.clipboard.writeText(url);
+    await navigator.clipboard.writeText(url);
 
-        alert("URL copiée : " + url);
-
-    };
-
-}
+    alert("URL copiée : " + url);
+};
 
 coinMatchTestGift.onclick = async () => {
 
