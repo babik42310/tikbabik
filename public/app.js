@@ -4681,7 +4681,26 @@ featureRequestButton.onclick = () => {
 };
 
 signOutButton.onclick = () => {
-    alert("Déconnexion bientôt disponible");
+
+    localStorage.removeItem("tikbabikUser");
+
+    appSettings.pro = false;
+
+    document.getElementById("accountUserId").textContent = "";
+    document.getElementById("accountEmail").textContent = "";
+    document.getElementById("accountEmailDisplay").textContent = "";
+    document.getElementById("accountDate").textContent = "";
+
+    updateProLocks();
+
+    if (typeof applyProDisplay === "function") {
+        applyProDisplay();
+    }
+
+    alert("Vous êtes déconnecté");
+
+    location.reload();
+
 };
 
 async function checkProFromDatabase(email) {
