@@ -2395,31 +2395,33 @@ item.dataset.voice =
 
 }
 
-const ttsElevenTestButton =
-    document.getElementById("ttsElevenTestButton");
+ttsElevenTestButton.onclick = async () => {
 
-if (ttsElevenTestButton) {
+    const response =
+        await fetch("/tts/elevenlabs-test", {
+            method: "POST"
+        });
 
-    ttsElevenTestButton.onclick = async () => {
+    if (!response.ok) {
+        const errorText =
+            await response.text();
 
-        const response =
-            await fetch("/tts/elevenlabs-test", {
-                method: "POST"
-            });
+        alert("Erreur ElevenLabs : " + errorText);
+        console.log("Erreur ElevenLabs :", errorText);
+        return;
+    }
 
-        const blob =
-            await response.blob();
+    const blob =
+        await response.blob();
 
-        const audio =
-            new Audio(
-                URL.createObjectURL(blob)
-            );
+    const audio =
+        new Audio(URL.createObjectURL(blob));
 
-        audio.play();
+    audio.play();
 
-    };
+};
 
-}
+
 
 if (saveTtsSettings) {
 
