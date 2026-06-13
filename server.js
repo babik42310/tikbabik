@@ -1010,7 +1010,7 @@ TTS, overlays, mini-jeux, battles, statistiques et interactions live.
 <p>Version 1.0.0</p>
 
 <a class="download"
-href="https://github.com/babik42310/tikbabik/releases/download/v1.0.0/CreatorPilotSetup.1.0.0.exe">⬇ Télécharger gratuitement
+href="https://github.com/babik42310/tikbabik/releases/download/v1.0.0/CreatorPilot.Setup.1.0.0.exe">
 </a>
 
 <br><br>
