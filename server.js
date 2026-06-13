@@ -1009,8 +1009,8 @@ TTS, overlays, mini-jeux, battles, statistiques et interactions live.
 <p><strong>Compatible Windows</strong></p>
 <p>Version 1.0.0</p>
 
-<a class="download" href="/downloads/CreatorPilot-Setup.exe">
-⬇ Télécharger gratuitement
+<a class="download"
+href="https://github.com/babik42310/tikbabik/releases/download/v1.0.0/CreatorPilotSetup.1.0.0.exe">⬇ Télécharger gratuitement
 </a>
 
 <br><br>
