@@ -3,3 +3,4 @@ settings.json
 stats.json
 giftLibrary.json
 public/downloads/CreatorPilot-Setup.exe
+dist/
