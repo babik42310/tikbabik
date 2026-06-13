@@ -5934,4 +5934,25 @@ if (activateFreeProCode) {
 
 }
 
+const savedUser =
+    JSON.parse(localStorage.getItem("tikbabikUser") || "null");
+
+if (savedUser && savedUser.email) {
+
+    document.getElementById("accountUserId").textContent =
+        savedUser.id || "";
+
+    document.getElementById("accountEmail").textContent =
+        savedUser.email;
+
+    document.getElementById("accountEmailDisplay").textContent =
+        savedUser.email;
+
+    document.getElementById("accountDate").textContent =
+        savedUser.createdAt || "";
+
+    checkProFromDatabase(savedUser.email);
+
+}
+
 console.log("FIN APP JS");
