@@ -353,7 +353,7 @@ if (wheelCopyUrl) {
     await navigator.clipboard.writeText(url);
     alert("URL copiée : " + url);
 } catch (error) {
-    prompt("Copie cette URL :", url);
+    alert("Impossible de copier automatiquement.\n\nURL : " + url);
 }
     };
 }
@@ -1110,7 +1110,7 @@ if (socialCopyUrlButton) {
     await navigator.clipboard.writeText(url);
     alert("URL copiée : " + url);
 } catch (error) {
-    prompt("Copie cette URL :", url);
+    alert("Impossible de copier automatiquement.\n\nURL : " + url);
 }
     };
 }
@@ -1140,7 +1140,7 @@ if (chronoCopyUrl) {
     await navigator.clipboard.writeText(url);
     alert("URL Chrono copiée : " + url);
 } catch (error) {
-    prompt("Copie cette URL :", url);
+    alert("Impossible de copier automatiquement.\n\nURL : " + url);
 }
     };
 }
@@ -2119,8 +2119,8 @@ if (coinMatchCopyUrl) {
             await navigator.clipboard.writeText(url);
             alert("URL copiée : " + url);
         } catch (error) {
-            prompt("Copie cette URL :", url);
-        }
+    alert("Impossible de copier automatiquement.\n\nURL : " + url);
+}
 
     };
 }
@@ -2620,7 +2620,7 @@ topLikesCopyUrl.onclick = async () => {
     await navigator.clipboard.writeText(url);
     alert("URL copiée : " + url);
 } catch (error) {
-    prompt("Copie cette URL :", url);
+    alert("Impossible de copier automatiquement.\n\nURL : " + url);
 }
 
 };
@@ -3130,7 +3130,7 @@ giftBattleCopyUrl.onclick = async () => {
     await navigator.clipboard.writeText(url);
     alert("URL copiée : " + url);
 } catch (error) {
-    prompt("Copie cette URL :", url);
+    alert("Impossible de copier automatiquement.\n\nURL : " + url);
 }
 
 };
@@ -4938,8 +4938,8 @@ document.querySelectorAll(".copyOverlayUrl").forEach(button => {
         alert("URL copiée : " + url);
     })
     .catch(() => {
-        prompt("Copie cette URL :", url);
-    });
+    alert("Impossible de copier automatiquement.\n\nURL : " + url);
+});
 
     };
 
@@ -5836,8 +5836,8 @@ navigator.clipboard.writeText(url)
         alert("URL copiée : " + url);
     })
     .catch(() => {
-        prompt("Copie cette URL :", url);
-    });
+    alert("Impossible de copier automatiquement.\n\nURL : " + url);
+});
 
 });
 
