@@ -64,6 +64,18 @@ const io = new Server(server);
 
 
 app.use(express.static("public"));
+app.get("/downloads/CreatorPilot-Setup.exe", (req, res) => {
+
+    res.download(
+        path.join(
+            __dirname,
+            "public",
+            "downloads",
+            "CreatorPilot-Setup.exe"
+        )
+    );
+
+});
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
@@ -949,6 +961,66 @@ app.get("/import-icetok-gifts", async (req, res) => {
     }
 });
 
+app.get("/download", (req, res) => {
+    res.send(`
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Télécharger CreatorPilot - TikBabik</title>
+<meta name="description" content="Téléchargez CreatorPilot, l'application TikTok LIVE pour alertes, TTS, overlays, mini-jeux et statistiques.">
+<style>
+body{
+    font-family:Arial;
+    background:#0f1117;
+    color:white;
+    padding:40px;
+    text-align:center;
+}
+.card{
+    max-width:700px;
+    margin:auto;
+    background:#181b24;
+    padding:35px;
+    border-radius:20px;
+}
+a.download{
+    display:inline-block;
+    margin-top:25px;
+    padding:18px 30px;
+    background:#ff0050;
+    color:white;
+    text-decoration:none;
+    border-radius:12px;
+    font-size:22px;
+    font-weight:bold;
+}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Télécharger CreatorPilot</h1>
+
+<p>
+CreatorPilot est une application TikTok LIVE pour gérer vos alertes,
+TTS, overlays, mini-jeux, battles, statistiques et interactions live.
+</p>
+
+<p><strong>Compatible Windows</strong></p>
+<p>Version 1.0.0</p>
+
+<a class="download" href="/downloads/CreatorPilot-Setup.exe">
+⬇ Télécharger gratuitement
+</a>
+
+<br><br>
+
+<a href="/">Retour au site</a>
+</div>
+</body>
+</html>
+    `);
+});
 
 app.get("/pricing", (req, res) => {
     res.send(`
