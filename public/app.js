@@ -1611,6 +1611,25 @@ function refreshPointsUsersTable() {
 
 }
 
+const ttsVoice =
+    document.getElementById("ttsVoice");
+
+if (ttsVoice) {
+    ttsVoice.onchange = () => {
+
+        if (!isProUser()) {
+            alert("La modification des voix est réservée à CreatorPilot Pro.");
+
+            ttsVoice.value =
+                appSettings?.ttsChat?.voice || "";
+
+            goToProCheckout();
+            return;
+        }
+
+    };
+}
+
 function refreshPointsTransactionsTable() {
 
     const body =
@@ -3423,9 +3442,12 @@ if (tts.randomVoice) {
         );
 }
 
-if (selectedVoice) {
+if (
+    selectedVoice &&
+    isProUser()
+) {
     speech.voice = selectedVoice;
-} 
+}
 
     speech.lang =
         tts.language === "English (US)"
