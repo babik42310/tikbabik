@@ -2585,40 +2585,7 @@ eventsTab.onclick = () => {
     eventsContent.style.display = "block";
 };
 
-faqButton.onclick = () => {
-    startMainPage.style.display = "none";
-    faqPage.style.display = "block";
-};
 
-faqButton.onclick = () => {
-    startMainPage.style.display = "none";
-    aboutPage.style.display = "none";
-    faqPage.style.display = "block";
-};
-
-aboutButton.onclick = () => {
-    startMainPage.style.display = "none";
-    faqPage.style.display = "none";
-    aboutPage.style.display = "block";
-};
-
-contactButton.onclick = () => {
-    startMainPage.style.display = "none";
-    faqPage.style.display = "none";
-    aboutPage.style.display = "none";
-    contactPage.style.display = "block";
-};
-
-homeStartButton.onclick = () => {
-
-    startMainPage.style.display = "block";
-
-    faqPage.style.display = "none";
-
-    aboutPage.style.display = "none";
-
-    contactPage.style.display = "none";
-};
 
 
 topLikesTest.onclick = async () => {
@@ -2928,76 +2895,7 @@ accountButton.onclick = () => {
     showElement(loginPage);
 };
 
-agencyButton.onclick = () => {
-    startMainPage.style.display = "none";
-    agencyPage.style.display = "block";
-    faqPage.style.display = "none";
-    aboutPage.style.display = "none";
-    legalPage.style.display = "none";
-    contactPage.style.display = "none";
-    loginPage.style.display = "none";
-    accountSetupPage.style.display = "none";
 
-};
-
-startButton.onclick = () => {
-    openPanel(startPanel);
-    startMainPage.style.display = "block";
-    agencyPage.style.display = "none";
-    faqPage.style.display = "none";
-    aboutPage.style.display = "none";
-    legalPage.style.display = "none";
-    contactPage.style.display = "none";
-    loginPage.style.display = "none";
-    accountSetupPage.style.display = "none";
-
-};
-
-faqButton.onclick = () => {
-    startMainPage.style.display = "none";
-    agencyPage.style.display = "none";
-    faqPage.style.display = "block";
-    aboutPage.style.display = "none";
-    legalPage.style.display = "none";
-    contactPage.style.display = "none";
-    loginPage.style.display = "none";
-    accountSetupPage.style.display = "none";
-
-};
-
-legalButton.onclick = () => {
-    startMainPage.style.display = "none";
-    agencyPage.style.display = "none";
-    faqPage.style.display = "none";
-    aboutPage.style.display = "none";
-    legalPage.style.display = "block";
-    contactPage.style.display = "none";
-    loginPage.style.display = "none";
-    accountSetupPage.style.display = "none";
-};
-
-contactButton.onclick = () => {
-    startMainPage.style.display = "none";
-    agencyPage.style.display = "none";
-    faqPage.style.display = "none";
-    aboutPage.style.display = "none";
-    legalPage.style.display = "none";
-    contactPage.style.display = "block";
-    loginPage.style.display = "none";
-    accountSetupPage.style.display = "none";
-};
-
-aboutButton.onclick = () => {
-    startMainPage.style.display = "none";
-    agencyPage.style.display = "none";
-    faqPage.style.display = "none";
-    aboutPage.style.display = "block";
-    legalPage.style.display = "none";
-    contactPage.style.display = "none";
-    loginPage.style.display = "none";
-    accountSetupPage.style.display = "none";
-
-};
 
 accountSetupTab.onclick = () => {
     setupHome.style.display = "none";
@@ -3013,17 +2911,7 @@ accountSetupTab.onclick = () => {
 
 };
 
-accountButton.onclick = () => {
-    openPanel(startPanel);
-    startMainPage.style.display = "none";
-    agencyPage.style.display = "none";
-    faqPage.style.display = "none";
-    aboutPage.style.display = "none";
-    legalPage.style.display = "none";
-    contactPage.style.display = "none";
-    loginPage.style.display = "block";
-    accountSetupPage.style.display = "none";
-};
+
 
 registerBtn.onclick = async () => {
 
