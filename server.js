@@ -1262,7 +1262,7 @@ app.post("/forgot-password", express.json(), async (req, res) => {
 
     console.log("RESET PASSWORD :", email, resetLink);
 
-    await fetch("https://api.brevo.com/v3/smtp/email", {
+   const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
         headers: {
             "api-key": process.env.BREVO_API_KEY,
@@ -1286,6 +1286,19 @@ app.post("/forgot-password", express.json(), async (req, res) => {
                 "<p>Si vous n'avez pas demandé cette action, ignorez cet email.</p>"
         })
     });
+
+    const brevoText =
+    await brevoResponse.text();
+
+console.log(
+    "BREVO STATUS :",
+    brevoResponse.status
+);
+
+console.log(
+    "BREVO RESPONSE :",
+    brevoText
+);
 
     res.json({
         success: true,
