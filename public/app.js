@@ -4941,6 +4941,10 @@ document.querySelectorAll(".copyOverlayUrl").forEach(button => {
         prompt("Copie cette URL :", url);
     });
 
+    };
+
+});
+
 document.querySelectorAll(".testOverlayUrl").forEach(button => {
 
     button.onclick = () => {
@@ -5834,6 +5838,8 @@ navigator.clipboard.writeText(url)
     .catch(() => {
         prompt("Copie cette URL :", url);
     });
+
+});
 
 function goToProCheckout() {
     const button =
