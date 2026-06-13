@@ -6,7 +6,11 @@ function createWindow() {
     const win = new BrowserWindow({
         width: 1400,
         height: 900,
-        icon: path.join(__dirname, "public", "icon.png")
+        icon: path.join(__dirname, "public", "icon.png"),
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        }
     });
 
     win.loadURL("https://www.tikbabik.shop");
@@ -16,7 +20,7 @@ app.whenReady().then(() => {
 
     process.env.ELECTRON_APP = "true";
 
-require("./server.js");
+    require("./server.js");
 
     setTimeout(() => {
         createWindow();
