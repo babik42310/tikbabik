@@ -1240,6 +1240,23 @@ app.post("/login", express.json(), (req, res) => {
     });
 });
 
+app.post("/forgot-password", async (req, res) => {
+
+    const { email } = req.body;
+
+    console.log(
+        "Demande réinitialisation :",
+        email
+    );
+
+    res.json({
+        success: true,
+        message:
+            "Lien de réinitialisation envoyé."
+    });
+
+});
+
 let topLikes = {};
 
 let currentLikesGoalCount = 0;

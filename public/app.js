@@ -3010,6 +3010,58 @@ registerBtn.onclick = async () => {
 
 };
 
+const forgotPasswordButton =
+    document.getElementById("forgotPasswordButton");
+
+const forgotPasswordBox =
+    document.getElementById("forgotPasswordBox");
+
+const sendResetPasswordButton =
+    document.getElementById("sendResetPasswordButton");
+
+if (forgotPasswordButton && forgotPasswordBox) {
+    forgotPasswordButton.onclick = () => {
+        forgotPasswordBox.style.display =
+            forgotPasswordBox.style.display === "none"
+                ? "block"
+                : "none";
+    };
+}
+
+if (sendResetPasswordButton) {
+
+    sendResetPasswordButton.onclick = async () => {
+
+        const email =
+            document.getElementById("forgotPasswordEmail").value;
+
+        const response =
+            await fetch("/forgot-password", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    email
+                })
+
+            });
+
+        const data =
+            await response.json();
+
+        alert(
+            data.message ||
+            "Lien de réinitialisation envoyé."
+        );
+
+    };
+
+}
+
 loginBtn.onclick = async () => {
 
     const email =
