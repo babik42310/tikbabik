@@ -4884,25 +4884,8 @@ async function checkProFromDatabase(email) {
 
 }
 
-const savedUser =
-    JSON.parse(localStorage.getItem("tikbabikUser"));
-
-if (savedUser) {
-
-    document.getElementById("accountUserId").textContent =
-        savedUser.id;
-
-    document.getElementById("accountEmail").textContent =
-        savedUser.email;
-
-    document.getElementById("accountEmailDisplay").textContent =
-        savedUser.email;
-
-    document.getElementById("accountDate").textContent =
-        savedUser.createdAt;
-        
-checkProFromDatabase(savedUser.email);
-}
+document.getElementById("accountEmail").textContent = "";
+document.getElementById("accountEmailDisplay").textContent = "-";
 
 
 
