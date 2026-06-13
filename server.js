@@ -1300,6 +1300,12 @@ tokens.push({
 
 });
 
+app.get("/reset-password", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "public", "reset-password.html")
+    );
+});
+
 app.post("/reset-password", express.json(), (req, res) => {
 
     const token =
