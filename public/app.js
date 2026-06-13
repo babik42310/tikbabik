@@ -820,6 +820,47 @@ if (socialAddField && socialFieldsBody) {
 
 });
 
+async function saveWheelPreviewOnly() {
+    const settings =
+        getWheelSettings();
+
+    await fetch("/action-wheel/settings", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(settings)
+    });
+
+    const frame =
+        document.querySelector(".wheelFrame");
+
+    if (frame) {
+        frame.src =
+            "/overlay/action-wheel?t=" + Date.now();
+    }
+}
+
+[
+    "wheelFont",
+    "wheelFontSize",
+    "wheelLineSpacing",
+    "wheelLetterSpacing",
+    "wheelShowBase",
+    "wheelSoundActive",
+    "wheelAnnounceDuration",
+    "wheelSpinDuration",
+    "wheelWaitDuration"
+].forEach(id => {
+    const element =
+        document.getElementById(id);
+
+    if (!element) return;
+
+    element.addEventListener("input", saveWheelPreviewOnly);
+    element.addEventListener("change", saveWheelPreviewOnly);
+});
+
 async function saveChronoPreviewOnly() {
     await fetch("/chrono/settings", {
         method: "POST",
