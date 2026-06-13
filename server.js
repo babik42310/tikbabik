@@ -2231,17 +2231,82 @@ app.get("/top-likes/status", (req, res) => {
 
 });
 
+app.get("/top-likes/settings", (req, res) => {
+    res.json(
+        settings.topLikes || {
+            font: "Arial",
+            fontSize: 24,
+            nameColor: "#ffffff",
+            likesColor: "#ff4d6d",
+            rankColor: "#ffd700",
+            showAvatar: true,
+            showCrown: true,
+            showHeart: true
+        }
+    );
+});
+
+app.post("/top-likes/settings", express.json(), (req, res) => {
+    settings.topLikes = {
+        font: req.body.font || "Arial",
+        fontSize: Number(req.body.fontSize || 24),
+        nameColor: req.body.nameColor || "#ffffff",
+        likesColor: req.body.likesColor || "#ff4d6d",
+        rankColor: req.body.rankColor || "#ffd700",
+        showAvatar: req.body.showAvatar !== false,
+        showCrown: req.body.showCrown !== false,
+        showHeart: req.body.showHeart !== false
+    };
+
+    saveSettingsFile();
+
+    res.json({
+        success: true,
+        settings: settings.topLikes
+    });
+});
+
 app.get("/overlay/top-likes", (req, res) => {
 
-    const font = req.query.font || "Arial";
-    const fontSize = req.query.fontSize || "24";
-    const nameColor = req.query.nameColor || "ffffff";
-    const likesColor = req.query.likesColor || "ff4d6d";
-    const rankColor = req.query.rankColor || "ffd700";
-    const showAvatar = req.query.showAvatar !== "false";
-    const showCrown = req.query.showCrown !== "false";
-    const showHeart = req.query.showHeart !== "false";
+    const topLikesSettings =
+    settings.topLikes || {};
 
+const font =
+    req.query.font ||
+    topLikesSettings.font ||
+    "Arial";
+
+const fontSize =
+    req.query.fontSize ||
+    topLikesSettings.fontSize ||
+    "24";
+
+const nameColor =
+    req.query.nameColor ||
+    (topLikesSettings.nameColor || "#ffffff").replace("#", "");
+
+const likesColor =
+    req.query.likesColor ||
+    (topLikesSettings.likesColor || "#ff4d6d").replace("#", "");
+
+const rankColor =
+    req.query.rankColor ||
+    (topLikesSettings.rankColor || "#ffd700").replace("#", "");
+
+const showAvatar =
+    req.query.showAvatar !== undefined
+        ? req.query.showAvatar !== "false"
+        : topLikesSettings.showAvatar !== false;
+
+const showCrown =
+    req.query.showCrown !== undefined
+        ? req.query.showCrown !== "false"
+        : topLikesSettings.showCrown !== false;
+
+const showHeart =
+    req.query.showHeart !== undefined
+        ? req.query.showHeart !== "false"
+        : topLikesSettings.showHeart !== false;
     res.send(`
 <!DOCTYPE html>
 <html>

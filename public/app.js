@@ -1170,6 +1170,14 @@ if (saveTopLikesSettings) {
             JSON.stringify(settings)
         );
 
+        fetch("/top-likes/settings", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify(settings)
+});
+
         alert("Réglages Top J'aime sauvegardés !");
     };
 }
