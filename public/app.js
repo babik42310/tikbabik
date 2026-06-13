@@ -349,9 +349,12 @@ if (wheelCopyUrl) {
         const url =
             window.location.origin + "/overlay/action-wheel";
 
-        await navigator.clipboard.writeText(url);
-
-        alert("URL copiée : " + url);
+        try {
+    await navigator.clipboard.writeText(url);
+    alert("URL copiée : " + url);
+} catch (error) {
+    prompt("Copie cette URL :", url);
+}
     };
 }
 
@@ -1103,9 +1106,12 @@ if (socialCopyUrlButton) {
         const url =
             window.location.origin + "/overlay/social-panel";
 
-        await navigator.clipboard.writeText(url);
-
-        alert("URL copiée : " + url);
+        try {
+    await navigator.clipboard.writeText(url);
+    alert("URL copiée : " + url);
+} catch (error) {
+    prompt("Copie cette URL :", url);
+}
     };
 }
 
@@ -1130,9 +1136,12 @@ if (chronoCopyUrl) {
         const url =
             window.location.origin + "/overlay/chrono";
 
-        await navigator.clipboard.writeText(url);
-
-        alert("URL Chrono copiée : " + url);
+        try {
+    await navigator.clipboard.writeText(url);
+    alert("URL Chrono copiée : " + url);
+} catch (error) {
+    prompt("Copie cette URL :", url);
+}
     };
 }
 
@@ -2102,15 +2111,20 @@ coinMatchShowWinners.onclick = async () => {
 if (coinMatchCopyUrl) {
     coinMatchCopyUrl.onclick = async () => {
 
-    const url =
-        window.location.origin +
-        "/overlay/coin-match";
+        const url =
+            window.location.origin +
+            "/overlay/coin-match";
 
-    await navigator.clipboard.writeText(url);
+        try {
+            await navigator.clipboard.writeText(url);
+            alert("URL copiée : " + url);
+        } catch (error) {
+            prompt("Copie cette URL :", url);
+        }
 
-    alert("URL copiée : " + url);
+    };
+}
 
-};
 coinMatchTestGift.onclick = async () => {
 
     await fetch(
@@ -2124,7 +2138,7 @@ coinMatchTestGift.onclick = async () => {
 
 };
 
-}
+
 
 
 settingsButton.onclick = () => {
@@ -2602,9 +2616,12 @@ topLikesCopyUrl.onclick = async () => {
         window.location.origin +
         "/overlay/top-likes";
 
+    try {
     await navigator.clipboard.writeText(url);
-
     alert("URL copiée : " + url);
+} catch (error) {
+    prompt("Copie cette URL :", url);
+}
 
 };
 
@@ -3109,9 +3126,12 @@ giftBattleCopyUrl.onclick = async () => {
         window.location.origin +
         "/overlay/gift-battle";
 
+    try {
     await navigator.clipboard.writeText(url);
-
     alert("URL copiée : " + url);
+} catch (error) {
+    prompt("Copie cette URL :", url);
+}
 
 };
 
@@ -4913,13 +4933,13 @@ document.querySelectorAll(".copyOverlayUrl").forEach(button => {
                 window.location.origin + url;
         }
 
-        navigator.clipboard.writeText(url);
-
+        navigator.clipboard.writeText(url)
+    .then(() => {
         alert("URL copiée : " + url);
-
-    };
-
-});
+    })
+    .catch(() => {
+        prompt("Copie cette URL :", url);
+    });
 
 document.querySelectorAll(".testOverlayUrl").forEach(button => {
 
@@ -5807,11 +5827,13 @@ if (url.startsWith("/")) {
     url = window.location.origin + url;
 }
 
-navigator.clipboard.writeText(url);
-
-alert("URL copiée : " + url);
-
-});
+navigator.clipboard.writeText(url)
+    .then(() => {
+        alert("URL copiée : " + url);
+    })
+    .catch(() => {
+        prompt("Copie cette URL :", url);
+    });
 
 function goToProCheckout() {
     const button =
