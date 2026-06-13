@@ -1970,9 +1970,21 @@ if (addSoundAlert) {
 
     addSoundAlert.onclick = () => {
 
-        addSoundAlertRow();
+    if (!isProUser()) {
 
-    };
+        const count =
+            document.querySelectorAll("#soundAlertsBody tr").length;
+
+        if (count >= 2) {
+            alert("Version gratuite : 2 alertes sonores maximum");
+            return;
+        }
+
+    }
+
+    addSoundAlertRow();
+
+};
 
 }
 
@@ -3835,7 +3847,21 @@ if (saveKeySelection && keySelectorPanel) {
     };
 }
 addGiftRule.onclick = () => {
+
+    if (!isProUser()) {
+
+        const count =
+            document.querySelectorAll("#giftRulesBody tr").length;
+
+        if (count >= 2) {
+            alert("Version gratuite : 2 actions maximum");
+            return;
+        }
+
+    }
+
     createGiftRuleRow();
+
 };
 
 
@@ -4039,7 +4065,21 @@ if (giftDropdown) {
 }
 
 addEventRule.onclick = () => {
+
+    if (!isProUser()) {
+
+        const count =
+            document.querySelectorAll("#eventsBody tr").length;
+
+        if (count >= 2) {
+            alert("Version gratuite : 2 événements maximum");
+            return;
+        }
+
+    }
+
     createEventRow();
+
 };
 
 /* SAUVEGARDE */
