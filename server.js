@@ -1240,19 +1240,56 @@ app.post("/login", express.json(), (req, res) => {
     });
 });
 
-app.post("/forgot-password", async (req, res) => {
+app.post("/forgot-password", express.json(), async (req, res) => {
 
-    const { email } = req.body;
+    const email =
+        (req.body.email || "").toLowerCase().trim();
 
-    console.log(
-        "Demande réinitialisation :",
-        email
-    );
+    if (!email) {
+        return res.json({
+            success: true,
+            message: "Si un compte existe, un lien sera envoyé."
+        });
+    }
+
+    const resetToken =
+        crypto.randomBytes(32).toString("hex");
+
+    const resetLink =
+        (process.env.APP_URL || "https://www.tikbabik.shop") +
+        "/reset-password?token=" +
+        resetToken;
+
+    console.log("RESET PASSWORD :", email, resetLink);
+
+    await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+            "api-key": process.env.BREVO_API_KEY,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            sender: {
+                name: "CreatorPilot",
+                email: "noreply@tikbabik.shop"
+            },
+            to: [
+                {
+                    email: email
+                }
+            ],
+            subject: "Réinitialisation de votre mot de passe CreatorPilot",
+            htmlContent:
+                "<h2>Réinitialisation du mot de passe</h2>" +
+                "<p>Cliquez sur le lien ci-dessous pour changer votre mot de passe :</p>" +
+                "<p><a href='" + resetLink + "'>Changer mon mot de passe</a></p>" +
+                "<p>Si vous n'avez pas demandé cette action, ignorez cet email.</p>"
+        })
+    });
 
     res.json({
         success: true,
-        message:
-            "Lien de réinitialisation envoyé."
+        message: "Si un compte existe, un lien de réinitialisation a été envoyé."
     });
 
 });
