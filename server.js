@@ -6,6 +6,8 @@ const { WebcastPushConnection } = require("tiktok-live-connector");
 const fs = require("fs");
 const multer = require("multer");
 const crypto = require("crypto");
+const RESET_TOKENS_FILE =
+    "resetTokens.json";
 const path = require("path");
 const Stripe = require("stripe");
 const { Pool } = require("pg");
@@ -1171,6 +1173,34 @@ function saveUsers(users) {
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 }
 
+function loadResetTokens() {
+
+    try {
+
+        return JSON.parse(
+            fs.readFileSync(
+                RESET_TOKENS_FILE,
+                "utf8"
+            )
+        );
+
+    } catch {
+
+        return [];
+
+    }
+
+}
+
+function saveResetTokens(tokens) {
+
+    fs.writeFileSync(
+        RESET_TOKENS_FILE,
+        JSON.stringify(tokens, null, 2)
+    );
+
+}
+
 function hashPassword(password) {
     return crypto
         .createHash("sha256")
@@ -1254,6 +1284,88 @@ app.post("/forgot-password", express.json(), async (req, res) => {
 
     const resetToken =
         crypto.randomBytes(32).toString("hex");
+
+        const tokens =
+    loadResetTokens();
+
+tokens.push({
+
+    token: resetToken,
+
+    email: email,
+
+    expires:
+        Date.now() +
+        (60 * 60 * 1000)
+
+});
+
+app.post("/reset-password", express.json(), (req, res) => {
+
+    const token =
+        req.body.token || "";
+
+    const password =
+        req.body.password || "";
+
+    if (!token || !password) {
+        return res.json({
+            success: false,
+            error: "Token ou mot de passe manquant"
+        });
+    }
+
+    const tokens =
+        loadResetTokens();
+
+    const resetData =
+        tokens.find(item =>
+            item.token === token &&
+            item.expires > Date.now()
+        );
+
+    if (!resetData) {
+        return res.json({
+            success: false,
+            error: "Lien invalide ou expiré"
+        });
+    }
+
+    const users =
+        loadUsers();
+
+    const user =
+        users.find(u =>
+            u.email.toLowerCase() === resetData.email.toLowerCase()
+        );
+
+    if (!user) {
+        return res.json({
+            success: false,
+            error: "Compte introuvable"
+        });
+    }
+
+    user.password =
+        hashPassword(password);
+
+    saveUsers(users);
+
+    const remainingTokens =
+        tokens.filter(item =>
+            item.token !== token
+        );
+
+    saveResetTokens(remainingTokens);
+
+    res.json({
+        success: true,
+        message: "Mot de passe modifié avec succès"
+    });
+
+});
+
+saveResetTokens(tokens);
 
     const resetLink =
         (process.env.APP_URL || "https://www.tikbabik.shop") +
