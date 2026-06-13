@@ -2395,31 +2395,6 @@ item.dataset.voice =
 
 }
 
-ttsElevenTestButton.onclick = async () => {
-
-    const response =
-        await fetch("/tts/elevenlabs-test", {
-            method: "POST"
-        });
-
-    if (!response.ok) {
-        const errorText =
-            await response.text();
-
-        alert("Erreur ElevenLabs : " + errorText);
-        console.log("Erreur ElevenLabs :", errorText);
-        return;
-    }
-
-    const blob =
-        await response.blob();
-
-    const audio =
-        new Audio(URL.createObjectURL(blob));
-
-    audio.play();
-
-};
 
 
 

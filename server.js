@@ -3883,46 +3883,8 @@ body{
 `);
 });
 
-app.post("/tts/elevenlabs-test", express.json(), async (req, res) => {
-    try {
-        if (!process.env.ELEVENLABS_API_KEY) {
-            return res.status(500).json({
-                error: "Clé ElevenLabs manquante"
-            });
-        }
 
-        const response = await fetch(
-            "https://api.elevenlabs.io/v1/text-to-speech/JBFqnCBsd6RMkjVDRZzb?output_format=mp3_44100_128",
-            {
-                method: "POST",
-                headers: {
-                    "xi-api-key": process.env.ELEVENLABS_API_KEY,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    text: "Test ElevenLabs CreatorPilot",
-                    model_id: "eleven_multilingual_v2"
-                })
-            }
-        );
 
-        if (!response.ok) {
-            const error = await response.text();
-            return res.status(500).send(error);
-        }
-
-        const buffer =
-            Buffer.from(await response.arrayBuffer());
-
-        res.set("Content-Type", "audio/mpeg");
-        res.send(buffer);
-
-    } catch (error) {
-        res.status(500).json({
-            error: error.message
-        });
-    }
-});
 
 server.listen(3000, () => {
     console.log("CreatorPilot lancé");
