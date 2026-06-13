@@ -1539,6 +1539,44 @@ if (savedPointsUsers) {
         JSON.parse(savedPointsUsers);
 }
 
+
+
+function loadAvailableTtsVoices() {
+    const voiceSelect =
+        document.getElementById("ttsVoice");
+
+    if (!voiceSelect) {
+        return;
+    }
+
+    const savedVoice =
+        appSettings?.ttsChat?.voice || voiceSelect.value;
+
+    const voices =
+        speechSynthesis.getVoices();
+
+    voiceSelect.innerHTML = "";
+
+    voices.forEach(voice => {
+        const option =
+            document.createElement("option");
+
+        option.value = voice.name;
+        option.innerText =
+            voice.name + " - " + voice.lang;
+
+        voiceSelect.appendChild(option);
+    });
+
+    if (savedVoice) {
+        voiceSelect.value = savedVoice;
+    }
+}
+
+speechSynthesis.onvoiceschanged = loadAvailableTtsVoices;
+
+setTimeout(loadAvailableTtsVoices, 500);
+
 function refreshPointsUsersTable() {
     
 
@@ -3369,6 +3407,25 @@ if (!text) {
 
     const speech =
         new SpeechSynthesisUtterance(text);
+
+       const voices =
+    speechSynthesis.getVoices();
+
+let selectedVoice = null;
+
+if (tts.randomVoice) {
+    selectedVoice =
+        voices[Math.floor(Math.random() * voices.length)];
+} else {
+    selectedVoice =
+        voices.find(voice =>
+            voice.name === tts.voice
+        );
+}
+
+if (selectedVoice) {
+    speech.voice = selectedVoice;
+} 
 
     speech.lang =
         tts.language === "English (US)"
