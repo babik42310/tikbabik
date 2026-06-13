@@ -2862,18 +2862,70 @@ tikBabikProSetupTab.onclick = () => {
 
 };
 
+function showElement(element, display = "block") {
+    if (element) {
+        element.style.display = display;
+    }
+}
 
+function hideElement(element) {
+    if (element) {
+        element.style.display = "none";
+    }
+}
+
+function hideStartPages() {
+    [
+        startMainPage,
+        agencyPage,
+        faqPage,
+        aboutPage,
+        legalPage,
+        contactPage,
+        loginPage
+    ].forEach(hideElement);
+}
 
 homeStartButton.onclick = () => {
-    startMainPage.style.display = "block";
-    faqPage.style.display = "none";
-    aboutPage.style.display = "none";
-    contactPage.style.display = "none";
-    legalPage.style.display = "none";
-    agencyPage.style.display = "none";
-    loginPage.style.display = "none";
-    accountSetupPage.style.display = "none";
+    hideStartPages();
+    showElement(startMainPage);
+};
 
+agencyButton.onclick = () => {
+    hideStartPages();
+    showElement(agencyPage);
+};
+
+startButton.onclick = () => {
+    openPanel(startPanel);
+    hideStartPages();
+    showElement(startMainPage);
+};
+
+faqButton.onclick = () => {
+    hideStartPages();
+    showElement(faqPage);
+};
+
+legalButton.onclick = () => {
+    hideStartPages();
+    showElement(legalPage);
+};
+
+contactButton.onclick = () => {
+    hideStartPages();
+    showElement(contactPage);
+};
+
+aboutButton.onclick = () => {
+    hideStartPages();
+    showElement(aboutPage);
+};
+
+accountButton.onclick = () => {
+    openPanel(startPanel);
+    hideStartPages();
+    showElement(loginPage);
 };
 
 agencyButton.onclick = () => {
