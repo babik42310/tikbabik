@@ -62,6 +62,9 @@ const io = new Server(server);
 
 
 app.use(express.static("public"));
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 app.post(
     "/stripe-webhook",
     express.raw({ type: "application/json" }),
@@ -1123,7 +1126,7 @@ app.post("/paddle-webhook", express.json(), (req, res) => {
         eventType === "subscription.activated" ||
         eventType === "abonnement.actif"
     ) {
-        settings.pro = true;
+        settings.pro = false;
 
         fs.writeFileSync(
             "settings.json",
