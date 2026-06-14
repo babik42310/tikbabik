@@ -18,8 +18,8 @@ if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const SETTINGS_FILE = path.join(DATA_DIR,SETTINGS_FILE);
-const STATS_FILE = path.join(DATA_DIR, STATS_FILE);
+const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
+const STATS_FILE = path.join(DATA_DIR, "stats.json");
 const Stripe = require("stripe");
 const { Pool } = require("pg");
 
@@ -502,7 +502,7 @@ app.post("/settings", (req, res) => {
         settings = req.body;
 
         fs.writeFileSync(
-            path.join(__dirname, SETTINGS_FILE),
+    SETTINGS_FILE,
             JSON.stringify(settings, null, 2)
         );
 
