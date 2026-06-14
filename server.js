@@ -63,7 +63,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
 app.get("/sitemap.xml", (req, res) => {
     res.type("application/xml");
     res.sendFile(path.join(__dirname, "public", "sitemap.xml"));
