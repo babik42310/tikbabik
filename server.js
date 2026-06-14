@@ -327,10 +327,13 @@ app.post("/create-checkout-session", async (req, res) => {
 
 });
 
-app.post("/activate-free-pro", (req, res) => {
+app.post("/activate-free-pro", async (req, res) => {
 
-    const code =
-        req.body.code || "";
+    const code = req.body.code || "";
+    const email =
+        (req.body.email || "")
+        .toLowerCase()
+        .trim();
 
     if (code !== process.env.FREE_PRO_CODE) {
         return res.json({
@@ -339,8 +342,29 @@ app.post("/activate-free-pro", (req, res) => {
         });
     }
 
-    settings.pro = true;
-    saveSettingsFile();
+    if (!email) {
+        return res.json({
+            success: false,
+            error: "Email manquant"
+        });
+    }
+
+    await pool.query(
+        `
+        INSERT INTO pro_users (
+            email,
+            pro,
+            source
+        )
+        VALUES ($1, true, 'free_code')
+        ON CONFLICT (email)
+        DO UPDATE SET
+            pro = true,
+            source = 'free_code',
+            updated_at = NOW()
+        `,
+        [email]
+    );
 
     res.json({
         success: true
@@ -1248,7 +1272,7 @@ app.post("/paddle-webhook", express.json(), (req, res) => {
         eventType === "subscription.activated" ||
         eventType === "abonnement.actif"
     ) {
-        settings.pro = false;
+        settings.pro = true;
 
         fs.writeFileSync(
             "settings.json",
