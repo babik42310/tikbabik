@@ -621,11 +621,12 @@ app.post("/connect-tiktok", async (req, res) => {
 
         if (tiktok) {
 
-            try {
-                await tiktok.disconnect();
-            } catch {}
+    try {
+        tiktok.removeAllListeners();
+        await tiktok.disconnect();
+    } catch {}
 
-        }
+}
 
         tiktok =
             new WebcastPushConnection(username);
@@ -849,6 +850,7 @@ function bindTikTokEvents(tiktokConnection) {
      if (!tiktokConnection) {
         return;
     }
+    tiktokConnection.removeAllListeners();
 
     tiktokConnection.on("chat", data => {
 
