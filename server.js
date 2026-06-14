@@ -573,6 +573,8 @@ if (tiktokUsername) {
 
     tiktok = new WebcastPushConnection(tiktokUsername);
 
+    bindTikTokEvents(tiktok);
+
     console.log("Compte TikTok configuré :", tiktokUsername);
 
     tiktok.connect()
@@ -586,6 +588,70 @@ if (tiktokUsername) {
 } else {
     console.log("Aucun compte TikTok configuré");
 }
+
+app.post("/connect-tiktok", async (req, res) => {
+
+    try {
+
+        const username =
+            (req.body.username || "")
+                .replace("@", "")
+                .trim();
+
+        if (!username) {
+            return res.json({
+                success: false,
+                error: "Pseudo TikTok manquant"
+            });
+        }
+
+        settings.tiktokUsername = username;
+        saveSettingsFile();
+
+        if (tiktok) {
+
+            try {
+                await tiktok.disconnect();
+            } catch {}
+
+        }
+
+        tiktok =
+            new WebcastPushConnection(username);
+
+        bindTikTokEvents(tiktok);
+
+        const state =
+            await tiktok.connect();
+
+        console.log(
+            "Connecté au live TikTok :",
+            username
+        );
+
+        res.json({
+            success: true,
+            roomId: state.roomId
+        });
+
+    } catch (error) {
+
+        console.log(
+            "Erreur connexion TikTok :",
+            error
+        );
+
+        res.json({
+            success: false,
+            error:
+                error.message ||
+                "Erreur TikTok"
+        });
+
+    }
+
+});
+
 /* IMPORT GIFTS */
 
 app.get("/import-gifts", async (req, res) => {
@@ -763,11 +829,17 @@ function spinActionWheel() {
 }
 /* EVENTS */
 
+
 const recentGifts = {};
 
-if (tiktok) {
+function bindTikTokEvents(tiktokConnection) {
 
-    tiktok.on("chat", data => {
+
+     if (!tiktokConnection) {
+        return;
+    }
+
+    tiktokConnection.on("chat", data => {
 
         console.log("CHAT REÇU :", data.nickname, data.comment);
 
@@ -780,7 +852,7 @@ if (tiktok) {
 
     });
 
-    tiktok.on("gift", data => {
+    tiktokConnection.on("gift", data => {
 
         console.log("GIFT REÇU :", data.nickname, data.giftName, data.diamondCount);
 
@@ -903,7 +975,7 @@ io.emit("gift", {
 
     });
 
-    tiktok.on("like", data => {
+   tiktokConnection.on("like", data => {
 
         console.log("LIKE REÇU :", data.nickname, data.likeCount, data.totalLikeCount);
 
@@ -940,7 +1012,7 @@ applyChronoTime(
 
     });
 
-    tiktok.on("follow", data => {
+  tiktokConnection.on("follow", data => {
 
 applyChronoTime(chrono.settings.perFollow);
 
@@ -950,7 +1022,7 @@ applyChronoTime(chrono.settings.perFollow);
 
     });
 
-    tiktok.on("share", data => {
+   tiktokConnection.on("share", data => {
 
         applyChronoTime(chrono.settings.perShare);
 

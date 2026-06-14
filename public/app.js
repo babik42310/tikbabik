@@ -2694,21 +2694,33 @@ saveSubscriberBonus.onclick = () => {
 };
 
 
-saveTikTokUserButton.onclick = () => {
+saveTikTokUserButton.onclick = async () => {
 
-    appSettings.tiktokUsername = tiktokUsernameInput.value.trim();
+    const username =
+        tiktokUsernameInput.value.trim();
 
-    fetch("/settings", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(appSettings)
-    })
-    .then(response => response.json())
-    .then(() => {
-        alert("Compte TikTok sauvegardé !");
-    });
+    appSettings.tiktokUsername =
+        username;
+
+    const response =
+        await fetch("/connect-tiktok", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                username
+            })
+        });
+
+    const data =
+        await response.json();
+
+    if (data.success) {
+        alert("Connecté au LIVE TikTok !");
+    } else {
+        alert(data.error || "Erreur connexion TikTok");
+    }
 
 };
 
@@ -5894,19 +5906,24 @@ if (activateFreeProCode) {
         const code =
             document.getElementById("freeProCode")?.value || "";
 
+        const savedUser =
+            JSON.parse(localStorage.getItem("tikbabikUser") || "null");
+
+        const email =
+            savedUser?.email ||
+            document.getElementById("accountEmail")?.textContent ||
+            "";
+
         const response =
             await fetch("https://www.tikbabik.shop/activate-free-pro", {
-
                 method: "POST",
-
                 headers: {
                     "Content-Type": "application/json"
                 },
-
                 body: JSON.stringify({
-                    code
+                    code,
+                    email
                 })
-
             });
 
         const data =
@@ -5918,19 +5935,30 @@ if (activateFreeProCode) {
 
             appSettings.pro = true;
 
+            await fetch("/settings", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(appSettings)
+            });
+
+            updateProLocks();
+
+            if (typeof applyProDisplay === "function") {
+                applyProDisplay();
+            }
+
             location.reload();
 
         } else {
-
-            alert(
-                data.error || "Code invalide"
-            );
-
+            alert(data.error || "Code invalide");
         }
 
     };
 
 }
+
 
 const savedUser =
     JSON.parse(localStorage.getItem("tikbabikUser") || "null");
