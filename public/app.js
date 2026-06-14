@@ -5895,7 +5895,7 @@ if (activateFreeProCode) {
             document.getElementById("freeProCode")?.value || "";
 
         const response =
-            await fetch("/activate-free-pro", {
+            await fetch("https://www.tikbabik.shop/activate-free-pro", {
 
                 method: "POST",
 
