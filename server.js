@@ -506,7 +506,7 @@ app.post("/stats", (req, res) => {
 
 console.log("DEBUG TIKTOK BLOCK ATTEINT");
 console.log("SETTINGS TIKTOK :", settings.tiktokUsername);
-console.log("TIKTOK USER FINAL :", tiktokUsername);
+
 
 /* TIKTOK */
 
@@ -514,6 +514,8 @@ const tiktokUsername =
     settings.tiktokUsername
         ? settings.tiktokUsername.replace("@", "").trim()
         : "";
+
+        console.log("TIKTOK USER FINAL :", tiktokUsername);
 
 let tiktok = null;
 
