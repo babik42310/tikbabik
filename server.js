@@ -62,6 +62,18 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
+
+    if (req.method === "OPTIONS") {
+        return res.sendStatus(200);
+    }
+
+    next();
+});
+
 
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/sitemap.xml", (req, res) => {

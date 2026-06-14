@@ -4846,7 +4846,7 @@ async function checkProFromDatabase(email) {
     try {
 
         const response =
-            await fetch("/check-pro", {
+            await fetch("https://www.tikbabik.shop/check-pro", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
