@@ -9,6 +9,17 @@ const crypto = require("crypto");
 const RESET_TOKENS_FILE =
     "resetTokens.json";
 const path = require("path");
+const DATA_DIR =
+    process.env.APPDATA
+        ? path.join(process.env.APPDATA, "CreatorPilot")
+        : __dirname;
+
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+const SETTINGS_FILE = path.join(DATA_DIR,SETTINGS_FILE);
+const STATS_FILE = path.join(DATA_DIR, STATS_FILE);
 const Stripe = require("stripe");
 const { Pool } = require("pg");
 
@@ -448,12 +459,12 @@ let settings = {
     actionEvents: []
 };
 
-if (fs.existsSync("settings.json")) {
+if (fs.existsSync(SETTINGS_FILE)) {
 
     settings =
         JSON.parse(
             fs.readFileSync(
-                "settings.json",
+                SETTINGS_FILE,
                 "utf8"
             )
         );
@@ -463,7 +474,7 @@ if (fs.existsSync("settings.json")) {
 try {
 
     settings = JSON.parse(
-        fs.readFileSync("settings.json")
+        fs.readFileSync(SETTINGS_FILE)
     );
 
     console.log("Paramètres chargés");
@@ -480,7 +491,7 @@ app.get("/settings", (req, res) => {
 
 function saveSettingsFile() {
     fs.writeFileSync(
-        "settings.json",
+       SETTINGS_FILE,
         JSON.stringify(settings, null, 2)
     );
 }
@@ -491,7 +502,7 @@ app.post("/settings", (req, res) => {
         settings = req.body;
 
         fs.writeFileSync(
-            path.join(__dirname, "settings.json"),
+            path.join(__dirname, SETTINGS_FILE),
             JSON.stringify(settings, null, 2)
         );
 
@@ -524,7 +535,7 @@ let stats = {
 try {
 
     stats = JSON.parse(
-        fs.readFileSync("stats.json")
+        fs.readFileSync(STATS_FILE)
     );
 
     console.log("Statistiques chargées");
@@ -544,7 +555,7 @@ app.post("/stats", (req, res) => {
     stats = req.body;
 
     fs.writeFileSync(
-        "stats.json",
+       STATS_FILE,
         JSON.stringify(stats, null, 2)
     );
 
@@ -1347,7 +1358,7 @@ app.post("/paddle-webhook", express.json(), (req, res) => {
         settings.pro = true;
 
         fs.writeFileSync(
-            "settings.json",
+            SETTINGS_FILE,
             JSON.stringify(settings, null, 2)
         );
 
@@ -1362,7 +1373,7 @@ app.post("/paddle-webhook", express.json(), (req, res) => {
         settings.pro = false;
 
         fs.writeFileSync(
-            "settings.json",
+           SETTINGS_FILE,
             JSON.stringify(settings, null, 2)
         );
 
@@ -3754,7 +3765,7 @@ loadSocial();
 app.get("/overlay/webcam-simple", (req, res) => {
 
     const currentSettings =
-        JSON.parse(fs.readFileSync("settings.json", "utf8"));
+        JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
 
     const webcam =
         currentSettings.webcamSimple || {};
@@ -3803,7 +3814,7 @@ body{
 app.get("/overlay/webcam-custom", (req, res) => {
 
     const currentSettings =
-        JSON.parse(fs.readFileSync("settings.json", "utf8"));
+        JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
 
     const custom =
         currentSettings.webcamCustom || {};
@@ -3866,7 +3877,7 @@ body{
 app.get("/overlay/likes-goal", (req, res) => {
 
     const currentSettings =
-        JSON.parse(fs.readFileSync("settings.json", "utf8"));
+        JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
 
     const likes =
         currentSettings.likesGoal || {};
@@ -4036,7 +4047,7 @@ app.get("/overlay/follow-goal", (req, res) => {
     const currentSettings =
         JSON.parse(
     fs.readFileSync(
-        path.join(__dirname, "settings.json"),
+        path.join(__dirname,SETTINGS_FILE),
         "utf8"
     )
 );
@@ -4212,7 +4223,7 @@ app.get("/follow-goal/status", (req, res) => {
 app.get("/overlay/banner", (req, res) => {
 
     const currentSettings =
-        JSON.parse(fs.readFileSync("settings.json", "utf8"));
+        JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
 
     const banner =
         currentSettings.banner || {};
