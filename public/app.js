@@ -2938,7 +2938,7 @@ registerBtn.onclick = async () => {
     const password =
         document.getElementById("registerPassword").value;
 
-    const response = await fetch("/register", {
+    const response = await fetch("https://www.tikbabik.shop/register", {
 
         method: "POST",
 
@@ -2993,7 +2993,7 @@ if (sendResetPasswordButton) {
             document.getElementById("forgotPasswordEmail").value;
 
         const response =
-            await fetch("/forgot-password", {
+            await fetch("https://www.tikbabik.shop/forgot-password", {
 
                 method: "POST",
 
@@ -3027,7 +3027,7 @@ loginBtn.onclick = async () => {
     const password =
         document.getElementById("loginPassword").value;
 
-    const response = await fetch("/login", {
+    const response = await fetch("https://www.tikbabik.shop/login", {
 
         method: "POST",
 
