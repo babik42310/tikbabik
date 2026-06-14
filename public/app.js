@@ -5765,14 +5765,23 @@ const accountUpgradeProButton =
 
 if (accountUpgradeProButton) {
 
-    accountUpgradeProButton.onclick = event => {
+    accountUpgradeProButton.onclick = async event => {
 
         event.preventDefault();
 
-        window.open(
-            "https://www.tikbabik.shop/pricing",
-            "_blank"
-        );
+        const response =
+            await fetch("https://www.tikbabik.shop/create-checkout-session", {
+                method: "POST"
+            });
+
+        const data =
+            await response.json();
+
+        if (data.url) {
+            window.open(data.url, "_blank");
+        } else {
+            alert(data.error || "Erreur Stripe");
+        }
 
     };
 
