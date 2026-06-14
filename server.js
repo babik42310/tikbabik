@@ -504,6 +504,10 @@ app.post("/stats", (req, res) => {
 
 });
 
+console.log("DEBUG TIKTOK BLOCK ATTEINT");
+console.log("SETTINGS TIKTOK :", settings.tiktokUsername);
+console.log("TIKTOK USER FINAL :", tiktokUsername);
+
 /* TIKTOK */
 
 const tiktokUsername =
@@ -570,17 +574,6 @@ app.get("/import-gifts", async (req, res) => {
 
 /* CONNEXION LIVE */
 
-if (tiktok) {
-
-    tiktok.connect()
-    .then(() => {
-        console.log("Connecté au LIVE TikTok :", tiktokUsername);
-    })
-    .catch(error => {
-        console.log("Erreur connexion TikTok :", error);
-    });
-
-}
 
 function applyChronoTime(seconds) {
 
