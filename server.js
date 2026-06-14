@@ -719,6 +719,8 @@ if (tiktok) {
 
     tiktok.on("chat", data => {
 
+        console.log("CHAT REÇU :", data.nickname, data.comment);
+
         applyChronoTime(chrono.settings.perChat);
 
         io.emit("chat", {
@@ -729,6 +731,8 @@ if (tiktok) {
     });
 
     tiktok.on("gift", data => {
+
+        console.log("GIFT REÇU :", data.nickname, data.giftName, data.diamondCount);
 
         const giftName =
             data.giftName || data.gift?.name || "gift";
@@ -850,6 +854,8 @@ io.emit("gift", {
     });
 
     tiktok.on("like", data => {
+
+        console.log("LIKE REÇU :", data.nickname, data.likeCount, data.totalLikeCount);
 
         currentLikesGoalCount =
     Number(data.totalLikeCount || data.likeCount || 0);

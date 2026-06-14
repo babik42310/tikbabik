@@ -19,7 +19,10 @@ app.whenReady().then(() => {
 
     process.env.ELECTRON_APP = "true";
 
+    if (!process.env.SERVER_ALREADY_STARTED) {
+    process.env.SERVER_ALREADY_STARTED = "true";
     require("./server.js");
+}
 
     setTimeout(() => {
         createWindow();
