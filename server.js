@@ -507,17 +507,29 @@ app.post("/stats", (req, res) => {
 /* TIKTOK */
 
 const tiktokUsername =
-    settings.tiktokUsername;
+    settings.tiktokUsername
+        ? settings.tiktokUsername.replace("@", "").trim()
+        : "";
 
 let tiktok = null;
 
 if (tiktokUsername) {
+
     tiktok = new WebcastPushConnection(tiktokUsername);
+
     console.log("Compte TikTok configuré :", tiktokUsername);
+
+    tiktok.connect()
+        .then(state => {
+            console.log("Connecté au live TikTok :", state.roomId);
+        })
+        .catch(error => {
+            console.log("Erreur connexion TikTok :", error);
+        });
+
 } else {
     console.log("Aucun compte TikTok configuré");
 }
-
 /* IMPORT GIFTS */
 
 app.get("/import-gifts", async (req, res) => {
