@@ -451,16 +451,30 @@ function saveSettingsFile() {
 
 app.post("/settings", (req, res) => {
 
-    settings = req.body;
+    try {
+        settings = req.body;
 
-    fs.writeFileSync(
-        "settings.json",
-        JSON.stringify(settings, null, 2)
-    );
+        fs.writeFileSync(
+            path.join(__dirname, "settings.json"),
+            JSON.stringify(settings, null, 2)
+        );
 
-    res.json({
-        success: true
-    });
+        console.log("Paramètres sauvegardés :", settings.tiktokUsername);
+
+        res.json({
+            success: true
+        });
+
+    } catch (error) {
+
+        console.log("Erreur sauvegarde settings :", error);
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+
+    }
 
 });
 
