@@ -3632,6 +3632,8 @@ localStorage.setItem(
 
 socket.on("play-sound-alert", data => {
 
+    console.log("SON REÇU CÔTÉ APP :", data);
+
     if (!data.sound) {
         return;
     }

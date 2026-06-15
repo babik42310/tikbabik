@@ -45,20 +45,20 @@ async function initDatabase() {
     console.log("Base PostgreSQL prête");
 }
 
-initDatabase().catch(console.error);
-pool.query("SELECT NOW()")
-    .then(result => {
-        console.log(
-            "PostgreSQL connecté :",
-            result.rows[0]
-        );
-    })
-    .catch(error => {
-        console.error(
-            "Erreur PostgreSQL :",
-            error
-        );
-    });
+if (process.env.DATABASE_URL) {
+    initDatabase().catch(console.error);
+} else {
+    console.log("PostgreSQL désactivé en local");
+}
+if (process.env.DATABASE_URL) {
+    pool.query("SELECT NOW()")
+        .then(result => {
+            console.log("PostgreSQL connecté :", result.rows[0]);
+        })
+        .catch(error => {
+            console.error("Erreur PostgreSQL :", error);
+        });
+}
 
 const stripeSecretKey =
     process.env.STRIPE_SECRET_KEY || "";
@@ -264,17 +264,33 @@ app.post(
 app.use(express.json());
 
 /* UPLOAD MEDIAS */
+const soundsDir =
+    path.join(__dirname, "public", "sounds");
 
+const imagesDir =
+    path.join(__dirname, "public", "images");
+
+if (!fs.existsSync(soundsDir)) {
+    fs.mkdirSync(soundsDir, {
+        recursive: true
+    });
+}
+
+if (!fs.existsSync(imagesDir)) {
+    fs.mkdirSync(imagesDir, {
+        recursive: true
+    });
+}
 const storage = multer.diskStorage({
 
     destination: (req, file, cb) => {
 
         if (file.mimetype.startsWith("audio/")) {
-            cb(null, "public/sounds");
+            cb(null, soundsDir);
         } else if (file.mimetype.startsWith("image/")) {
-            cb(null, "public/images");
+            cb(null, imagesDir);
         } else {
-            cb(null, "public");
+            cb(null, path.join(__dirname, "public"));
         }
 
     },
@@ -284,6 +300,8 @@ const storage = multer.diskStorage({
     }
 
 });
+
+
 
 const upload = multer({
     storage: storage
@@ -443,78 +461,26 @@ app.post("/grant-pro", async (req, res) => {
 
 app.post("/upload", upload.single("file"), (req, res) => {
 
-    res.json({
-        success: true,
-        filename: req.file.originalname,
-        type: req.file.mimetype
-    });
-
-});
-
-/* SETTINGS */
-
-let settings = {
-    voiceEnabled: true,
-    actions: [],
-    actionEvents: []
-};
-
-if (fs.existsSync(SETTINGS_FILE)) {
-
-    settings =
-        JSON.parse(
-            fs.readFileSync(
-                SETTINGS_FILE,
-                "utf8"
-            )
-        );
-
-}
-
-try {
-
-    settings = JSON.parse(
-        fs.readFileSync(SETTINGS_FILE)
-    );
-
-    console.log("Paramètres chargés");
-
-} catch (error) {
-
-    console.log("settings.json introuvable, paramètres par défaut utilisés");
-
-}
-
-app.get("/settings", (req, res) => {
-    res.json(settings);
-});
-
-function saveSettingsFile() {
-    fs.writeFileSync(
-       SETTINGS_FILE,
-        JSON.stringify(settings, null, 2)
-    );
-}
-
-app.post("/settings", (req, res) => {
-
     try {
-        settings = req.body;
 
-        fs.writeFileSync(
-    SETTINGS_FILE,
-            JSON.stringify(settings, null, 2)
-        );
+        console.log("UPLOAD REÇU :", req.file);
 
-        console.log("Paramètres sauvegardés :", settings.tiktokUsername);
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                error: "Aucun fichier reçu"
+            });
+        }
 
         res.json({
-            success: true
+            success: true,
+            filename: req.file.filename,
+            type: req.file.mimetype
         });
 
     } catch (error) {
 
-        console.log("Erreur sauvegarde settings :", error);
+        console.log("ERREUR UPLOAD :", error);
 
         res.status(500).json({
             success: false,
@@ -563,6 +529,61 @@ app.post("/stats", (req, res) => {
         success: true
     });
 
+});
+
+let settings = {
+    voiceEnabled: true,
+    actions: [],
+    actionEvents: [],
+    soundAlerts: []
+};
+
+if (fs.existsSync(SETTINGS_FILE)) {
+
+    settings =
+        JSON.parse(
+            fs.readFileSync(
+                SETTINGS_FILE,
+                "utf8"
+            )
+        );
+
+}
+
+try {
+
+    settings = JSON.parse(
+        fs.readFileSync(SETTINGS_FILE)
+    );
+
+    console.log("Paramètres chargés");
+
+} catch (error) {
+
+    console.log("settings.json introuvable, paramètres par défaut utilisés");
+
+}
+
+function saveSettingsFile() {
+
+    fs.writeFileSync(
+        SETTINGS_FILE,
+        JSON.stringify(settings, null, 2)
+    );
+
+}
+
+app.get("/settings", (req, res) => {
+    res.json(settings);
+});
+
+app.post("/settings", (req, res) => {
+    settings = req.body;
+    saveSettingsFile();
+
+    res.json({
+        success: true
+    });
 });
 
 console.log("DEBUG TIKTOK BLOCK ATTEINT");
@@ -1031,9 +1052,17 @@ applyChronoTime(
 
     });
 
-  tiktokConnection.on("follow", data => {
+tiktokConnection.on("social", data => {
+    console.log("SOCIAL REÇU :", data);
+});
+
+ tiktokConnection.on("follow", data => {
+
+    console.log("FOLLOW REÇU :", data.nickname);
 
     applyChronoTime(chrono.settings.perFollow);
+
+    console.log("TOUTES ALERTES SON :", settings.soundAlerts);
 
     const matchingSoundAlert =
         (settings.soundAlerts || [])
@@ -1041,6 +1070,8 @@ applyChronoTime(
                 alert.enabled &&
                 alert.trigger === "follow"
             );
+
+    console.log("ALERTE SON FOLLOW :", matchingSoundAlert);
 
     if (matchingSoundAlert && matchingSoundAlert.sound) {
         io.emit("play-sound-alert", {
