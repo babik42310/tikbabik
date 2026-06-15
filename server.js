@@ -894,8 +894,14 @@ function bindTikTokEvents(tiktokConnection) {
         .find(alert =>
             alert.enabled &&
             alert.trigger === "gift" &&
-            alert.gift === giftName
+            (
+                !alert.gift ||
+                alert.gift.trim().toLowerCase() ===
+                giftName.trim().toLowerCase()
+            )
         );
+
+        console.log("ALERTE SON CADEAU :", matchingSoundAlert);
 
 if (matchingSoundAlert && matchingSoundAlert.sound) {
     io.emit("play-sound-alert", {
@@ -1027,23 +1033,27 @@ applyChronoTime(
 
   tiktokConnection.on("follow", data => {
 
-applyChronoTime(chrono.settings.perFollow);
+    applyChronoTime(chrono.settings.perFollow);
 
-        io.emit("follow", {
-            user: data.nickname
+    const matchingSoundAlert =
+        (settings.soundAlerts || [])
+            .find(alert =>
+                alert.enabled &&
+                alert.trigger === "follow"
+            );
+
+    if (matchingSoundAlert && matchingSoundAlert.sound) {
+        io.emit("play-sound-alert", {
+            sound: matchingSoundAlert.sound,
+            volume: matchingSoundAlert.volume || 100
         });
+    }
 
+    io.emit("follow", {
+        user: data.nickname
     });
 
-   tiktokConnection.on("share", data => {
-
-        applyChronoTime(chrono.settings.perShare);
-
-        io.emit("share", {
-            user: data.nickname
-        });
-
-    });
+});
 
 }
 
