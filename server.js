@@ -406,25 +406,40 @@ app.post("/activate-free-pro", async (req, res) => {
 
 app.post("/check-pro", async (req, res) => {
 
-    const email =
-        (req.body.email || "").toLowerCase().trim();
+    try {
 
-    if (!email) {
-        return res.json({
-            pro: false
+        const email =
+            (req.body.email || "")
+                .toLowerCase()
+                .trim();
+
+        if (!email) {
+            return res.json({
+                pro: false
+            });
+        }
+
+        const result =
+            await pool.query(
+                "SELECT pro FROM pro_users WHERE email = $1",
+                [email]
+            );
+
+        res.json({
+            pro:
+                result.rows[0]?.pro === true
         });
+
+    } catch (error) {
+
+        console.log("Erreur check-pro :", error.message);
+
+        res.json({
+            pro: false,
+            error: "check-pro unavailable"
+        });
+
     }
-
-    const result =
-        await pool.query(
-            "SELECT pro FROM pro_users WHERE email = $1",
-            [email]
-        );
-
-    res.json({
-        pro:
-            result.rows[0]?.pro === true
-    });
 
 });
 
