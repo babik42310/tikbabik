@@ -1551,6 +1551,13 @@ if (savedPointsUsers) {
 
 
 function loadAvailableTtsVoices() {
+
+    if (
+        appSettings?.ttsChat?.engine === "openai"
+    ) {
+        return;
+    }
+
     const voiceSelect =
         document.getElementById("ttsVoice");
 
@@ -1567,19 +1574,26 @@ function loadAvailableTtsVoices() {
     voiceSelect.innerHTML = "";
 
     voices.forEach(voice => {
+
         const option =
             document.createElement("option");
 
-        option.value = voice.name;
+        option.value =
+            voice.name;
+
         option.innerText =
-            voice.name + " - " + voice.lang;
+            voice.name +
+            " - " +
+            voice.lang;
 
         voiceSelect.appendChild(option);
+
     });
 
     if (savedVoice) {
         voiceSelect.value = savedVoice;
     }
+
 }
 
 speechSynthesis.onvoiceschanged = loadAvailableTtsVoices;
@@ -2427,6 +2441,9 @@ if (saveTtsSettings) {
 
     language:
         document.getElementById("ttsLanguage")?.value || "",
+
+engine:
+    document.getElementById("ttsEngine")?.value || "windows",
 
     voice:
         document.getElementById("ttsVoice")?.value || "",
@@ -3449,6 +3466,62 @@ if (
 
 if (!text) {
     return;
+}
+
+if (
+    tts.engine === "openai" &&
+    isProUser()
+) {
+
+        console.log("OPENAI TTS ACTIF");
+
+    fetch("/tts/openai", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            text,
+            voice: tts.voice || "alloy",
+            volume: tts.volume || 100
+        })
+    })
+    .then(response => response.blob())
+    .then(blob => {
+
+        console.log("TTS BLOB SIZE :", blob.size);
+
+        if (blob.size < 1000) {
+            alert("Erreur TTS : réponse vide ou erreur API");
+            return;
+        }
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const audio =
+            new Audio(url);
+
+        audio.volume =
+            Number(tts.volume || 100) / 100;
+
+        audio.play()
+            .then(() => {
+                console.log("TTS IA JOUÉ OK");
+            })
+            .catch(error => {
+                console.log("ERREUR PLAY TTS IA :", error);
+                alert(error.message);
+            });
+
+    })
+    .catch(error => {
+        console.log("ERREUR FETCH TTS IA :", error);
+        alert(error.message);
+    });
+
+    return;
+
 }
 
     const speech =
@@ -4515,6 +4588,11 @@ if (appSettings.webcamSimple) {
 
     const tts =
         appSettings.ttsChat;
+
+        if (document.getElementById("ttsEngine"))
+    document.getElementById("ttsEngine").value =
+        tts.engine || "windows";
+        loadAvailableTtsVoices();
        
 
     if (document.getElementById("ttsEnabled"))
@@ -6037,6 +6115,51 @@ if (savedUser && savedUser.email) {
 
     checkProFromDatabase(savedUser.email);
 
+}
+
+function fillOpenAiVoices() {
+    const ttsVoiceSelect =
+        document.getElementById("ttsVoice");
+
+    if (!ttsVoiceSelect) return;
+
+    ttsVoiceSelect.innerHTML = "";
+
+    [
+        "alloy",
+        "ash",
+        "coral",
+        "echo",
+        "fable",
+        "nova",
+        "onyx",
+        "sage",
+        "shimmer"
+    ].forEach(voice => {
+        const option =
+            document.createElement("option");
+
+        option.value = voice;
+        option.innerText =
+            voice.charAt(0).toUpperCase() + voice.slice(1);
+
+        ttsVoiceSelect.appendChild(option);
+    });
+}
+
+const ttsEngineSelect =
+    document.getElementById("ttsEngine");
+
+if (ttsEngineSelect) {
+    ttsEngineSelect.addEventListener("change", () => {
+
+        if (ttsEngineSelect.value === "openai") {
+            fillOpenAiVoices();
+        } else {
+            setTimeout(loadAvailableTtsVoices, 200);
+        }
+
+    });
 }
 
 console.log("FIN APP JS");

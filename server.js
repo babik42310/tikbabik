@@ -586,6 +586,78 @@ app.post("/settings", (req, res) => {
     });
 });
 
+app.post("/tts/openai", async (req, res) => {
+
+    try {
+
+        const text =
+            req.body.text || "";
+
+        const voice =
+            req.body.voice || "alloy";
+
+        if (!process.env.OPENAI_API_KEY) {
+            return res.status(500).json({
+                error: "OPENAI_API_KEY manquante"
+            });
+        }
+
+        const response =
+            await fetch("https://api.openai.com/v1/audio/speech", {
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + process.env.OPENAI_API_KEY,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini-tts",
+                    voice,
+                    input: text
+                })
+            });
+
+            console.log(
+    "OPENAI STATUS :",
+    response.status
+);
+
+if (!response.ok) {
+
+    const errorText =
+        await response.text();
+
+    console.log(
+        "OPENAI ERROR :",
+        errorText
+    );
+
+    return res.status(500).send(errorText);
+
+}
+
+        const audioBuffer =
+            Buffer.from(
+                await response.arrayBuffer()
+            );
+
+        res.set({
+            "Content-Type": "audio/mpeg"
+        });
+
+        res.send(audioBuffer);
+
+    } catch (error) {
+
+        console.log("Erreur OpenAI TTS :", error);
+
+        res.status(500).json({
+            error: error.message
+        });
+
+    }
+
+});
+
 console.log("DEBUG TIKTOK BLOCK ATTEINT");
 console.log("SETTINGS TIKTOK :", settings.tiktokUsername);
 
