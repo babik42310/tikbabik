@@ -90,6 +90,7 @@ app.use((req, res, next) => {
 
 
 app.use(express.static(path.join(__dirname, "public")));
+
 app.get("/sitemap.xml", (req, res) => {
     res.type("application/xml");
     res.sendFile(path.join(__dirname, "public", "sitemap.xml"));
@@ -268,7 +269,7 @@ app.use(express.json());
 
 /* UPLOAD MEDIAS */
 const soundsDir =
-    path.join(__dirname, "public", "sounds");
+    path.join(DATA_DIR, "sounds");
 
 const imagesDir =
     path.join(__dirname, "public", "images");

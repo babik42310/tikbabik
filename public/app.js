@@ -1936,14 +1936,14 @@ if (keyButton) {
             playButton.onclick = () => {
 
     const sound =
-        soundFileName.dataset.filename ||
-        soundFileName.innerText.trim();
+    soundFileName.dataset.filename ||
+    soundFileName.innerText.replace("Choisir un fichier", "").trim();
 
     if (!sound) {
         alert("Aucun son choisi pour cette alerte");
         return;
     }
-
+console.log("SON TEST :", soundFileName.innerText, soundFileName.dataset.filename);
     const audio =
         new Audio("/sounds/" + sound);
 
