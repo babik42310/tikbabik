@@ -4382,6 +4382,13 @@ fetch("/settings")
 
     appSettings = settings;
 
+    const savedUserAtStart =
+    JSON.parse(localStorage.getItem("tikbabikUser") || "null");
+
+if (!savedUserAtStart || !savedUserAtStart.email) {
+    appSettings.pro = false;
+}
+
     if (appSettings.banner) {
 
     document.getElementById("bannerText").value =
@@ -4567,6 +4574,8 @@ if (appSettings.webcamSimple) {
 
         list.appendChild(item);
 
+        
+
     });
 
 }
@@ -4672,6 +4681,13 @@ if (appSettings.ttsChat) {
         addSoundAlertRow(alert);
     });
 }
+
+updateProLocks();
+
+if (typeof applyProDisplay === "function") {
+    applyProDisplay();
+}
+
 });
 
 fetch("/stats")
@@ -4875,6 +4891,14 @@ async function checkProFromDatabase(email) {
 
         appSettings.pro =
             data.pro === true;
+
+            fetch("/settings", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify(appSettings)
+});
 
         updateProLocks();
 
@@ -5848,27 +5872,54 @@ function goToProCheckout() {
 }
 
 function isProUser() {
+
+    const savedUser =
+        JSON.parse(
+            localStorage.getItem("tikbabikUser") || "null"
+        );
+
     return (
+        savedUser &&
         appSettings &&
         (
             appSettings.pro === true ||
             appSettings.pro === "true"
         )
     );
+
 }
 
 function applyProDisplay() {
 
-    const isPro = isProUser();
+    const isPro =
+        isProUser();
 
     document.querySelectorAll("[data-pro='true']").forEach(element => {
 
         if (isPro) {
+
+            element.classList.remove("proLocked");
+
+            if (!element.dataset.originalText) {
+                element.dataset.originalText =
+                    element.innerHTML.replace("🔒 ", "");
+            }
+
             element.innerHTML =
-                element.innerHTML.replace("🔒 ", "");
-        } else if (!element.innerHTML.includes("🔒")) {
+                element.dataset.originalText;
+
+        } else {
+
+            element.classList.add("proLocked");
+
+            if (!element.dataset.originalText) {
+                element.dataset.originalText =
+                    element.innerHTML.replace("🔒 ", "");
+            }
+
             element.innerHTML =
-                "🔒 " + element.innerHTML;
+                "🔒 " + element.dataset.originalText;
+
         }
 
     });
@@ -5964,6 +6015,11 @@ if (activateFreeProCode) {
 
 const savedUser =
     JSON.parse(localStorage.getItem("tikbabikUser") || "null");
+
+
+appSettings.pro = false;
+updateProLocks();
+applyProDisplay();
 
 if (savedUser && savedUser.email) {
 
