@@ -3475,7 +3475,7 @@ if (
 
         console.log("OPENAI TTS ACTIF");
 
-    fetch("/tts/openai", {
+    fetch("https://www.tikbabik.shop/tts/openai", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"

@@ -602,6 +602,17 @@ app.post("/tts/openai", async (req, res) => {
             });
         }
 
+        console.log(
+    "OPENAI KEY EXISTS:",
+    !!process.env.OPENAI_API_KEY
+);
+
+console.log(
+    "OPENAI KEY START:",
+    process.env.OPENAI_API_KEY
+        ? process.env.OPENAI_API_KEY.substring(0, 10)
+        : "AUCUNE"
+);
         const response =
             await fetch("https://api.openai.com/v1/audio/speech", {
                 method: "POST",
