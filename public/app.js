@@ -1944,8 +1944,15 @@ if (keyButton) {
         return;
     }
 console.log("SON TEST :", soundFileName.innerText, soundFileName.dataset.filename);
-    const audio =
-        new Audio("/sounds/" + sound);
+    
+
+console.log(
+    "TEST SON URL :",
+    "/sounds/" + sound
+);
+
+const audio =
+    new Audio("/sounds/" + sound);
 
     audio.volume =
         Number(
@@ -3348,9 +3355,13 @@ function playAlert(sound, image, volume, text) {
         const audio = new Audio("/sounds/" + sound);
         audio.volume = Number(volume || 100) / 100;
 
-        audio.play().catch(error => {
-            console.log("Erreur audio :", error);
-        });
+        audio.play()
+    .then(() => {
+        console.log("LECTURE OK");
+    })
+    .catch(error => {
+        console.log("ERREUR SON :", error);
+    });
     }
 
     giftAlert.innerHTML = text;

@@ -91,6 +91,7 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, "public")));
 
+
 app.get("/sitemap.xml", (req, res) => {
     res.type("application/xml");
     res.sendFile(path.join(__dirname, "public", "sitemap.xml"));
@@ -310,6 +311,11 @@ const storage = multer.diskStorage({
 const upload = multer({
     storage: storage
 });
+
+app.use(
+    "/sounds",
+    express.static(soundsDir)
+);
 
 app.post("/create-checkout-session", async (req, res) => {
 
