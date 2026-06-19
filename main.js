@@ -1,5 +1,7 @@
 const { app, BrowserWindow } = require("electron");
 const path = require("path");
+const { autoUpdater } =
+    require("electron-updater");
 
 function createWindow() {
 
@@ -13,7 +15,11 @@ function createWindow() {
         }
     });
 
-win.loadURL("http://localhost:3000");}
+win.loadURL("http://localhost:3000");
+
+autoUpdater.checkForUpdatesAndNotify();
+
+}
 
 app.whenReady().then(() => {
 
@@ -28,4 +34,19 @@ app.whenReady().then(() => {
         createWindow();
     }, 2000);
 
+});
+autoUpdater.on("checking-for-update", () => {
+    console.log("Recherche mise à jour...");
+});
+
+autoUpdater.on("update-available", () => {
+    console.log("Mise à jour disponible");
+});
+
+autoUpdater.on("update-not-available", () => {
+    console.log("Aucune mise à jour");
+});
+
+autoUpdater.on("error", error => {
+    console.log("Erreur update :", error);
 });
