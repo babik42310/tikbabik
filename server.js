@@ -611,6 +611,36 @@ app.post("/settings", (req, res) => {
     });
 });
 
+app.get("/api/mobile/status", (req, res) => {
+    res.json({
+        success: true,
+        app: "CreatorPilot",
+        version: "1.0.4",
+        tiktokUsername: settings.tiktokUsername || "",
+        pro: settings.pro === true,
+        ttsEnabled: settings.ttsChat?.enabled === true,
+        soundAlerts: settings.soundAlerts?.length || 0
+    });
+});
+
+app.post("/api/mobile/tts/toggle", (req, res) => {
+    settings.ttsChat = settings.ttsChat || {};
+    settings.ttsChat.enabled = !settings.ttsChat.enabled;
+
+    saveSettingsFile();
+
+    res.json({
+        success: true,
+        ttsEnabled: settings.ttsChat.enabled
+    });
+});
+
+app.get("/mobile", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "public", "mobile.html")
+    );
+});
+
 app.post("/tts/openai", async (req, res) => {
 
     try {

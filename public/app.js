@@ -3382,7 +3382,7 @@ function playAlert(sound, image, volume, text) {
 }
 
 /* CHAT */
-function playTtsMessage(text) {
+function playTtsMessage(text, userData = {}) {
 
     if (!appSettings.ttsChat || !appSettings.ttsChat.enabled) {
         return;
@@ -3394,6 +3394,8 @@ function playTtsMessage(text) {
 
     const tts =
         appSettings.ttsChat;
+
+        console.log("TTS USER DATA :", userData);
 
         const now =
     Date.now();
@@ -3609,7 +3611,7 @@ socket.on("chat", data => {
     div.innerHTML = `<strong>${data.user}</strong> : ${data.message}`;
     messages.prepend(div);
 
-    playTtsMessage(data.message);
+   playTtsMessage(data.message, data);
 });
 
 /* CADEAUX */

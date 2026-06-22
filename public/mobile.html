@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>CreatorPilot Mobile</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    background:#0f1117;
+    color:white;
+    min-height:100vh;
+}
+
+.header{
+    padding:20px;
+    display:flex;
+    align-items:center;
+    gap:15px;
+}
+
+.avatar{
+    width:50px;
+    height:50px;
+    border-radius:50%;
+    background:#5865f2;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+}
+
+.title{
+    font-size:20px;
+    font-weight:bold;
+}
+
+.page{
+    padding:15px;
+    padding-bottom:100px;
+}
+
+.card{
+    background:#1a1f2c;
+    border-radius:15px;
+    padding:15px;
+    margin-bottom:15px;
+}
+
+.card-title{
+    font-size:18px;
+    margin-bottom:15px;
+}
+
+.row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:15px;
+}
+
+.switch{
+    width:60px;
+    height:32px;
+    border-radius:30px;
+    background:#3adb76;
+    position:relative;
+    cursor:pointer;
+}
+
+.switch::after{
+    content:"";
+    width:26px;
+    height:26px;
+    background:white;
+    border-radius:50%;
+    position:absolute;
+    right:3px;
+    top:3px;
+}
+
+.big-btn{
+    width:100%;
+    padding:15px;
+    border:none;
+    border-radius:12px;
+    background:#ff3366;
+    color:white;
+    font-size:16px;
+    font-weight:bold;
+}
+
+.stat{
+    background:#212838;
+    border-radius:12px;
+    padding:15px;
+    margin-bottom:10px;
+}
+
+.stat-number{
+    font-size:26px;
+    font-weight:bold;
+    color:#3adb76;
+}
+
+.bottom{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    background:#151922;
+    display:flex;
+    justify-content:space-around;
+    padding:15px;
+}
+
+.bottom button{
+    background:none;
+    border:none;
+    color:white;
+    font-size:14px;
+}
+
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="avatar">C</div>
+    <div class="title">CreatorPilot Mobile</div>
+</div>
+
+<div class="page">
+
+<div class="card">
+
+<div class="card-title">
+🚀 Statut
+</div>
+
+<div id="status">
+Chargement...
+</div>
+
+</div>
+
+<div class="card">
+
+<div class="card-title">
+📊 Statistiques LIVE
+</div>
+
+<div class="stat">
+<div>❤️ Likes</div>
+<div class="stat-number">0</div>
+</div>
+
+<div class="stat">
+<div>💬 Messages</div>
+<div class="stat-number">0</div>
+</div>
+
+<div class="stat">
+<div>🎁 Cadeaux</div>
+<div class="stat-number">0</div>
+</div>
+
+</div>
+
+<div class="card">
+
+<div class="row">
+<div>🎤 Synthèse vocale</div>
+<div class="switch"
+onclick="toggleTts()">
+</div>
+</div>
+
+<button
+class="big-btn"
+onclick="toggleTts()">
+Activer / Désactiver TTS
+</button>
+
+</div>
+
+</div>
+
+<div class="bottom">
+
+<button>🏠 Accueil</button>
+<button>🔔 Alertes</button>
+<button>🎤 TTS</button>
+
+</div>
+
+<script>
+
+async function loadStatus(){
+
+const response =
+await fetch("/api/mobile/status");
+
+const data =
+await response.json();
+
+document.getElementById("status").innerHTML =
+`
+Version : ${data.version}<br>
+TTS : ${data.ttsEnabled ? "ON" : "OFF"}
+`;
+
+}
+
+async function toggleTts(){
+
+await fetch(
+"/api/mobile/tts/toggle",
+{
+method:"POST"
+}
+);
+
+loadStatus();
+
+}
+
+loadStatus();
+
+</script>
+
+</body>
+</html>
