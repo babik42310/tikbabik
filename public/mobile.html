@@ -77,6 +77,15 @@ body{
     cursor:pointer;
 }
 
+.switch.off{
+    background:#5a5a5a;
+}
+
+.switch.off::after{
+    left:3px;
+    right:auto;
+}
+
 .switch::after{
     content:"";
     width:26px;
@@ -112,6 +121,108 @@ body{
     color:#3adb76;
 }
 
+.home-card{
+    background:rgba(45,60,65,0.85);
+    border-radius:12px;
+    padding:14px;
+    margin-bottom:12px;
+}
+
+.home-top{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.home-icon{
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    background:white;
+    color:#111;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+}
+
+.home-title{
+    flex:1;
+    font-size:16px;
+    font-weight:bold;
+}
+
+.home-desc{
+    color:#c5c5c5;
+    font-size:13px;
+    line-height:1.4;
+    margin:15px 0;
+}
+
+.home-footer{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border-top:1px solid rgba(255,255,255,0.08);
+    padding-top:12px;
+    color:#ffb000;
+    font-size:13px;
+}
+
+.home-footer button{
+    background:none;
+    border:none;
+    color:#ffb000;
+    font-weight:bold;
+}
+
+.start-btn{
+    position:fixed;
+    bottom:90px;
+    left:15px;
+    right:15px;
+    padding:16px;
+    border:none;
+    border-radius:8px;
+    background:#ff3366;
+    color:white;
+    font-weight:bold;
+    font-size:15px;
+}
+
+.mobile-search{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:8px;
+    background:#2b3940;
+    color:white;
+    margin-bottom:12px;
+}
+
+.alert-list{
+    background:rgba(45,60,65,0.85);
+    border-radius:12px;
+    overflow:hidden;
+}
+
+.alert-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+}
+
+.add-alert-btn{
+    width:100%;
+    padding:15px;
+    background:none;
+    border:none;
+    color:#ffb000;
+    font-weight:bold;
+}
+
 .bottom{
     position:fixed;
     bottom:0;
@@ -139,57 +250,77 @@ body{
     <div class="title">CreatorPilot Mobile</div>
 </div>
 
-<div class="page">
+<div id="homePage" class="page"><div class="home-card">
+    <div class="home-top">
+        <div class="home-icon">🔊</div>
+        <div class="home-title">Alertes sonores</div>
+        <div class="switch" onclick="toggleSounds()"></div>
+    </div>
 
-<div class="card">
+    <p class="home-desc">
+        Les alertes sonores sont des sons amusants qui apparaissent lorsque des événements TikTok se produisent.
+    </p>
 
-<div class="card-title">
-🚀 Statut
+    <div class="home-footer">
+        <span>🔔 <span id="soundCount">0</span>/75</span>
+        <button onclick="showPage('alerts')">
+            Modifier les alertes sonores →
+        </button>
+    </div>
 </div>
 
-<div id="status">
-Chargement...
+<div class="home-card">
+    <div class="home-top">
+        <div class="home-icon">🎙️</div>
+        <div class="home-title">Synthèse vocale</div>
+        <div class="switch" onclick="toggleTts()"></div>
+    </div>
+
+    <p class="home-desc">
+        La synthèse vocale permet à une voix IA de lire les messages texte écrits par vos spectateurs.
+    </p>
+
+    <div class="home-footer">
+        <span>🎧 75/75</span>
+        <button onclick="showPage('tts')">
+            Modifier la synthèse vocale →
+        </button>
+    </div>
 </div>
 
-</div>
-
-<div class="card">
-
-<div class="card-title">
-📊 Statistiques LIVE
-</div>
-
-<div class="stat">
-<div>❤️ Likes</div>
-<div class="stat-number">0</div>
-</div>
-
-<div class="stat">
-<div>💬 Messages</div>
-<div class="stat-number">0</div>
-</div>
-
-<div class="stat">
-<div>🎁 Cadeaux</div>
-<div class="stat-number">0</div>
-</div>
-
-</div>
-
-<div class="card">
-
-<div class="row">
-<div>🎤 Synthèse vocale</div>
-<div class="switch"
-onclick="toggleTts()">
-</div>
-</div>
-
-<button
-class="big-btn"
-onclick="toggleTts()">
-Activer / Désactiver TTS
+<button class="start-btn" onclick="startMobileFeatures()">
+    ▶ Démarrer les alertes sonores et la synthèse vocale
 </button>
+
+<div id="alertsPage" class="page" style="display:none;">
+
+    <input
+        class="mobile-search"
+        placeholder="🔍 Recherche ..."
+    >
+
+    <div class="alert-list">
+
+        <div class="alert-row">
+            <span>🎁 Tout cadeau</span>
+            <div class="switch"></div>
+        </div>
+
+        <div class="alert-row">
+            <span>👤 Suivre</span>
+            <div class="switch"></div>
+        </div>
+
+        <div class="alert-row">
+            <span>⭐ S'abonner</span>
+            <div class="switch"></div>
+        </div>
+
+        <button class="add-alert-btn">
+            + Ajouter une nouvelle alerte sonore
+        </button>
+
+    </div>
 
 </div>
 
@@ -197,40 +328,93 @@ Activer / Désactiver TTS
 
 <div class="bottom">
 
-<button>🏠 Accueil</button>
-<button>🔔 Alertes</button>
+<button onclick="showMobileTab('home')">
+    🏠 Accueil
+</button>
+<button onclick="showMobileTab('alerts')">
+    🔔 Alertes
+</button>
 <button>🎤 TTS</button>
 
 </div>
 
 <script>
 
-async function loadStatus(){
+async function toggleSounds(){
 
-const response =
-await fetch("/api/mobile/status");
+    await fetch(
+        "/api/mobile/sounds/toggle",
+        {
+            method:"POST"
+        }
+    );
 
-const data =
-await response.json();
-
-document.getElementById("status").innerHTML =
-`
-Version : ${data.version}<br>
-TTS : ${data.ttsEnabled ? "ON" : "OFF"}
-`;
+    loadStatus();
 
 }
 
 async function toggleTts(){
 
-await fetch(
-"/api/mobile/tts/toggle",
-{
-method:"POST"
-}
-);
+    await fetch(
+        "/api/mobile/tts/toggle",
+        {
+            method:"POST"
+        }
+    );
 
-loadStatus();
+    loadStatus();
+
+}
+
+function showMobileTab(tab){
+
+    const homePage =
+        document.getElementById("homePage");
+
+    const alertsPage =
+        document.getElementById("alertsPage");
+
+    homePage.style.display =
+        tab === "home" ? "block" : "none";
+
+    alertsPage.style.display =
+        tab === "alerts" ? "block" : "none";
+
+}
+
+function showPage(page){
+    alert("Page " + page + " bientôt disponible");
+}
+
+function startMobileFeatures(){
+    alert("CreatorPilot Mobile activé");
+}
+
+async function loadStatus(){
+
+    const response =
+        await fetch("/api/mobile/status");
+
+    const data =
+        await response.json();
+
+    document.getElementById("soundCount").innerText =
+        data.soundAlerts || 0;
+
+    const switches =
+        document.querySelectorAll(".switch");
+
+    if(data.soundsEnabled){
+        switches[0].classList.remove("off");
+    }else{
+        switches[0].classList.add("off");
+    }
+
+    if(data.ttsEnabled){
+        switches[1].classList.remove("off");
+    }else{
+        switches[1].classList.add("off");
+    }
 
 }
 

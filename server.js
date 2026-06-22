@@ -619,8 +619,23 @@ app.get("/api/mobile/status", (req, res) => {
         tiktokUsername: settings.tiktokUsername || "",
         pro: settings.pro === true,
         ttsEnabled: settings.ttsChat?.enabled === true,
+        soundsEnabled: settings.soundsEnabled !== false,
         soundAlerts: settings.soundAlerts?.length || 0
     });
+});
+
+app.post("/api/mobile/sounds/toggle", (req, res) => {
+
+    settings.soundsEnabled =
+        settings.soundsEnabled === false;
+
+    saveSettingsFile();
+
+    res.json({
+        success: true,
+        soundsEnabled: settings.soundsEnabled
+    });
+
 });
 
 app.post("/api/mobile/tts/toggle", (req, res) => {
