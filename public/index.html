@@ -46,6 +46,12 @@
         <span class="menuText">Statistiques</span>
     </button>
 
+
+    <button id="liveAssistantButton" class="menuButton">
+        <span class="menuIcon">🤖</span>
+        <span class="menuText">Assistant LIVE</span>
+    </button>
+
     <button id="overlayButton" class="menuButton">
         <span class="menuIcon">🖼️</span>
         <span class="menuText">Mini jeux</span>
@@ -2782,6 +2788,234 @@ value="/overlay/chrono"        readonly>
     </button>
 
 </div>
+
+<!-- ========================================================
+     ASSISTANT LIVE CREATORPILOT
+     FREE : score | PRO : toutes les fonctions avancées
+     ======================================================== -->
+<div id="liveAssistantPanel" style="display:none;">
+
+    <div class="liveAssistantHeader">
+        <div>
+            <h2>🤖 Assistant LIVE</h2>
+            <p>Analyse en temps réel de l'activité de votre LIVE TikTok.</p>
+        </div>
+
+        <div class="liveAssistantPlan">
+            <span id="liveAssistantPlanBadge">FREE</span>
+            <button id="closeLiveAssistant" class="liveAssistantClose">✖</button>
+        </div>
+    </div>
+
+    <div class="liveAssistantBody">
+
+        <section class="liveAssistantScoreCard">
+            <div
+                id="liveAssistantScoreRing"
+                class="liveAssistantScoreRing"
+                style="--score:0">
+                <div class="liveAssistantScoreInner">
+                    <strong id="liveAssistantScore">0</strong>
+                    <span>/ 100</span>
+                </div>
+            </div>
+
+            <div class="liveAssistantScoreInfo">
+                <div class="liveAssistantFreeTag">INCLUS EN FREE</div>
+                <h3>Score d'activité</h3>
+                <p id="liveAssistantLevel">En attente des données du LIVE…</p>
+                <small id="liveAssistantLastUpdate">Aucune analyse effectuée</small>
+            </div>
+
+            <label class="liveAssistantMasterSwitch">
+                <span>Assistant LIVE</span>
+                <input id="liveAssistantEnabled" type="checkbox" checked>
+                <span class="liveAssistantSlider"></span>
+            </label>
+        </section>
+
+        <div id="liveAssistantDropAlert" class="liveAssistantDropAlert">
+            <strong>🚨 Baisse d'activité détectée</strong>
+            <span id="liveAssistantDropText">
+                L'assistant vous préviendra lorsqu'une baisse importante sera détectée.
+            </span>
+        </div>
+
+        <section class="liveAssistantOptionsGrid">
+
+            <article class="liveAssistantOption">
+                <div class="liveAssistantOptionIcon">🚨</div>
+                <div class="liveAssistantOptionText">
+                    <div class="liveAssistantOptionTitle">
+                        Détection des baisses
+                        <span class="liveAssistantLock" data-live-feature="activityDetection">🔒 PRO</span>
+                    </div>
+                    <p>Détecte automatiquement une chute d'activité ou une période trop calme.</p>
+                </div>
+                <label class="liveAssistantSwitch">
+                    <input
+                        id="liveAssistantActivityDetection"
+                        data-pro-feature="activityDetection"
+                        type="checkbox">
+                    <span class="liveAssistantSlider"></span>
+                </label>
+            </article>
+
+            <article class="liveAssistantOption">
+                <div class="liveAssistantOptionIcon">🎯</div>
+                <div class="liveAssistantOptionText">
+                    <div class="liveAssistantOptionTitle">
+                        Suggestions automatiques
+                        <span class="liveAssistantLock" data-live-feature="suggestions">🔒 PRO</span>
+                    </div>
+                    <p>Propose une action adaptée : question, objectif, mini-jeu ou relance du chat.</p>
+                </div>
+                <label class="liveAssistantSwitch">
+                    <input
+                        id="liveAssistantSuggestions"
+                        data-pro-feature="suggestions"
+                        type="checkbox">
+                    <span class="liveAssistantSlider"></span>
+                </label>
+            </article>
+
+            <article class="liveAssistantOption">
+                <div class="liveAssistantOptionIcon">📈</div>
+                <div class="liveAssistantOptionText">
+                    <div class="liveAssistantOptionTitle">
+                        Graphiques en temps réel
+                        <span class="liveAssistantLock" data-live-feature="charts">🔒 PRO</span>
+                    </div>
+                    <p>Affiche les spectateurs, likes, messages et pièces reçues pendant le LIVE.</p>
+                </div>
+                <label class="liveAssistantSwitch">
+                    <input
+                        id="liveAssistantCharts"
+                        data-pro-feature="charts"
+                        type="checkbox">
+                    <span class="liveAssistantSlider"></span>
+                </label>
+            </article>
+
+            <article class="liveAssistantOption">
+                <div class="liveAssistantOptionIcon">🤖</div>
+                <div class="liveAssistantOptionText">
+                    <div class="liveAssistantOptionTitle">
+                        Mode IA
+                        <span class="liveAssistantLock" data-live-feature="ai">🔒 PRO</span>
+                    </div>
+                    <p>Analyse la situation et génère un conseil personnalisé pour votre LIVE.</p>
+                </div>
+                <label class="liveAssistantSwitch">
+                    <input
+                        id="liveAssistantAi"
+                        data-pro-feature="ai"
+                        type="checkbox">
+                    <span class="liveAssistantSlider"></span>
+                </label>
+            </article>
+
+            <article class="liveAssistantOption">
+                <div class="liveAssistantOptionIcon">👁️</div>
+                <div class="liveAssistantOptionText">
+                    <div class="liveAssistantOptionTitle">Alertes visuelles</div>
+                    <p>Affiche une alerte dans CreatorPilot lorsqu'une baisse est détectée.</p>
+                </div>
+                <label class="liveAssistantSwitch">
+                    <input id="liveAssistantVisualAlerts" type="checkbox" checked>
+                    <span class="liveAssistantSlider"></span>
+                </label>
+            </article>
+
+            <article class="liveAssistantOption">
+                <div class="liveAssistantOptionIcon">🔊</div>
+                <div class="liveAssistantOptionText">
+                    <div class="liveAssistantOptionTitle">
+                        Alertes sonores
+                        <span class="liveAssistantLock" data-live-feature="soundAlerts">🔒 PRO</span>
+                    </div>
+                    <p>Joue un signal sonore lorsqu'une baisse importante apparaît.</p>
+                </div>
+                <label class="liveAssistantSwitch">
+                    <input
+                        id="liveAssistantSoundAlerts"
+                        data-pro-feature="soundAlerts"
+                        type="checkbox">
+                    <span class="liveAssistantSlider"></span>
+                </label>
+            </article>
+
+            <article class="liveAssistantOption">
+                <div class="liveAssistantOptionIcon">🎮</div>
+                <div class="liveAssistantOptionText">
+                    <div class="liveAssistantOptionTitle">
+                        Conseils mini-jeux
+                        <span class="liveAssistantLock" data-live-feature="gameAdvice">🔒 PRO</span>
+                    </div>
+                    <p>Adapte les suggestions à Coin Match, Gift Battle et à la roue.</p>
+                </div>
+                <label class="liveAssistantSwitch">
+                    <input
+                        id="liveAssistantGameAdvice"
+                        data-pro-feature="gameAdvice"
+                        type="checkbox">
+                    <span class="liveAssistantSlider"></span>
+                </label>
+            </article>
+
+        </section>
+
+        <section class="liveAssistantAdviceCard">
+            <div class="liveAssistantAdviceHeader">
+                <div>
+                    <span class="liveAssistantAdviceLabel">🎯 CONSEIL ACTUEL</span>
+                    <h3 id="liveAssistantAdvice">
+                        Connectez-vous à votre LIVE TikTok pour commencer l'analyse.
+                    </h3>
+                </div>
+
+                <button id="liveAssistantGenerateAi" class="liveAssistantAiButton">
+                    🤖 Générer un conseil IA
+                    <span class="liveAssistantLock" data-live-feature="ai">🔒</span>
+                </button>
+            </div>
+        </section>
+
+        <section id="liveAssistantChartsArea" class="liveAssistantChartsArea">
+            <div class="liveAssistantSectionHeader">
+                <div>
+                    <span>📈 ANALYSE PRO</span>
+                    <h3>Graphiques en temps réel</h3>
+                </div>
+                <button id="liveAssistantReset">Réinitialiser</button>
+            </div>
+
+            <div class="liveAssistantMetrics">
+                <div><span>Spectateurs</span><strong id="liveMetricViewers">0</strong></div>
+                <div><span>Likes/min</span><strong id="liveMetricLikes">0</strong></div>
+                <div><span>Messages/min</span><strong id="liveMetricChat">0</strong></div>
+                <div><span>Pièces/min</span><strong id="liveMetricCoins">0</strong></div>
+                <div><span>Pic spectateurs</span><strong id="liveMetricPeak">0</strong></div>
+            </div>
+
+            <div class="liveAssistantCanvasWrap">
+                <canvas id="liveAssistantChart" width="1100" height="330"></canvas>
+                <div id="liveAssistantChartLock" class="liveAssistantChartLock">
+                    <span>🔒</span>
+                    <strong>Graphiques réservés à CreatorPilot Pro</strong>
+                    <button id="liveAssistantUpgrade">Passer à Pro</button>
+                </div>
+            </div>
+        </section>
+
+        <div class="liveAssistantFooter">
+            <span id="liveAssistantSaveStatus">Les options sont sauvegardées automatiquement.</span>
+            <button id="liveAssistantSave">💾 Sauvegarder les options</button>
+        </div>
+
+    </div>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
 <script src="app.js"></script>

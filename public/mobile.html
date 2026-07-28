@@ -16,9 +16,12 @@
 }
 
 body{
-    background:#0f1117;
-    color:white;
-    min-height:100vh;
+    background:
+linear-gradient(
+160deg,
+#171a24,
+#0f2020
+);
 }
 
 .header{
@@ -192,10 +195,10 @@ body{
 
 .mobile-search{
     width:100%;
-    padding:12px;
+    padding:14px;
     border:none;
-    border-radius:8px;
-    background:#2b3940;
+    border-radius:10px;
+    background:#324048;
     color:white;
     margin-bottom:12px;
 }
@@ -208,30 +211,62 @@ body{
 
 .alert-row{
     display:flex;
-    align-items:center;
     justify-content:space-between;
-    padding:14px;
-    border-bottom:1px solid rgba(255,255,255,0.08);
+    align-items:center;
+    padding:16px;
+    border-bottom:
+    1px solid rgba(
+        255,
+        255,
+        255,
+        0.06
+    );
 }
 
 .add-alert-btn{
     width:100%;
-    padding:15px;
+    padding:18px;
     background:none;
     border:none;
     color:#ffb000;
     font-weight:bold;
+    font-size:15px;
+}
+
+.mobile-input{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:8px;
+    background:#2b3940;
+    color:white;
+    margin-top:8px;
 }
 
 .bottom{
     position:fixed;
     bottom:0;
-    left:0;
-    right:0;
+    left:50%;
+    transform:translateX(-50%);
+    width:100%;
+    max-width:420px;
     background:#151922;
     display:flex;
     justify-content:space-around;
     padding:15px;
+}
+
+#alertsPage{
+    min-height:100vh;
+    background:linear-gradient(
+        160deg,
+        #151922,
+        #102421
+    );
+}
+
+.alert-row{
+    height:58px;
 }
 
 .bottom button{
@@ -246,51 +281,67 @@ body{
 <body>
 
 <div class="header">
-    <div class="avatar">C</div>
-    <div class="title">CreatorPilot Mobile</div>
+
+    <div style="
+        position:relative;
+    ">
+
+        <div class="avatar">
+            C
+
+         </div>
+
+    <div class="title">
+        CreatorPilot Mobile
+    </div>
+
 </div>
 
-<div id="homePage" class="page"><div class="home-card">
-    <div class="home-top">
-        <div class="home-icon">🔊</div>
-        <div class="home-title">Alertes sonores</div>
-        <div class="switch" onclick="toggleSounds()"></div>
+<div id="homePage" class="page">
+
+    <div class="home-card">
+        <div class="home-top">
+            <div class="home-icon">🔊</div>
+            <div class="home-title">Alertes sonores</div>
+            <div class="switch" onclick="toggleSounds()"></div>
+        </div>
+
+        <p class="home-desc">
+            Les alertes sonores sont des sons amusants qui apparaissent lorsque des événements TikTok se produisent.
+        </p>
+
+        <div class="home-footer">
+            <span>🔔 <span id="soundCount">0</span>/75</span>
+            <button onclick="showMobileTab('alerts')">
+                Modifier les alertes sonores →
+            </button>
+        </div>
     </div>
 
-    <p class="home-desc">
-        Les alertes sonores sont des sons amusants qui apparaissent lorsque des événements TikTok se produisent.
-    </p>
+    <div class="home-card">
+        <div class="home-top">
+            <div class="home-icon">🎙️</div>
+            <div class="home-title">Synthèse vocale</div>
+            <div class="switch" onclick="toggleTts()"></div>
+        </div>
 
-    <div class="home-footer">
-        <span>🔔 <span id="soundCount">0</span>/75</span>
-        <button onclick="showPage('alerts')">
-            Modifier les alertes sonores →
-        </button>
+        <p class="home-desc">
+            La synthèse vocale permet à une voix IA de lire les messages texte écrits par vos spectateurs.
+        </p>
+
+        <div class="home-footer">
+            <span>🎧 75/75</span>
+            <button onclick="showPage('tts')">
+                Modifier la synthèse vocale →
+            </button>
+        </div>
     </div>
+
+    <button class="start-btn" onclick="startMobileFeatures()">
+        ▶ Démarrer les alertes sonores et la synthèse vocale
+    </button>
+
 </div>
-
-<div class="home-card">
-    <div class="home-top">
-        <div class="home-icon">🎙️</div>
-        <div class="home-title">Synthèse vocale</div>
-        <div class="switch" onclick="toggleTts()"></div>
-    </div>
-
-    <p class="home-desc">
-        La synthèse vocale permet à une voix IA de lire les messages texte écrits par vos spectateurs.
-    </p>
-
-    <div class="home-footer">
-        <span>🎧 75/75</span>
-        <button onclick="showPage('tts')">
-            Modifier la synthèse vocale →
-        </button>
-    </div>
-</div>
-
-<button class="start-btn" onclick="startMobileFeatures()">
-    ▶ Démarrer les alertes sonores et la synthèse vocale
-</button>
 
 <div id="alertsPage" class="page" style="display:none;">
 
@@ -299,30 +350,99 @@ body{
         placeholder="🔍 Recherche ..."
     >
 
-    <div class="alert-list">
+    <div id="mobileAlertsList" class="alert-list">
 
-        <div class="alert-row">
-            <span>🎁 Tout cadeau</span>
-            <div class="switch"></div>
-        </div>
+        <div class="alert-row" onclick="openAlertEditor('gift')">
+    <span>🎁 Tout cadeau</span>
+    <div class="switch alert-switch"></div>
+</div>
 
-        <div class="alert-row">
-            <span>👤 Suivre</span>
-            <div class="switch"></div>
-        </div>
+<div class="alert-row" onclick="openAlertEditor('follow')">
+    <span>👤 Suivre</span>
+    <div class="switch alert-switch"></div>
+</div>
 
-        <div class="alert-row">
-            <span>⭐ S'abonner</span>
-            <div class="switch"></div>
-        </div>
+<div class="alert-row" onclick="openAlertEditor('subscribe')">
+    <span>⭐ S'abonner</span>
+    <div class="switch alert-switch"></div>
+</div>
 
-        <button class="add-alert-btn">
-            + Ajouter une nouvelle alerte sonore
-        </button>
+<div class="alert-row" onclick="openAlertEditor('like')">
+    <span>❤️ Like</span>
+    <div class="switch alert-switch"></div>
+</div>
+
+<div class="alert-row" onclick="openAlertEditor('share')">
+    <span>📢 Partage</span>
+    <div class="switch alert-switch"></div>
+</div>
+
+        <button
+    class="add-alert-btn"
+    onclick="openAlertEditor()">
+    + Ajouter une nouvelle alerte sonore
+</button>
 
     </div>
 
 </div>
+
+<div id="alertEditorPage" class="page" style="display:none;">
+
+    <h3>🔔 Nouvelle alerte sonore</h3>
+
+    <div class="home-card">
+
+        <label>Déclencheur</label>
+
+        <select id="mobileAlertTrigger" class="mobile-input">
+            <option value="gift">🎁 Cadeau TikTok</option>
+            <option value="follow">👤 Follow</option>
+            <option value="like">❤️ Like</option>
+            <option value="share">📢 Partage</option>
+            <option value="subscribe">⭐ Abonnement</option>
+        </select>
+
+        <br><br>
+
+        <label>Son</label>
+
+        <input
+            type="file"
+            id="mobileAlertSound"
+            class="mobile-input"
+            accept=".mp3,.wav,.ogg">
+
+        <br><br>
+
+        <label>Volume</label>
+
+        <input
+            type="range"
+            id="mobileAlertVolume"
+            min="0"
+            max="100"
+            value="100"
+            class="mobile-input">
+
+        <br><br>
+
+        <button class="big-btn" onclick="previewMobileAlertSound()">
+            ▶ Aperçu du son
+        </button>
+
+        <br><br>
+
+        <button class="big-btn" onclick="saveMobileAlert()">
+            💾 Sauvegarder l'alerte
+        </button>
+
+        <br><br>
+
+<button class="big-btn" onclick="deleteMobileAlert()">
+    🗑 Supprimer cette alerte
+</button>
+    </div>
 
 </div>
 
@@ -340,46 +460,107 @@ body{
 
 <script>
 
+    let mobileAlerts = [];
+let currentAlertTrigger = "gift";
+
 async function toggleSounds(){
-
-    await fetch(
-        "/api/mobile/sounds/toggle",
-        {
-            method:"POST"
-        }
-    );
-
+    await fetch("/api/mobile/sounds/toggle", { method:"POST" });
     loadStatus();
-
 }
 
 async function toggleTts(){
-
-    await fetch(
-        "/api/mobile/tts/toggle",
-        {
-            method:"POST"
-        }
-    );
-
+    await fetch("/api/mobile/tts/toggle", { method:"POST" });
     loadStatus();
-
 }
 
 function showMobileTab(tab){
-
-    const homePage =
-        document.getElementById("homePage");
-
-    const alertsPage =
-        document.getElementById("alertsPage");
-
-    homePage.style.display =
+    document.getElementById("homePage").style.display =
         tab === "home" ? "block" : "none";
 
-    alertsPage.style.display =
+    document.getElementById("alertsPage").style.display =
         tab === "alerts" ? "block" : "none";
 
+    document.getElementById("alertEditorPage").style.display =
+        "none";
+}
+function openAlertEditor(trigger = "gift"){
+
+    currentAlertTrigger =
+        trigger;
+
+    const alertData =
+        mobileAlerts.find(alert =>
+            alert.trigger === trigger
+        );
+
+    document.getElementById("homePage").style.display =
+        "none";
+
+    document.getElementById("alertsPage").style.display =
+        "none";
+
+    document.getElementById("alertEditorPage").style.display =
+        "block";
+
+    document.getElementById("mobileAlertTrigger").value =
+        trigger;
+
+    document.getElementById("mobileAlertVolume").value =
+        alertData?.volume || 100;
+
+}
+
+let mobilePreviewAudio = null;
+
+function previewMobileAlertSound(){
+    const file = document.getElementById("mobileAlertSound").files[0];
+
+    if(!file){
+        alert("Choisis un son d'abord");
+        return;
+    }
+
+    const url = URL.createObjectURL(file);
+
+    if(mobilePreviewAudio){
+        mobilePreviewAudio.pause();
+    }
+
+    mobilePreviewAudio = new Audio(url);
+    mobilePreviewAudio.volume =
+        Number(document.getElementById("mobileAlertVolume").value) / 100;
+
+    mobilePreviewAudio.play();
+}
+
+async function saveMobileAlert(){
+    const file = document.getElementById("mobileAlertSound").files[0];
+
+    if(!file){
+        alert("Choisis un son");
+        return;
+    }
+
+    const formData = new FormData();
+
+    formData.append("trigger", document.getElementById("mobileAlertTrigger").value);
+    formData.append("volume", document.getElementById("mobileAlertVolume").value);
+    formData.append("sound", file);
+
+    const response = await fetch("/api/mobile/alerts/add", {
+        method:"POST",
+        body:formData
+    });
+
+    const data = await response.json();
+
+    if(data.success){
+        alert("Alerte sauvegardée !");
+        loadStatus();
+        showMobileTab("alerts");
+    }else{
+        alert("Erreur sauvegarde");
+    }
 }
 
 function showPage(page){
@@ -391,18 +572,13 @@ function startMobileFeatures(){
 }
 
 async function loadStatus(){
-
-    const response =
-        await fetch("/api/mobile/status");
-
-    const data =
-        await response.json();
+    const response = await fetch("/api/mobile/status");
+    const data = await response.json();
 
     document.getElementById("soundCount").innerText =
         data.soundAlerts || 0;
 
-    const switches =
-        document.querySelectorAll(".switch");
+    const switches = document.querySelectorAll(".switch");
 
     if(data.soundsEnabled){
         switches[0].classList.remove("off");
@@ -415,10 +591,111 @@ async function loadStatus(){
     }else{
         switches[1].classList.add("off");
     }
+}
+
+async function deleteMobileAlert(){
+
+    const response =
+        await fetch(
+            "/api/mobile/alerts/delete",
+            {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+                    trigger: currentAlertTrigger
+                })
+            }
+        );
+
+    const data =
+        await response.json();
+
+        mobileAlerts =
+    data.alerts || [];
+
+    if(data.success){
+        alert("Alerte supprimée");
+        loadStatus();
+        showMobileTab("alerts");
+    }else{
+        alert("Erreur suppression");
+    }
 
 }
 
+async function loadAlerts(){
+
+    const response =
+        await fetch("/api/mobile/alerts");
+
+    const data =
+        await response.json();
+
+    const list =
+    document.getElementById("mobileAlertsList");
+
+list.innerHTML = "";
+
+data.alerts.forEach(alert => {
+
+    const row =
+        document.createElement("div");
+
+    row.className = "alert-row";
+
+    row.innerHTML =
+        `
+        <span>${getAlertIcon(alert.trigger)} ${getAlertName(alert.trigger)}</span>
+        <div class="switch ${alert.enabled ? "" : "off"}"></div>
+        `;
+
+    row.onclick = () => {
+        openAlertEditor(alert.trigger);
+    };
+
+    list.appendChild(row);
+
+});
+const addButton =
+    document.createElement("button");
+
+addButton.className =
+    "add-alert-btn";
+
+addButton.innerText =
+    "+ Ajouter une nouvelle alerte sonore";
+
+addButton.onclick = () => {
+    openAlertEditor();
+};
+
+list.appendChild(addButton);
+}
+
+function getAlertIcon(trigger){
+    return {
+        gift:"🎁",
+        follow:"👤",
+        subscribe:"⭐",
+        like:"❤️",
+        share:"📢"
+    }[trigger] || "🔔";
+}
+
+function getAlertName(trigger){
+    return {
+        gift:"Tout cadeau",
+        follow:"Suivre",
+        subscribe:"S'abonner",
+        like:"Like",
+        share:"Partage"
+    }[trigger] || trigger;
+}
+
 loadStatus();
+loadAlerts();
 
 </script>
 

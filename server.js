@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -598,12 +600,680 @@ function saveSettingsFile() {
 
 }
 
+
+/* ==========================================================
+   CREATORPILOT - ASSISTANT LIVE
+   FREE : score d'activité
+   PRO  : détection, suggestions, graphiques et mode IA
+   ========================================================== */
+
+const LIVE_ASSISTANT_DEFAULTS = {
+    enabled: true,
+
+    // Disponible en version gratuite
+    scoreEnabled: true,
+
+    // Fonctionnalités CreatorPilot Pro
+    activityDetectionEnabled: false,
+    suggestionsEnabled: false,
+    chartsEnabled: false,
+    aiEnabled: false,
+
+    visualAlertsEnabled: true,
+    soundAlertsEnabled: false,
+    gameAdviceEnabled: true,
+
+    sampleIntervalSeconds: 10,
+    historyMinutes: 60,
+    dropThreshold: 18,
+    quietSeconds: 90
+};
+
+function ensureLiveAssistantSettings() {
+    settings.liveAssistant = {
+        ...LIVE_ASSISTANT_DEFAULTS,
+        ...(settings.liveAssistant || {})
+    };
+}
+
+ensureLiveAssistantSettings();
+
+const liveAssistant = {
+    startedAt: Date.now(),
+    lastActivityAt: Date.now(),
+    lastSampleAt: Date.now(),
+
+    currentViewers: 0,
+    peakViewers: 0,
+
+    currentBucket: {
+        chat: 0,
+        likes: 0,
+        coins: 0,
+        gifts: 0,
+        follows: 0,
+        shares: 0
+    },
+
+    totals: {
+        chat: 0,
+        likes: 0,
+        coins: 0,
+        gifts: 0,
+        follows: 0,
+        shares: 0
+    },
+
+    score: 0,
+    level: "calme",
+    dropDetected: false,
+    dropSince: null,
+    suggestion: "Connectez-vous à un LIVE TikTok pour commencer l'analyse.",
+    history: [],
+    lastAiAdvice: "",
+    lastAiAdviceAt: null
+};
+
+function clampLiveAssistant(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
+function normaliseLiveAssistantMetric(value, target) {
+    if (!target || target <= 0) {
+        return 0;
+    }
+
+    return clampLiveAssistant(
+        (Number(value || 0) / target) * 100,
+        0,
+        100
+    );
+}
+
+function recordLiveAssistantEvent(type, amount = 1) {
+    ensureLiveAssistantSettings();
+
+    if (!settings.liveAssistant.enabled) {
+        return;
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(
+        liveAssistant.currentBucket,
+        type
+    )) {
+        return;
+    }
+
+    const safeAmount = Math.max(0, Number(amount || 0));
+
+    liveAssistant.currentBucket[type] += safeAmount;
+    liveAssistant.totals[type] += safeAmount;
+
+    if (safeAmount > 0) {
+        liveAssistant.lastActivityAt = Date.now();
+    }
+}
+
+function updateLiveAssistantViewers(viewers) {
+    const safeViewers = Math.max(0, Number(viewers || 0));
+
+    liveAssistant.currentViewers = safeViewers;
+    liveAssistant.peakViewers = Math.max(
+        liveAssistant.peakViewers,
+        safeViewers
+    );
+}
+
+function buildLiveAssistantSuggestion(snapshot) {
+    if (snapshot.chatPerMinute < 2) {
+        return "Posez une question simple au chat pour relancer les messages.";
+    }
+
+    if (snapshot.likesPerMinute < 30) {
+        return "Rappelez votre objectif de likes et invitez les spectateurs à participer.";
+    }
+
+    if (
+        snapshot.coinsPerMinute < 1 &&
+        settings.liveAssistant?.gameAdviceEnabled !== false
+    ) {
+        return "Lancez un mini-jeu ou une roue pour créer une nouvelle interaction.";
+    }
+
+    if (snapshot.followPerMinute < 0.3) {
+        return "Présentez rapidement le live aux nouveaux spectateurs et rappelez pourquoi s'abonner.";
+    }
+
+    return "L'activité est bonne. Continuez l'animation qui fonctionne actuellement.";
+}
+
+function calculateLiveAssistantSnapshot() {
+    ensureLiveAssistantSettings();
+
+    const now = Date.now();
+    const elapsedSeconds = Math.max(
+        1,
+        (now - liveAssistant.lastSampleAt) / 1000
+    );
+    const minuteFactor = 60 / elapsedSeconds;
+    const bucket = liveAssistant.currentBucket;
+
+    const snapshot = {
+        timestamp: now,
+        timeLabel: new Date(now).toLocaleTimeString(
+            "fr-FR",
+            {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit"
+            }
+        ),
+
+        viewers: liveAssistant.currentViewers,
+        chatPerMinute: Math.round(bucket.chat * minuteFactor * 10) / 10,
+        likesPerMinute: Math.round(bucket.likes * minuteFactor),
+        coinsPerMinute: Math.round(bucket.coins * minuteFactor * 10) / 10,
+        giftsPerMinute: Math.round(bucket.gifts * minuteFactor * 10) / 10,
+        followPerMinute: Math.round(bucket.follows * minuteFactor * 10) / 10,
+        sharesPerMinute: Math.round(bucket.shares * minuteFactor * 10) / 10
+    };
+
+    /*
+       Score sur 100 :
+       - chat : 25 points
+       - likes : 25 points
+       - cadeaux/pièces : 20 points
+       - follows : 15 points
+       - partages : 5 points
+       - spectateurs : 10 points
+    */
+    const score = Math.round(
+        normaliseLiveAssistantMetric(snapshot.chatPerMinute, 12) * 0.25 +
+        normaliseLiveAssistantMetric(snapshot.likesPerMinute, 500) * 0.25 +
+        normaliseLiveAssistantMetric(snapshot.coinsPerMinute, 60) * 0.20 +
+        normaliseLiveAssistantMetric(snapshot.followPerMinute, 3) * 0.15 +
+        normaliseLiveAssistantMetric(snapshot.sharesPerMinute, 2) * 0.05 +
+        normaliseLiveAssistantMetric(snapshot.viewers, 100) * 0.10
+    );
+
+    liveAssistant.score = clampLiveAssistant(score, 0, 100);
+
+    liveAssistant.level =
+        liveAssistant.score >= 70
+            ? "élevée"
+            : liveAssistant.score >= 40
+                ? "moyenne"
+                : "faible";
+
+    snapshot.score = liveAssistant.score;
+    snapshot.level = liveAssistant.level;
+
+    const previousSnapshots = liveAssistant.history.slice(-3);
+    const previousAverage = previousSnapshots.length
+        ? previousSnapshots.reduce(
+            (total, item) => total + Number(item.score || 0),
+            0
+        ) / previousSnapshots.length
+        : liveAssistant.score;
+
+    const scoreDrop = previousAverage - liveAssistant.score;
+    const quietDurationSeconds = Math.floor(
+        (now - liveAssistant.lastActivityAt) / 1000
+    );
+
+    const detectionEnabled =
+        settings.liveAssistant.activityDetectionEnabled === true;
+
+    const dropDetected =
+        detectionEnabled &&
+        (
+            scoreDrop >= Number(
+                settings.liveAssistant.dropThreshold || 18
+            ) ||
+            quietDurationSeconds >= Number(
+                settings.liveAssistant.quietSeconds || 90
+            )
+        );
+
+    if (dropDetected && !liveAssistant.dropDetected) {
+        liveAssistant.dropSince = now;
+    }
+
+    if (!dropDetected) {
+        liveAssistant.dropSince = null;
+    }
+
+    liveAssistant.dropDetected = dropDetected;
+
+    if (
+        settings.liveAssistant.suggestionsEnabled === true
+    ) {
+        liveAssistant.suggestion =
+            buildLiveAssistantSuggestion(snapshot);
+    } else {
+        liveAssistant.suggestion = "";
+    }
+
+    snapshot.dropDetected = liveAssistant.dropDetected;
+    snapshot.dropSince = liveAssistant.dropSince;
+    snapshot.quietDurationSeconds = quietDurationSeconds;
+    snapshot.suggestion = liveAssistant.suggestion;
+
+    liveAssistant.history.push(snapshot);
+
+    const maximumSamples = Math.max(
+        30,
+        Math.ceil(
+            (
+                Number(settings.liveAssistant.historyMinutes || 60) *
+                60
+            ) /
+            Number(settings.liveAssistant.sampleIntervalSeconds || 10)
+        )
+    );
+
+    if (liveAssistant.history.length > maximumSamples) {
+        liveAssistant.history.splice(
+            0,
+            liveAssistant.history.length - maximumSamples
+        );
+    }
+
+    liveAssistant.currentBucket = {
+        chat: 0,
+        likes: 0,
+        coins: 0,
+        gifts: 0,
+        follows: 0,
+        shares: 0
+    };
+
+    liveAssistant.lastSampleAt = now;
+
+    io.emit("live-assistant-update", {
+        score: liveAssistant.score,
+        level: liveAssistant.level,
+        dropDetected: liveAssistant.dropDetected,
+        suggestion: liveAssistant.suggestion,
+        latest: snapshot
+    });
+
+    if (
+        liveAssistant.dropDetected &&
+        settings.liveAssistant.visualAlertsEnabled === true
+    ) {
+        io.emit("live-assistant-alert", {
+            type: "activity-drop",
+            message: liveAssistant.suggestion ||
+                "L'activité du LIVE est en baisse."
+        });
+    }
+
+    return snapshot;
+}
+
+setInterval(() => {
+    if (settings.liveAssistant?.enabled !== false) {
+        calculateLiveAssistantSnapshot();
+    }
+}, 10000);
+
+async function userHasLiveAssistantPro(req) {
+    const email = String(
+        req.body?.email ||
+        req.query?.email ||
+        ""
+    )
+        .toLowerCase()
+        .trim();
+
+    if (process.env.DATABASE_URL && email) {
+        try {
+            const result = await pool.query(
+                "SELECT pro FROM pro_users WHERE email = $1",
+                [email]
+            );
+
+            return result.rows[0]?.pro === true;
+        } catch (error) {
+            console.log(
+                "Erreur vérification Pro Assistant LIVE :",
+                error.message
+            );
+        }
+    }
+
+    return settings.pro === true;
+}
+
+function publicLiveAssistantSettings(isPro) {
+    ensureLiveAssistantSettings();
+
+    return {
+        enabled: settings.liveAssistant.enabled !== false,
+        scoreEnabled: true,
+
+        activityDetectionEnabled:
+            isPro &&
+            settings.liveAssistant.activityDetectionEnabled === true,
+
+        suggestionsEnabled:
+            isPro &&
+            settings.liveAssistant.suggestionsEnabled === true,
+
+        chartsEnabled:
+            isPro &&
+            settings.liveAssistant.chartsEnabled === true,
+
+        aiEnabled:
+            isPro &&
+            settings.liveAssistant.aiEnabled === true,
+
+        visualAlertsEnabled:
+            settings.liveAssistant.visualAlertsEnabled !== false,
+
+        soundAlertsEnabled:
+            isPro &&
+            settings.liveAssistant.soundAlertsEnabled === true,
+
+        gameAdviceEnabled:
+            isPro &&
+            settings.liveAssistant.gameAdviceEnabled !== false
+    };
+}
+
+app.get("/api/live-assistant/status", async (req, res) => {
+    const isPro = await userHasLiveAssistantPro(req);
+    const options = publicLiveAssistantSettings(isPro);
+    const latest = liveAssistant.history.at(-1) || null;
+
+    res.json({
+        success: true,
+        pro: isPro,
+        access: {
+            score: true,
+            activityDetection: isPro,
+            suggestions: isPro,
+            charts: isPro,
+            ai: isPro,
+            soundAlerts: isPro,
+            gameAdvice: isPro
+        },
+        options,
+        score: liveAssistant.score,
+        level: liveAssistant.level,
+        dropDetected:
+            isPro ? liveAssistant.dropDetected : false,
+        dropSince:
+            isPro ? liveAssistant.dropSince : null,
+        suggestion:
+            isPro ? liveAssistant.suggestion : "",
+        latest: options.chartsEnabled ? latest : {
+            score: liveAssistant.score,
+            level: liveAssistant.level
+        },
+        totals: options.chartsEnabled
+            ? liveAssistant.totals
+            : undefined,
+        peakViewers: options.chartsEnabled
+            ? liveAssistant.peakViewers
+            : undefined,
+        lastAiAdvice:
+            isPro ? liveAssistant.lastAiAdvice : ""
+    });
+});
+
+app.get("/api/live-assistant/history", async (req, res) => {
+    const isPro = await userHasLiveAssistantPro(req);
+
+    if (!isPro) {
+        return res.status(403).json({
+            success: false,
+            locked: true,
+            feature: "charts",
+            error: "Les graphiques en temps réel sont réservés à CreatorPilot Pro."
+        });
+    }
+
+    res.json({
+        success: true,
+        history: liveAssistant.history
+    });
+});
+
+app.post("/api/live-assistant/settings", async (req, res) => {
+    ensureLiveAssistantSettings();
+
+    const isPro = await userHasLiveAssistantPro(req);
+    const incoming = req.body?.settings || req.body || {};
+
+    // Le score reste toujours disponible en Free.
+    settings.liveAssistant.enabled =
+        incoming.enabled !== false;
+    settings.liveAssistant.scoreEnabled = true;
+
+    settings.liveAssistant.visualAlertsEnabled =
+        incoming.visualAlertsEnabled !== false;
+
+    if (isPro) {
+        settings.liveAssistant.activityDetectionEnabled =
+            incoming.activityDetectionEnabled === true;
+
+        settings.liveAssistant.suggestionsEnabled =
+            incoming.suggestionsEnabled === true;
+
+        settings.liveAssistant.chartsEnabled =
+            incoming.chartsEnabled === true;
+
+        settings.liveAssistant.aiEnabled =
+            incoming.aiEnabled === true;
+
+        settings.liveAssistant.soundAlertsEnabled =
+            incoming.soundAlertsEnabled === true;
+
+        settings.liveAssistant.gameAdviceEnabled =
+            incoming.gameAdviceEnabled !== false;
+    } else {
+        settings.liveAssistant.activityDetectionEnabled = false;
+        settings.liveAssistant.suggestionsEnabled = false;
+        settings.liveAssistant.chartsEnabled = false;
+        settings.liveAssistant.aiEnabled = false;
+        settings.liveAssistant.soundAlertsEnabled = false;
+        settings.liveAssistant.gameAdviceEnabled = false;
+    }
+
+    saveSettingsFile();
+
+    res.json({
+        success: true,
+        pro: isPro,
+        options: publicLiveAssistantSettings(isPro)
+    });
+});
+
+app.post("/api/live-assistant/reset", async (req, res) => {
+    const isPro = await userHasLiveAssistantPro(req);
+
+    if (!isPro) {
+        return res.status(403).json({
+            success: false,
+            locked: true,
+            error: "La réinitialisation avancée est réservée à CreatorPilot Pro."
+        });
+    }
+
+    liveAssistant.startedAt = Date.now();
+    liveAssistant.lastActivityAt = Date.now();
+    liveAssistant.lastSampleAt = Date.now();
+    liveAssistant.currentViewers = 0;
+    liveAssistant.peakViewers = 0;
+    liveAssistant.score = 0;
+    liveAssistant.level = "calme";
+    liveAssistant.dropDetected = false;
+    liveAssistant.dropSince = null;
+    liveAssistant.suggestion = "";
+    liveAssistant.history = [];
+    liveAssistant.lastAiAdvice = "";
+    liveAssistant.lastAiAdviceAt = null;
+
+    liveAssistant.currentBucket = {
+        chat: 0,
+        likes: 0,
+        coins: 0,
+        gifts: 0,
+        follows: 0,
+        shares: 0
+    };
+
+    liveAssistant.totals = {
+        chat: 0,
+        likes: 0,
+        coins: 0,
+        gifts: 0,
+        follows: 0,
+        shares: 0
+    };
+
+    res.json({
+        success: true
+    });
+});
+
+app.post("/api/live-assistant/ai-advice", async (req, res) => {
+    const isPro = await userHasLiveAssistantPro(req);
+
+    if (!isPro) {
+        return res.status(403).json({
+            success: false,
+            locked: true,
+            feature: "ai",
+            error: "Le mode IA est réservé à CreatorPilot Pro."
+        });
+    }
+
+    if (settings.liveAssistant?.aiEnabled !== true) {
+        return res.status(400).json({
+            success: false,
+            error: "Activez d'abord le mode IA."
+        });
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({
+            success: false,
+            error: "OPENAI_API_KEY manquante."
+        });
+    }
+
+    try {
+        const latest = liveAssistant.history.at(-1) || {};
+        const activeGame =
+            coinMatch?.active
+                ? "Coin Match"
+                : giftBattle?.active
+                    ? "Gift Battle"
+                    : "Aucun";
+
+        const prompt = [
+            "Tu es l'assistant LIVE de CreatorPilot.",
+            "Donne un seul conseil concret en français, en 2 phrases maximum.",
+            "Le conseil doit améliorer naturellement l'engagement sans faux likes, faux spectateurs ni automatisation trompeuse.",
+            "",
+            "Données actuelles :",
+            JSON.stringify({
+                score: liveAssistant.score,
+                niveau: liveAssistant.level,
+                spectateurs: liveAssistant.currentViewers,
+                picSpectateurs: liveAssistant.peakViewers,
+                messagesParMinute: latest.chatPerMinute || 0,
+                likesParMinute: latest.likesPerMinute || 0,
+                piecesParMinute: latest.coinsPerMinute || 0,
+                followsParMinute: latest.followPerMinute || 0,
+                partagesParMinute: latest.sharesPerMinute || 0,
+                baisseDetectee: liveAssistant.dropDetected,
+                dureeCalmeSecondes: latest.quietDurationSeconds || 0,
+                miniJeuActif: activeGame
+            })
+        ].join("\n");
+
+        const openAiResponse = await fetch(
+            "https://api.openai.com/v1/responses",
+            {
+                method: "POST",
+                headers: {
+                    "Authorization":
+                        "Bearer " + process.env.OPENAI_API_KEY,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model:
+                        process.env.OPENAI_LIVE_ASSISTANT_MODEL ||
+                        "gpt-5",
+                    input: prompt,
+                    max_output_tokens: 120
+                })
+            }
+        );
+
+        const result = await openAiResponse.json();
+
+        if (!openAiResponse.ok) {
+            throw new Error(
+                result.error?.message ||
+                "Erreur OpenAI"
+            );
+        }
+
+        const advice =
+            result.output_text ||
+            (result.output || [])
+                .flatMap(item => item.content || [])
+                .filter(item => item.type === "output_text")
+                .map(item => item.text)
+                .join("\n")
+                .trim();
+
+        liveAssistant.lastAiAdvice =
+            advice || buildLiveAssistantSuggestion(latest);
+
+        liveAssistant.lastAiAdviceAt = Date.now();
+
+        res.json({
+            success: true,
+            advice: liveAssistant.lastAiAdvice,
+            generatedAt: liveAssistant.lastAiAdviceAt
+        });
+    } catch (error) {
+        console.log(
+            "Erreur IA Assistant LIVE :",
+            error
+        );
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+
 app.get("/settings", (req, res) => {
     res.json(settings);
 });
 
 app.post("/settings", (req, res) => {
-    settings = req.body;
+    const previousLiveAssistant =
+        settings.liveAssistant || {};
+
+    settings = req.body || {};
+
+    settings.liveAssistant = {
+        ...LIVE_ASSISTANT_DEFAULTS,
+        ...previousLiveAssistant,
+        ...(settings.liveAssistant || {}),
+        scoreEnabled: true
+    };
+
     saveSettingsFile();
 
     res.json({
@@ -634,6 +1304,115 @@ app.post("/api/mobile/sounds/toggle", (req, res) => {
     res.json({
         success: true,
         soundsEnabled: settings.soundsEnabled
+    });
+
+});
+
+app.post("/api/mobile/alerts/add", upload.single("sound"), (req, res) => {
+
+    settings.soundAlerts =
+        settings.soundAlerts || [];
+
+    const trigger =
+        req.body.trigger || "gift";
+
+    const volume =
+        Number(req.body.volume || 100);
+
+    const filename =
+        req.file ? req.file.filename : "";
+
+    const existingAlert =
+    settings.soundAlerts.find(alert =>
+        alert.trigger === trigger
+    );
+
+if (existingAlert) {
+
+    existingAlert.enabled = true;
+    existingAlert.volume = volume;
+
+    if (filename) {
+        existingAlert.sound = filename;
+    }
+
+} else {
+
+    settings.soundAlerts.push({
+        enabled: true,
+        trigger,
+        sound: filename,
+        volume
+    });
+
+}
+
+    saveSettingsFile();
+
+    res.json({
+        success: true,
+        soundAlerts: settings.soundAlerts
+    });
+
+});
+
+app.post("/api/mobile/alerts/delete", (req, res) => {
+
+    const trigger =
+        req.body.trigger;
+
+    settings.soundAlerts =
+        settings.soundAlerts || [];
+
+    settings.soundAlerts =
+        settings.soundAlerts.filter(alert =>
+            alert.trigger !== trigger
+        );
+
+    saveSettingsFile();
+
+    res.json({
+        success: true,
+        soundAlerts: settings.soundAlerts
+    });
+
+});
+
+app.get("/api/mobile/alerts", (req, res) => {
+
+    const defaultTriggers = [
+        "gift",
+        "follow",
+        "subscribe",
+        "like",
+        "share"
+    ];
+
+    const uniqueAlerts = {};
+
+    (settings.soundAlerts || []).forEach(alert => {
+        uniqueAlerts[alert.trigger] = alert;
+    });
+
+    defaultTriggers.forEach(trigger => {
+        if (!uniqueAlerts[trigger]) {
+            uniqueAlerts[trigger] = {
+                enabled: true,
+                trigger,
+                sound: "",
+                volume: 100
+            };
+        }
+    });
+
+    settings.soundAlerts =
+        defaultTriggers.map(trigger => uniqueAlerts[trigger]);
+
+    saveSettingsFile();
+
+    res.json({
+        success: true,
+        alerts: settings.soundAlerts
     });
 
 });
@@ -745,43 +1524,24 @@ console.log("SETTINGS TIKTOK :", settings.tiktokUsername);
 
 /* TIKTOK */
 
-const tiktokUsername =
-    settings.tiktokUsername
-        ? settings.tiktokUsername.replace("@", "").trim()
-        : "";
-
-        console.log("TIKTOK USER FINAL :", tiktokUsername);
+/* CONNEXION TIKTOK LOCALE
+   Chaque installation se connecte uniquement
+   lorsque son utilisateur clique sur Connexion.
+*/
 
 let tiktok = null;
 
-if (tiktokUsername) {
-
-    tiktok = new WebcastPushConnection(tiktokUsername);
-
-    bindTikTokEvents(tiktok);
-
-    console.log("Compte TikTok configuré :", tiktokUsername);
-
-    tiktok.connect()
-        .then(state => {
-            console.log("Connecté au live TikTok :", state.roomId);
-        })
-        .catch(error => {
-            console.log("Erreur connexion TikTok :", error);
-        });
-
-} else {
-    console.log("Aucun compte TikTok configuré");
-}
+console.log(
+    "TikTok en attente : aucune connexion automatique au démarrage"
+);
 
 app.post("/connect-tiktok", async (req, res) => {
 
     try {
 
-        const username =
-            (req.body.username || "")
-                .replace("@", "")
-                .trim();
+        const username = String(req.body.username || "")
+            .replaceAll("@", "")
+            .trim();
 
         if (!username) {
             return res.json({
@@ -790,33 +1550,35 @@ app.post("/connect-tiktok", async (req, res) => {
             });
         }
 
-        settings.tiktokUsername = username;
-        saveSettingsFile();
-
         if (tiktok) {
+            try {
+                tiktok.removeAllListeners();
+                await tiktok.disconnect();
+            } catch (error) {
+                console.log(
+                    "Ancienne connexion TikTok déjà fermée :",
+                    error.message
+                );
+            }
 
-    try {
-        tiktok.removeAllListeners();
-        await tiktok.disconnect();
-    } catch {}
+            tiktok = null;
+        }
 
-}
-
-        tiktok =
-            new WebcastPushConnection(username);
+        tiktok = new WebcastPushConnection(username);
 
         bindTikTokEvents(tiktok);
 
-        const state =
-            await tiktok.connect();
+        const state = await tiktok.connect();
 
         console.log(
-            "Connecté au live TikTok :",
-            username
+            "Connecté au live TikTok : @" + username,
+            "Room ID :",
+            state.roomId
         );
 
-        res.json({
+        return res.json({
             success: true,
+            username: username,
             roomId: state.roomId
         });
 
@@ -827,16 +1589,24 @@ app.post("/connect-tiktok", async (req, res) => {
             error
         );
 
-        res.json({
+        if (tiktok) {
+            try {
+                tiktok.removeAllListeners();
+                await tiktok.disconnect();
+            } catch {}
+        }
+
+        tiktok = null;
+
+        return res.json({
             success: false,
             error:
                 error.message ||
                 "Erreur TikTok"
         });
-
     }
-
 });
+
 
 /* IMPORT GIFTS */
 
@@ -1030,6 +1800,8 @@ function bindTikTokEvents(tiktokConnection) {
 
         console.log("CHAT REÇU :", data.nickname, data.comment);
 
+        recordLiveAssistantEvent("chat", 1);
+
         applyChronoTime(chrono.settings.perChat);
 
         io.emit("chat", {
@@ -1042,6 +1814,9 @@ function bindTikTokEvents(tiktokConnection) {
     tiktokConnection.on("gift", data => {
 
         console.log("GIFT REÇU :", data.nickname, data.giftName, data.diamondCount);
+
+        recordLiveAssistantEvent("gift", 1);
+        recordLiveAssistantEvent("coins", Number(data.diamondCount || 0));
 
         const giftName =
             data.giftName || data.gift?.name || "gift";
@@ -1181,6 +1956,8 @@ io.emit("gift", {
 const likes =
     Number(data.likeCount || 0);
 
+recordLiveAssistantEvent("likes", likes);
+
 if (!topLikes[user]) {
     topLikes[user] = {
         likes: 0,
@@ -1207,11 +1984,33 @@ applyChronoTime(
 
 tiktokConnection.on("social", data => {
     console.log("SOCIAL REÇU :", data);
+
+    const socialType = String(
+        data.displayType ||
+        data.label ||
+        data.action ||
+        ""
+    ).toLowerCase();
+
+    if (socialType.includes("share")) {
+        recordLiveAssistantEvent("shares", 1);
+    }
+});
+
+tiktokConnection.on("roomUser", data => {
+    updateLiveAssistantViewers(
+        data.viewerCount ||
+        data.userCount ||
+        data.roomUserCount ||
+        0
+    );
 });
 
  tiktokConnection.on("follow", data => {
 
     console.log("FOLLOW REÇU :", data.nickname);
+
+    recordLiveAssistantEvent("follows", 1);
 
     applyChronoTime(chrono.settings.perFollow);
 

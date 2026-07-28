@@ -2720,41 +2720,52 @@ saveSubscriberBonus.onclick = () => {
 
 saveTikTokUserButton.onclick = async () => {
 
-    const username =
-        tiktokUsernameInput.value.trim();
+    const username = tiktokUsernameInput.value.trim().replace("@", "");
 
-    appSettings.tiktokUsername =
-        username;
+    if (!username) {
+        alert("Entre ton pseudo TikTok.");
+        return;
+    }
 
-    const response =
-        await fetch("/connect-tiktok", {
+    saveTikTokUserButton.disabled = true;
+
+    try {
+
+        const response = await fetch("/connect-tiktok", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                username
+                username: username
             })
         });
 
-    const data =
-        await response.json();
+        const data = await response.json();
 
-    if (data.success) {
-        alert("Connecté au LIVE TikTok !");
-    } else {
-        alert(data.error || "Erreur connexion TikTok");
+        if (data.success) {
+
+            localStorage.setItem(
+                "creatorpilot-tiktok-username",
+                username
+            );
+
+            alert("Connecté au LIVE TikTok de @" + username);
+
+        } else {
+
+            alert(data.error || "Erreur connexion TikTok");
+
+        }
+
+    } catch (error) {
+
+        console.error(error);
+        alert("Impossible de contacter CreatorPilot.");
+
     }
 
-};
-
-startConnectTikTokButton.onclick = () => {
-
-    openPanel(setupPanel);
-
-    setupHome.style.display = "none";
-
-    connectTikTokSetupPage.style.display = "block";
+    saveTikTokUserButton.disabled = false;
 
 };
 
@@ -6176,3 +6187,1188 @@ if (ttsEngineSelect) {
 }
 
 console.log("FIN APP JS");
+
+/* ==========================================================
+   ASSISTANT LIVE CREATORPILOT
+   FREE : score | PRO : fonctions avancées
+   ========================================================== */
+
+const liveAssistantButton =
+    document.getElementById("liveAssistantButton");
+
+const liveAssistantPanel =
+    document.getElementById("liveAssistantPanel");
+
+const closeLiveAssistant =
+    document.getElementById("closeLiveAssistant");
+
+// Le HTML historique de CreatorPilot contient plusieurs panneaux imbriqués.
+// On déplace l’Assistant LIVE directement dans <body> pour éviter qu’un
+// parent masqué (display:none) lui donne une taille de 0 x 0.
+if (liveAssistantPanel && liveAssistantPanel.parentElement !== document.body) {
+    document.body.appendChild(liveAssistantPanel);
+}
+
+if (
+    typeof mainPanels !== "undefined" &&
+    liveAssistantPanel &&
+    !mainPanels.includes(liveAssistantPanel)
+) {
+    mainPanels.push(liveAssistantPanel);
+}
+
+function getLiveAssistantUserEmail() {
+    try {
+        const user =
+            JSON.parse(
+                localStorage.getItem("tikbabikUser") ||
+                "null"
+            );
+
+        return String(user?.email || "")
+            .toLowerCase()
+            .trim();
+    } catch {
+        return "";
+    }
+}
+
+function creatorPilotIsPro() {
+    return (
+        appSettings?.pro === true ||
+        appSettings?.pro === "true"
+    );
+}
+
+if (liveAssistantButton && liveAssistantPanel) {
+    liveAssistantButton.onclick = () => {
+        openPanel(liveAssistantPanel);
+        loadLiveAssistantStatus();
+        loadLiveAssistantHistory();
+    };
+}
+
+if (closeLiveAssistant && liveAssistantPanel) {
+    closeLiveAssistant.onclick = () => {
+        liveAssistantPanel.style.display = "none";
+    };
+}
+
+const liveAssistantElements = {
+    enabled:
+        document.getElementById("liveAssistantEnabled"),
+
+    activityDetectionEnabled:
+        document.getElementById(
+            "liveAssistantActivityDetection"
+        ),
+
+    suggestionsEnabled:
+        document.getElementById(
+            "liveAssistantSuggestions"
+        ),
+
+    chartsEnabled:
+        document.getElementById(
+            "liveAssistantCharts"
+        ),
+
+    aiEnabled:
+        document.getElementById(
+            "liveAssistantAi"
+        ),
+
+    visualAlertsEnabled:
+        document.getElementById(
+            "liveAssistantVisualAlerts"
+        ),
+
+    soundAlertsEnabled:
+        document.getElementById(
+            "liveAssistantSoundAlerts"
+        ),
+
+    gameAdviceEnabled:
+        document.getElementById(
+            "liveAssistantGameAdvice"
+        )
+};
+
+let liveAssistantAccess = {
+    score: true,
+    activityDetection: false,
+    suggestions: false,
+    charts: false,
+    ai: false,
+    soundAlerts: false,
+    gameAdvice: false
+};
+
+let liveAssistantHistory = [];
+let liveAssistantLastAlertSoundAt = 0;
+let liveAssistantRefreshTimer = null;
+
+function updateLiveAssistantLocks(proState = creatorPilotIsPro()) {
+    const planBadge =
+        document.getElementById("liveAssistantPlanBadge");
+
+    if (planBadge) {
+        planBadge.textContent =
+            proState ? "CREATORPILOT PRO" : "FREE";
+
+        planBadge.classList.toggle(
+            "pro",
+            proState
+        );
+    }
+
+    document
+        .querySelectorAll("[data-pro-feature]")
+        .forEach(input => {
+            const feature =
+                input.dataset.proFeature;
+
+            const unlocked =
+                proState &&
+                liveAssistantAccess[feature] !== false;
+
+            input.disabled = !unlocked;
+
+            const option =
+                input.closest(".liveAssistantOption");
+
+            if (option) {
+                option.classList.toggle(
+                    "locked",
+                    !unlocked
+                );
+            }
+
+            if (!unlocked) {
+                input.checked = false;
+            }
+        });
+
+    document
+        .querySelectorAll("[data-live-feature]")
+        .forEach(lock => {
+            const feature =
+                lock.dataset.liveFeature;
+
+            const unlocked =
+                proState &&
+                liveAssistantAccess[feature] !== false;
+
+            lock.classList.toggle(
+                "unlocked",
+                unlocked
+            );
+        });
+
+    const aiButton =
+        document.getElementById(
+            "liveAssistantGenerateAi"
+        );
+
+    if (aiButton) {
+        aiButton.disabled =
+            !proState ||
+            !liveAssistantAccess.ai;
+    }
+
+    const chartLock =
+        document.getElementById(
+            "liveAssistantChartLock"
+        );
+
+    if (chartLock) {
+        chartLock.classList.toggle(
+            "active",
+            !proState
+        );
+    }
+}
+
+function setLiveAssistantScore(score, level) {
+    const safeScore =
+        Math.max(
+            0,
+            Math.min(
+                100,
+                Number(score || 0)
+            )
+        );
+
+    const scoreElement =
+        document.getElementById(
+            "liveAssistantScore"
+        );
+
+    const ring =
+        document.getElementById(
+            "liveAssistantScoreRing"
+        );
+
+    const levelElement =
+        document.getElementById(
+            "liveAssistantLevel"
+        );
+
+    if (scoreElement) {
+        scoreElement.textContent =
+            Math.round(safeScore);
+    }
+
+    if (ring) {
+        ring.style.setProperty(
+            "--score",
+            safeScore
+        );
+
+        const color =
+            safeScore >= 70
+                ? "#32e68a"
+                : safeScore >= 40
+                    ? "#ffbd3b"
+                    : "#ff4f67";
+
+        ring.style.setProperty(
+            "--score-color",
+            color
+        );
+    }
+
+    if (levelElement) {
+        const label =
+            level ||
+            (
+                safeScore >= 70
+                    ? "élevée"
+                    : safeScore >= 40
+                        ? "moyenne"
+                        : "faible"
+            );
+
+        levelElement.textContent =
+            "Activité " + label;
+    }
+}
+
+function applyLiveAssistantOptions(options = {}) {
+    Object
+        .entries(liveAssistantElements)
+        .forEach(([key, input]) => {
+            if (!input) return;
+
+            if (
+                Object.prototype.hasOwnProperty.call(
+                    options,
+                    key
+                )
+            ) {
+                input.checked =
+                    options[key] === true;
+            }
+        });
+}
+
+function updateLiveAssistantMetrics(data = {}) {
+    const latest = data.latest || {};
+
+    const values = {
+        liveMetricViewers:
+            latest.viewers || 0,
+
+        liveMetricLikes:
+            latest.likesPerMinute || 0,
+
+        liveMetricChat:
+            latest.chatPerMinute || 0,
+
+        liveMetricCoins:
+            latest.coinsPerMinute || 0,
+
+        liveMetricPeak:
+            data.peakViewers || 0
+    };
+
+    Object.entries(values).forEach(
+        ([id, value]) => {
+            const element =
+                document.getElementById(id);
+
+            if (element) {
+                element.textContent = value;
+            }
+        }
+    );
+}
+
+function applyLiveAssistantStatus(data) {
+    if (!data || data.success === false) {
+        return;
+    }
+
+    appSettings.liveAssistant =
+        data.options ||
+        appSettings.liveAssistant ||
+        {};
+
+    liveAssistantAccess = {
+        ...liveAssistantAccess,
+        ...(data.access || {})
+    };
+
+    const proState =
+        data.pro === true ||
+        creatorPilotIsPro();
+
+    if (data.pro === true) {
+        appSettings.pro = true;
+    }
+
+    setLiveAssistantScore(
+        data.score,
+        data.level
+    );
+
+    applyLiveAssistantOptions(
+        data.options || {}
+    );
+
+    updateLiveAssistantLocks(proState);
+    updateLiveAssistantMetrics(data);
+
+    const advice =
+        document.getElementById(
+            "liveAssistantAdvice"
+        );
+
+    if (advice) {
+        advice.textContent =
+            data.lastAiAdvice ||
+            data.suggestion ||
+            (
+                proState
+                    ? "L'assistant analyse votre LIVE."
+                    : "Le score d'activité est disponible gratuitement. Passez à Pro pour obtenir les conseils."
+            );
+    }
+
+    const dropAlert =
+        document.getElementById(
+            "liveAssistantDropAlert"
+        );
+
+    const dropText =
+        document.getElementById(
+            "liveAssistantDropText"
+        );
+
+    if (dropAlert) {
+        dropAlert.classList.toggle(
+            "active",
+            data.dropDetected === true
+        );
+    }
+
+    if (dropText && data.dropDetected) {
+        dropText.textContent =
+            data.suggestion ||
+            "L'activité du LIVE est en baisse.";
+    }
+
+    const lastUpdate =
+        document.getElementById(
+            "liveAssistantLastUpdate"
+        );
+
+    if (lastUpdate) {
+        lastUpdate.textContent =
+            "Dernière analyse : " +
+            new Date().toLocaleTimeString(
+                "fr-FR"
+            );
+    }
+}
+
+async function loadLiveAssistantStatus() {
+    try {
+        const email =
+            getLiveAssistantUserEmail();
+
+        const response =
+            await fetch(
+                "/api/live-assistant/status?email=" +
+                encodeURIComponent(email),
+                {
+                    cache: "no-store"
+                }
+            );
+
+        const data =
+            await response.json();
+
+        applyLiveAssistantStatus(data);
+    } catch (error) {
+        console.log(
+            "Erreur statut Assistant LIVE :",
+            error
+        );
+    }
+}
+
+function collectLiveAssistantOptions() {
+    return {
+        enabled:
+            liveAssistantElements.enabled?.checked !== false,
+
+        scoreEnabled: true,
+
+        activityDetectionEnabled:
+            liveAssistantElements.activityDetectionEnabled?.checked === true,
+
+        suggestionsEnabled:
+            liveAssistantElements.suggestionsEnabled?.checked === true,
+
+        chartsEnabled:
+            liveAssistantElements.chartsEnabled?.checked === true,
+
+        aiEnabled:
+            liveAssistantElements.aiEnabled?.checked === true,
+
+        visualAlertsEnabled:
+            liveAssistantElements.visualAlertsEnabled?.checked !== false,
+
+        soundAlertsEnabled:
+            liveAssistantElements.soundAlertsEnabled?.checked === true,
+
+        gameAdviceEnabled:
+            liveAssistantElements.gameAdviceEnabled?.checked !== false
+    };
+}
+
+async function saveLiveAssistantOptions(showMessage = true) {
+    const status =
+        document.getElementById(
+            "liveAssistantSaveStatus"
+        );
+
+    try {
+        if (status) {
+            status.textContent =
+                "Sauvegarde en cours…";
+            status.className = "";
+        }
+
+        const response =
+            await fetch(
+                "/api/live-assistant/settings",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        email:
+                            getLiveAssistantUserEmail(),
+
+                        settings:
+                            collectLiveAssistantOptions()
+                    })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || data.success === false) {
+            throw new Error(
+                data.error ||
+                "Erreur de sauvegarde"
+            );
+        }
+
+        appSettings.liveAssistant =
+            data.options || {};
+
+        applyLiveAssistantOptions(
+            data.options || {}
+        );
+
+        updateLiveAssistantLocks(
+            data.pro === true
+        );
+
+        if (status) {
+            status.textContent =
+                "Options sauvegardées.";
+            status.className = "success";
+        }
+
+        if (showMessage) {
+            setTimeout(() => {
+                if (status) {
+                    status.textContent =
+                        "Les options sont sauvegardées automatiquement.";
+                    status.className = "";
+                }
+            }, 1800);
+        }
+
+        return data;
+    } catch (error) {
+        console.log(
+            "Erreur sauvegarde Assistant LIVE :",
+            error
+        );
+
+        if (status) {
+            status.textContent =
+                "Erreur : " + error.message;
+            status.className = "error";
+        }
+
+        return null;
+    }
+}
+
+const liveAssistantSave =
+    document.getElementById(
+        "liveAssistantSave"
+    );
+
+if (liveAssistantSave) {
+    liveAssistantSave.onclick = () =>
+        saveLiveAssistantOptions(true);
+}
+
+Object
+    .values(liveAssistantElements)
+    .forEach(input => {
+        if (!input) return;
+
+        input.addEventListener(
+            "change",
+            async () => {
+                if (
+                    input.dataset.proFeature &&
+                    !creatorPilotIsPro()
+                ) {
+                    input.checked = false;
+
+                    if (
+                        typeof goToProCheckout ===
+                        "function"
+                    ) {
+                        goToProCheckout();
+                    }
+
+                    return;
+                }
+
+                await saveLiveAssistantOptions(
+                    false
+                );
+
+                if (
+                    input ===
+                    liveAssistantElements.chartsEnabled
+                ) {
+                    loadLiveAssistantHistory();
+                }
+            }
+        );
+    });
+
+async function loadLiveAssistantHistory() {
+    if (
+        !creatorPilotIsPro() ||
+        !liveAssistantElements.chartsEnabled?.checked
+    ) {
+        drawLiveAssistantChart([]);
+        return;
+    }
+
+    try {
+        const response =
+            await fetch(
+                "/api/live-assistant/history?email=" +
+                encodeURIComponent(
+                    getLiveAssistantUserEmail()
+                ),
+                {
+                    cache: "no-store"
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (
+            !response.ok ||
+            data.success === false
+        ) {
+            return;
+        }
+
+        liveAssistantHistory =
+            Array.isArray(data.history)
+                ? data.history
+                : [];
+
+        drawLiveAssistantChart(
+            liveAssistantHistory
+        );
+    } catch (error) {
+        console.log(
+            "Erreur historique Assistant LIVE :",
+            error
+        );
+    }
+}
+
+function drawLiveAssistantChart(history) {
+    const canvas =
+        document.getElementById(
+            "liveAssistantChart"
+        );
+
+    if (!canvas) return;
+
+    const parent =
+        canvas.parentElement;
+
+    const cssWidth =
+        Math.max(
+            320,
+            parent.clientWidth - 20
+        );
+
+    const cssHeight = 330;
+    const ratio =
+        window.devicePixelRatio || 1;
+
+    canvas.width =
+        Math.floor(cssWidth * ratio);
+
+    canvas.height =
+        Math.floor(cssHeight * ratio);
+
+    canvas.style.width =
+        cssWidth + "px";
+
+    canvas.style.height =
+        cssHeight + "px";
+
+    const ctx =
+        canvas.getContext("2d");
+
+    ctx.setTransform(
+        ratio,
+        0,
+        0,
+        ratio,
+        0,
+        0
+    );
+
+    ctx.clearRect(
+        0,
+        0,
+        cssWidth,
+        cssHeight
+    );
+
+    const padding = {
+        left: 44,
+        right: 20,
+        top: 30,
+        bottom: 36
+    };
+
+    const chartWidth =
+        cssWidth -
+        padding.left -
+        padding.right;
+
+    const chartHeight =
+        cssHeight -
+        padding.top -
+        padding.bottom;
+
+    ctx.strokeStyle =
+        "rgba(255,255,255,0.08)";
+
+    ctx.lineWidth = 1;
+
+    for (let index = 0; index <= 5; index++) {
+        const y =
+            padding.top +
+            (chartHeight / 5) * index;
+
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(
+            cssWidth - padding.right,
+            y
+        );
+        ctx.stroke();
+    }
+
+    if (!history || history.length < 2) {
+        ctx.fillStyle =
+            "rgba(255,255,255,0.45)";
+
+        ctx.font =
+            "14px Arial";
+
+        ctx.textAlign =
+            "center";
+
+        ctx.fillText(
+            creatorPilotIsPro()
+                ? "Les courbes apparaîtront pendant votre LIVE."
+                : "Graphiques disponibles avec CreatorPilot Pro.",
+            cssWidth / 2,
+            cssHeight / 2
+        );
+
+        return;
+    }
+
+    const visible =
+        history.slice(-60);
+
+    const series = [
+        {
+            key: "likesPerMinute",
+            label: "Likes/min",
+            stroke: "#ff4f8b"
+        },
+        {
+            key: "chatPerMinute",
+            label: "Messages/min",
+            stroke: "#00f2ea"
+        },
+        {
+            key: "coinsPerMinute",
+            label: "Pièces/min",
+            stroke: "#ffbd3b"
+        },
+        {
+            key: "viewers",
+            label: "Spectateurs",
+            stroke: "#8d7cff"
+        }
+    ];
+
+    const maximum =
+        Math.max(
+            10,
+            ...visible.flatMap(item =>
+                series.map(
+                    serie =>
+                        Number(
+                            item[serie.key] || 0
+                        )
+                )
+            )
+        );
+
+    series.forEach((serie, serieIndex) => {
+        ctx.strokeStyle =
+            serie.stroke;
+
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+
+        visible.forEach((item, index) => {
+            const x =
+                padding.left +
+                (
+                    index /
+                    Math.max(
+                        1,
+                        visible.length - 1
+                    )
+                ) *
+                chartWidth;
+
+            const y =
+                padding.top +
+                chartHeight -
+                (
+                    Number(
+                        item[serie.key] || 0
+                    ) /
+                    maximum
+                ) *
+                chartHeight;
+
+            if (index === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+
+        ctx.stroke();
+
+        const legendX =
+            padding.left +
+            serieIndex * 130;
+
+        ctx.fillStyle =
+            serie.stroke;
+
+        ctx.fillRect(
+            legendX,
+            10,
+            13,
+            3
+        );
+
+        ctx.fillStyle =
+            "rgba(255,255,255,0.72)";
+
+        ctx.font =
+            "11px Arial";
+
+        ctx.textAlign =
+            "left";
+
+        ctx.fillText(
+            serie.label,
+            legendX + 18,
+            14
+        );
+    });
+
+    ctx.fillStyle =
+        "rgba(255,255,255,0.4)";
+
+    ctx.font =
+        "10px Arial";
+
+    ctx.textAlign =
+        "left";
+
+    ctx.fillText(
+        visible[0]?.timeLabel || "",
+        padding.left,
+        cssHeight - 12
+    );
+
+    ctx.textAlign =
+        "right";
+
+    ctx.fillText(
+        visible.at(-1)?.timeLabel || "",
+        cssWidth - padding.right,
+        cssHeight - 12
+    );
+}
+
+const liveAssistantGenerateAi =
+    document.getElementById(
+        "liveAssistantGenerateAi"
+    );
+
+if (liveAssistantGenerateAi) {
+    liveAssistantGenerateAi.onclick =
+        async () => {
+            if (
+                !creatorPilotIsPro()
+            ) {
+                if (
+                    typeof goToProCheckout ===
+                    "function"
+                ) {
+                    goToProCheckout();
+                }
+
+                return;
+            }
+
+            if (
+                !liveAssistantElements.aiEnabled
+                    ?.checked
+            ) {
+                alert(
+                    "Activez d'abord le Mode IA."
+                );
+
+                return;
+            }
+
+            const advice =
+                document.getElementById(
+                    "liveAssistantAdvice"
+                );
+
+            liveAssistantGenerateAi.disabled =
+                true;
+
+            liveAssistantGenerateAi.textContent =
+                "🤖 Analyse en cours…";
+
+            try {
+                const response =
+                    await fetch(
+                        "/api/live-assistant/ai-advice",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+                            body: JSON.stringify({
+                                email:
+                                    getLiveAssistantUserEmail()
+                            })
+                        }
+                    );
+
+                const data =
+                    await response.json();
+
+                if (
+                    !response.ok ||
+                    data.success === false
+                ) {
+                    throw new Error(
+                        data.error ||
+                        "Erreur IA"
+                    );
+                }
+
+                if (advice) {
+                    advice.textContent =
+                        data.advice;
+                }
+            } catch (error) {
+                alert(
+                    "Assistant IA : " +
+                    error.message
+                );
+            } finally {
+                liveAssistantGenerateAi.disabled =
+                    false;
+
+                liveAssistantGenerateAi.innerHTML =
+                    '🤖 Générer un conseil IA <span class="liveAssistantLock unlocked" data-live-feature="ai">🔒</span>';
+            }
+        };
+}
+
+const liveAssistantReset =
+    document.getElementById(
+        "liveAssistantReset"
+    );
+
+if (liveAssistantReset) {
+    liveAssistantReset.onclick =
+        async () => {
+            if (!creatorPilotIsPro()) {
+                if (
+                    typeof goToProCheckout ===
+                    "function"
+                ) {
+                    goToProCheckout();
+                }
+
+                return;
+            }
+
+            if (
+                !confirm(
+                    "Réinitialiser les statistiques de l'Assistant LIVE ?"
+                )
+            ) {
+                return;
+            }
+
+            const response =
+                await fetch(
+                    "/api/live-assistant/reset",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+                        body: JSON.stringify({
+                            email:
+                                getLiveAssistantUserEmail()
+                        })
+                    }
+                );
+
+            const data =
+                await response.json();
+
+            if (data.success) {
+                liveAssistantHistory = [];
+                drawLiveAssistantChart([]);
+                loadLiveAssistantStatus();
+            }
+        };
+}
+
+const liveAssistantUpgrade =
+    document.getElementById(
+        "liveAssistantUpgrade"
+    );
+
+if (liveAssistantUpgrade) {
+    liveAssistantUpgrade.onclick = () => {
+        if (
+            typeof goToProCheckout ===
+            "function"
+        ) {
+            goToProCheckout();
+        } else if (tikBabikProSetupTab) {
+            tikBabikProSetupTab.click();
+        }
+    };
+}
+
+socket.on(
+    "live-assistant-update",
+    data => {
+        applyLiveAssistantStatus({
+            success: true,
+            pro: creatorPilotIsPro(),
+            access: liveAssistantAccess,
+            options:
+                appSettings.liveAssistant ||
+                collectLiveAssistantOptions(),
+            score: data.score,
+            level: data.level,
+            dropDetected:
+                data.dropDetected,
+            suggestion:
+                data.suggestion,
+            latest:
+                data.latest
+        });
+
+        if (
+            liveAssistantPanel?.style.display !==
+            "none"
+        ) {
+            loadLiveAssistantHistory();
+        }
+    }
+);
+
+socket.on(
+    "live-assistant-alert",
+    data => {
+        const options =
+            appSettings.liveAssistant || {};
+
+        if (
+            options.visualAlertsEnabled !==
+            false
+        ) {
+            const alertBox =
+                document.getElementById(
+                    "liveAssistantDropAlert"
+                );
+
+            const alertText =
+                document.getElementById(
+                    "liveAssistantDropText"
+                );
+
+            if (alertBox) {
+                alertBox.classList.add(
+                    "active"
+                );
+            }
+
+            if (alertText) {
+                alertText.textContent =
+                    data.message ||
+                    "Baisse d'activité détectée.";
+            }
+        }
+
+        if (
+            creatorPilotIsPro() &&
+            options.soundAlertsEnabled ===
+            true &&
+            Date.now() -
+                liveAssistantLastAlertSoundAt >
+                15000
+        ) {
+            liveAssistantLastAlertSoundAt =
+                Date.now();
+
+            try {
+                const audioContext =
+                    new (
+                        window.AudioContext ||
+                        window.webkitAudioContext
+                    )();
+
+                const oscillator =
+                    audioContext.createOscillator();
+
+                const gain =
+                    audioContext.createGain();
+
+                oscillator.frequency.value =
+                    620;
+
+                gain.gain.value =
+                    0.08;
+
+                oscillator.connect(gain);
+                gain.connect(
+                    audioContext.destination
+                );
+
+                oscillator.start();
+
+                setTimeout(() => {
+                    oscillator.stop();
+                    audioContext.close();
+                }, 230);
+            } catch {}
+        }
+    }
+);
+
+window.addEventListener(
+    "resize",
+    () => drawLiveAssistantChart(
+        liveAssistantHistory
+    )
+);
+
+setTimeout(() => {
+    loadLiveAssistantStatus();
+
+    updateLiveAssistantLocks(
+        creatorPilotIsPro()
+    );
+
+    drawLiveAssistantChart([]);
+}, 1200);
+
+liveAssistantRefreshTimer =
+    setInterval(() => {
+        loadLiveAssistantStatus();
+
+        if (
+            liveAssistantPanel?.style.display !==
+            "none"
+        ) {
+            loadLiveAssistantHistory();
+        }
+    }, 10000);
+

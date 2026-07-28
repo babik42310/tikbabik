@@ -4,11 +4,10 @@
   "description": "TikBabik - outil interactif TikTok LIVE",
   "main": "main.js",
   "scripts": {
-  "start": "node server.js",
-  "electron": "electron .",
-  "build-exe": "electron-builder"
-},
-
+    "start": "node server.js",
+    "electron": "electron .",
+    "build-exe": "electron-builder"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -16,13 +15,12 @@
     "appId": "com.creatorpilot.app",
     "productName": "CreatorPilot",
     "publish": [
-  {
-    "provider": "github",
-    "owner": "babik42310",
-    "repo": "tikbabik"
-  }
-],
-
+      {
+        "provider": "github",
+        "owner": "babik42310",
+        "repo": "tikbabik"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "public/icon.ico"
@@ -37,6 +35,7 @@
   "dependencies": {
     "@paddle/paddle-js": "^1.6.4",
     "@paddle/paddle-node-sdk": "^3.8.0",
+    "dotenv": "^17.4.2",
     "electron-updater": "^6.8.9",
     "express": "^5.2.1",
     "multer": "^2.1.1",
