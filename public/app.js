@@ -1,5 +1,51 @@
 const socket = io();
 
+
+/* ==========================================================
+   IDENTITÉ LOCALE CREATORPILOT
+   Chaque installation possède son propre identifiant.
+   ========================================================== */
+
+function getCreatorPilotClientId() {
+    let clientId =
+        localStorage.getItem(
+            "creatorpilot-client-id"
+        );
+
+    if (!clientId) {
+        clientId =
+            (
+                window.crypto?.randomUUID?.() ||
+                (
+                    "cp-" +
+                    Date.now() +
+                    "-" +
+                    Math.random()
+                        .toString(36)
+                        .slice(2)
+                )
+            );
+
+        localStorage.setItem(
+            "creatorpilot-client-id",
+            clientId
+        );
+    }
+
+    return clientId;
+}
+
+const CREATORPILOT_CLIENT_ID =
+    getCreatorPilotClientId();
+
+socket.emit(
+    "register-client",
+    {
+        clientId: CREATORPILOT_CLIENT_ID
+    }
+);
+
+
 const messages = document.getElementById("messages");
 const giftAlert = document.getElementById("giftAlert");
 const giftImage = document.getElementById("giftImage");
@@ -2737,7 +2783,8 @@ saveTikTokUserButton.onclick = async () => {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                username: username
+                username: username,
+                clientId: CREATORPILOT_CLIENT_ID
             })
         });
 
@@ -2782,6 +2829,64 @@ connectTikTokSetupTab.onclick = () => {
     agencyPage.style.display = "none";
     accountSetupPage.style.display = "none";
 };
+
+/* CORRECTIF : bouton Accueil > Connecter à TikTok LIVE */
+if (startConnectTikTokButton) {
+    startConnectTikTokButton.onclick = () => {
+
+        openPanel(setupPanel);
+
+        if (setupHome) {
+            setupHome.style.display = "none";
+        }
+
+        if (connectTikTokSetupPage) {
+            connectTikTokSetupPage.style.display = "block";
+        }
+
+        [
+            pointsSystemSetupPage,
+            subscriberBonusSetupPage,
+            obsConnectionSetupPage,
+            streamerBotSetupPage,
+            minecraftSetupPage,
+            resetPointsSetupPage,
+            tikBabikProSetupPage,
+            agencyPage,
+            accountSetupPage
+        ].forEach(page => {
+            if (page) {
+                page.style.display = "none";
+            }
+        });
+
+        document
+            .querySelectorAll(".setupTab")
+            .forEach(tab => {
+                tab.classList.remove("active");
+            });
+
+        if (connectTikTokSetupTab) {
+            connectTikTokSetupTab.classList.add("active");
+        }
+
+        if (tiktokUsernameInput) {
+            const savedUsername =
+                localStorage.getItem(
+                    "creatorpilot-tiktok-username"
+                ) || "";
+
+            if (!tiktokUsernameInput.value && savedUsername) {
+                tiktokUsernameInput.value = savedUsername;
+            }
+
+            setTimeout(() => {
+                tiktokUsernameInput.focus();
+            }, 100);
+        }
+    };
+}
+
 
 pointsSystemSetupTab.onclick = () => {
     setupHome.style.display = "none";
