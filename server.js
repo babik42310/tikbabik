@@ -4715,6 +4715,195 @@ body{
 
 
 
+/* =========================================================
+   ASSISTANT LIVE API
+   Ces routes doivent rester avant server.listen().
+   ========================================================= */
+
+function normalizeEmail(value) {
+    return String(value || "").trim().toLowerCase();
+}
+
+function defaultLiveAssistantOptions() {
+    return {
+        enabled: true,
+        scoreEnabled: true,
+        activityDetectionEnabled: false,
+        suggestionsEnabled: false,
+        chartsEnabled: false,
+        aiEnabled: false,
+        visualAlertsEnabled: true,
+        soundAlertsEnabled: false,
+        gameAdviceEnabled: false
+    };
+}
+
+function getLiveAssistantStore() {
+    if (!settings.liveAssistantByEmail || typeof settings.liveAssistantByEmail !== "object") {
+        settings.liveAssistantByEmail = {};
+    }
+    return settings.liveAssistantByEmail;
+}
+
+async function getLiveAssistantProState(email) {
+    if (!email) return false;
+    const result = await pool.query(
+        "SELECT pro FROM pro_users WHERE LOWER(email) = $1 LIMIT 1",
+        [email]
+    );
+    return result.rows[0]?.pro === true;
+}
+
+function getLiveAssistantAccess(pro) {
+    return {
+        score: true,
+        activityDetection: pro,
+        suggestions: pro,
+        charts: pro,
+        ai: pro,
+        soundAlerts: pro,
+        gameAdvice: pro
+    };
+}
+
+app.get("/api/live-assistant/status", async (req, res) => {
+    try {
+        const email = normalizeEmail(req.query.email);
+        const pro = await getLiveAssistantProState(email);
+        const store = getLiveAssistantStore();
+        const saved = store[email] || {};
+        const options = {
+            ...defaultLiveAssistantOptions(),
+            ...(saved.options || {})
+        };
+
+        res.json({
+            success: true,
+            pro,
+            access: getLiveAssistantAccess(pro),
+            options,
+            score: Number(saved.score || 0),
+            level: saved.level || "faible",
+            latest: saved.latest || {
+                viewers: 0,
+                likesPerMinute: 0,
+                chatPerMinute: 0,
+                coinsPerMinute: 0
+            },
+            peakViewers: Number(saved.peakViewers || 0),
+            dropDetected: saved.dropDetected === true,
+            suggestion: saved.suggestion || "",
+            lastAiAdvice: saved.lastAiAdvice || ""
+        });
+    } catch (error) {
+        console.error("Erreur /api/live-assistant/status :", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post("/api/live-assistant/settings", async (req, res) => {
+    try {
+        const email = normalizeEmail(req.body?.email);
+        const pro = await getLiveAssistantProState(email);
+        const incoming = req.body?.settings || {};
+        const defaults = defaultLiveAssistantOptions();
+
+        const options = {
+            ...defaults,
+            ...incoming,
+            scoreEnabled: true,
+            visualAlertsEnabled: incoming.visualAlertsEnabled !== false
+        };
+
+        // Les options Pro ne peuvent être activées que pour un compte Pro réel.
+        if (!pro) {
+            options.activityDetectionEnabled = false;
+            options.suggestionsEnabled = false;
+            options.chartsEnabled = false;
+            options.aiEnabled = false;
+            options.soundAlertsEnabled = false;
+            options.gameAdviceEnabled = false;
+        }
+
+        const store = getLiveAssistantStore();
+        store[email] = {
+            ...(store[email] || {}),
+            options
+        };
+        saveSettingsFile();
+
+        res.json({
+            success: true,
+            pro,
+            access: getLiveAssistantAccess(pro),
+            options
+        });
+    } catch (error) {
+        console.error("Erreur /api/live-assistant/settings :", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get("/api/live-assistant/history", async (req, res) => {
+    try {
+        const email = normalizeEmail(req.query.email);
+        const pro = await getLiveAssistantProState(email);
+        if (!pro) {
+            return res.status(403).json({ success: false, error: "CreatorPilot Pro requis" });
+        }
+        const saved = getLiveAssistantStore()[email] || {};
+        res.json({ success: true, history: Array.isArray(saved.history) ? saved.history : [] });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post("/api/live-assistant/ai-advice", async (req, res) => {
+    try {
+        const email = normalizeEmail(req.body?.email);
+        const pro = await getLiveAssistantProState(email);
+        if (!pro) {
+            return res.status(403).json({ success: false, error: "CreatorPilot Pro requis" });
+        }
+        const advice = "Pose une question simple au chat, annonce un petit objectif et relance les spectateurs qui viennent d'arriver.";
+        const store = getLiveAssistantStore();
+        store[email] = { ...(store[email] || {}), lastAiAdvice: advice };
+        saveSettingsFile();
+        res.json({ success: true, advice });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post("/api/live-assistant/reset", async (req, res) => {
+    try {
+        const email = normalizeEmail(req.body?.email);
+        const pro = await getLiveAssistantProState(email);
+        if (!pro) {
+            return res.status(403).json({ success: false, error: "CreatorPilot Pro requis" });
+        }
+        const store = getLiveAssistantStore();
+        const current = store[email] || {};
+        store[email] = {
+            options: current.options || defaultLiveAssistantOptions(),
+            history: [],
+            score: 0,
+            peakViewers: 0,
+            latest: {
+                viewers: 0,
+                likesPerMinute: 0,
+                chatPerMinute: 0,
+                coinsPerMinute: 0
+            }
+        };
+        saveSettingsFile();
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+
 
 server.listen(3000, () => {
     console.log("CreatorPilot lancé");

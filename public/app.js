@@ -3721,13 +3721,33 @@ if (ttsLogs) {
 }
 }
 
+// Évite les listeners dupliqués après un rechargement partiel de l'interface.
+socket.off("chat");
+
+let lastChatEventKey = "";
+let lastChatEventAt = 0;
+
 socket.on("chat", data => {
+    const user = String(data?.user || "");
+    const message = String(data?.message || "");
+    const eventKey = user + "|" + message;
+    const now = Date.now();
+
+    // Certains reconnects TikTok peuvent renvoyer le même message deux fois.
+    if (eventKey === lastChatEventKey && now - lastChatEventAt < 2000) {
+        console.log("CHAT DUPLIQUÉ IGNORÉ :", eventKey);
+        return;
+    }
+
+    lastChatEventKey = eventKey;
+    lastChatEventAt = now;
+
     const div = document.createElement("div");
     div.className = "message";
-    div.innerHTML = `<strong>${data.user}</strong> : ${data.message}`;
+    div.innerHTML = `<strong>${user}</strong> : ${message}`;
     messages.prepend(div);
 
-   playTtsMessage(data.message, data);
+    playTtsMessage(message, data);
 });
 
 /* CADEAUX */
