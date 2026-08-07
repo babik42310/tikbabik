@@ -20,6 +20,7 @@ if (!fs.existsSync(DATA_DIR)) {
 
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 const STATS_FILE = path.join(DATA_DIR, "stats.json");
+const RANKINGS_FILE = path.join(DATA_DIR, "rankings.json");
 const Stripe = require("stripe");
 const { Pool } = require("pg");
 
@@ -573,6 +574,10 @@ app.get("/stats", (req, res) => {
     res.json(stats);
 });
 
+app.get("/live-stats", (req, res) => {
+    res.json(liveSessionStats);
+});
+
 app.post("/stats", (req, res) => {
 
     stats = req.body;
@@ -1058,6 +1063,18 @@ app.post("/connect-tiktok", async (req, res) => {
             username
         );
 
+        liveSessionStats = {
+            connected: true,
+            username: username,
+            startTime: Date.now(),
+            likes: 0,
+            followers: 0,
+            gifts: 0,
+            diamonds: 0
+        };
+
+        emitLiveStats(clientId);
+
         console.log(
             "Client",
             clientId,
@@ -1312,6 +1329,20 @@ function spinActionWheel() {
 
 const recentGifts = {};
 
+let liveSessionStats = {
+    connected: false,
+    username: "",
+    startTime: null,
+    likes: 0,
+    followers: 0,
+    gifts: 0,
+    diamonds: 0
+};
+
+function emitLiveStats(clientId) {
+    emitToCreatorPilotClient(clientId, "liveStats", liveSessionStats);
+}
+
 function bindTikTokEvents(tiktokConnection, clientId) {
 
 
@@ -1319,6 +1350,12 @@ function bindTikTokEvents(tiktokConnection, clientId) {
         return;
     }
     tiktokConnection.removeAllListeners();
+
+    tiktokConnection.on("disconnected", () => {
+        console.log("TikTok LIVE déconnecté (stream terminé ou coupure)");
+        liveSessionStats.connected = false;
+        emitLiveStats(clientId);
+    });
 
     tiktokConnection.on("chat", data => {
 
@@ -1484,6 +1521,10 @@ if (giftBattle.active) {
 
         trackPresence(user, donorAvatar);
 
+        liveSessionStats.gifts += 1;
+        liveSessionStats.diamonds += Number(data.diamondCount || 0);
+        emitLiveStats(clientId);
+
 emitToCreatorPilotClient(clientId, "gift", {
             user: user,
             gift: giftName,
@@ -1500,6 +1541,11 @@ emitToCreatorPilotClient(clientId, "gift", {
 
         currentLikesGoalCount =
     Number(data.totalLikeCount || data.likeCount || 0);
+
+        liveSessionStats.likes =
+    Number(data.totalLikeCount || currentLikesGoalCount || 0);
+
+        emitLiveStats(clientId);
 
         const user =
     data.nickname || "Utilisateur";
@@ -1564,6 +1610,9 @@ tiktokConnection.on("social", data => {
     emitToCreatorPilotClient(clientId, "follow", {
         user: data.nickname
     });
+
+    liveSessionStats.followers += 1;
+    emitLiveStats(clientId);
 
 });
 
@@ -2180,6 +2229,38 @@ let topLikes = {};
 let topDonors = {};
 let topPresence = {};
 
+try {
+
+    const savedRankings =
+        JSON.parse(fs.readFileSync(RANKINGS_FILE));
+
+    topLikes = savedRankings.topLikes || {};
+    topDonors = savedRankings.topDonors || {};
+    topPresence = savedRankings.topPresence || {};
+
+    console.log("Classements (Top J'aime / Donateurs / Présence) chargés");
+
+} catch (error) {
+
+    console.log("rankings.json introuvable, classements vides");
+
+}
+
+function saveRankingsFile() {
+
+    fs.writeFileSync(
+        RANKINGS_FILE,
+        JSON.stringify(
+            { topLikes, topDonors, topPresence },
+            null,
+            2
+        )
+    );
+
+}
+
+setInterval(saveRankingsFile, 15000);
+
 function trackPresence(user, avatar) {
 
     if (!user) {
@@ -2431,8 +2512,6 @@ const ringSpeed =
     border-radius:${Number(shape) + 3}px;
     background:conic-gradient(from var(--angle), #${ringColor1}, #${ringColor2}, #${ringColor3}, #${ringColor1});
     animation:spin ${ringSpeed}s linear infinite;
-    position:relative;
-    top:-40px;
     transform:scale(${scale});
 }
 
@@ -2504,6 +2583,12 @@ body {
     color: white;
     font-family: 'Rajdhani', Arial, sans-serif;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    box-sizing: border-box;
 }
 
 #box {
@@ -3003,6 +3088,8 @@ const blueColor =
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 
 <style>
 
@@ -3010,15 +3097,18 @@ body{
     margin:0;
     background:transparent;
     overflow:hidden;
-    font-family:Arial;
+    font-family:'Rajdhani', Arial, sans-serif;
 }
 
 #battleTimer{
     text-align:center;
-    font-size:42px;
-    font-weight:bold;
-    color:white;
+    font-family:'Orbitron', sans-serif;
+    font-size:38px;
+    font-weight:800;
+    color:#f5f7ff;
+    text-shadow:0 0 14px rgba(168,85,247,0.8);
     margin-bottom:15px;
+    letter-spacing:2px;
 }
 
 #container{
@@ -3029,6 +3119,7 @@ body{
     display:flex;
     flex-direction:column;
     gap:12px;
+    box-sizing:border-box;
 }
 
 
@@ -3040,24 +3131,34 @@ body{
     text-align:center;
     color:white;
     box-sizing:border-box;
+    background:rgba(5,6,15,0.75);
+    border:2px solid var(--teamColor);
+    box-shadow:0 0 22px var(--teamGlow), inset 0 0 20px rgba(0,0,0,0.4);
 }
 
 .red{
-    background:#${redColor};
+    --teamColor:#${redColor};
+    --teamGlow:#${redColor}66;
 }
 
 .blue{
-    background:#${blueColor};
+    --teamColor:#${blueColor};
+    --teamGlow:#${blueColor}66;
 }
 
 .score{
-    font-size:60px;
-    font-weight:bold;
+    font-family:'Orbitron', sans-serif;
+    font-size:52px;
+    font-weight:800;
+    color:var(--teamColor);
+    text-shadow:0 0 14px var(--teamGlow);
 }
 
 .name{
-    font-size:32px;
-    margin-bottom:15px;
+    font-size:28px;
+    font-weight:700;
+    margin-bottom:12px;
+    color:#f5f7ff;
 }
 
 .battleWinnerGlow{
@@ -3637,6 +3738,15 @@ app.post("/top-likes/test", (req, res) => {
 
 });
 
+app.post("/top-likes/reset", (req, res) => {
+
+    topLikes = {};
+    saveRankingsFile();
+
+    res.json({ success: true });
+
+});
+
 /* ==================== TOP DONATEURS ==================== */
 
 app.get("/top-donors/status", (req, res) => {
@@ -4026,6 +4136,15 @@ app.post("/top-donors/test", (req, res) => {
         success: true,
         topDonors
     });
+
+});
+
+app.post("/top-donors/reset", (req, res) => {
+
+    topDonors = {};
+    saveRankingsFile();
+
+    res.json({ success: true });
 
 });
 
@@ -4429,6 +4548,15 @@ app.post("/top-presence/test", (req, res) => {
         success: true,
         topPresence
     });
+
+});
+
+app.post("/top-presence/reset", (req, res) => {
+
+    topPresence = {};
+    saveRankingsFile();
+
+    res.json({ success: true });
 
 });
 
@@ -5266,12 +5394,24 @@ app.get("/overlay/social-panel", (req, res) => {
 <html>
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 <style>
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
+
 body{
     margin:0;
     background:transparent;
     overflow:hidden;
-    font-family:Arial;
+    font-family:'Rajdhani', Arial;
 
     display:flex;
     justify-content:center;
@@ -5281,10 +5421,18 @@ body{
     height:100vh;
 }
 
+#socialRing{
+    display:none;
+    padding:3px;
+    border-radius:18px;
+    background:conic-gradient(from var(--angle), #22d3ee, #a855f7, #ec4899, #22d3ee);
+    animation:spin 6s linear infinite;
+}
+
 #socialBox{
     display:none;
     padding:12px 25px;
-    border-radius:12px;
+    border-radius:15px;
     font-weight:bold;
     align-items:center;
     gap:15px;
@@ -5328,9 +5476,11 @@ body{
 </head>
 <body>
 
+<div id="socialRing">
 <div id="socialBox">
     <span class="icon" id="icon"></span>
     <span id="text"></span>
+</div>
 </div>
 
 <script>
@@ -5349,6 +5499,7 @@ async function loadSocial() {
     const response = await fetch("/social-panel/status");
     const data = await response.json();
 
+    const ring = document.getElementById("socialRing");
     const box = document.getElementById("socialBox");
     const icon = document.getElementById("icon");
     const text = document.getElementById("text");
@@ -5358,6 +5509,7 @@ if (
     !data.settings.fields ||
     data.settings.fields.length === 0
 ) {
+    ring.style.display = "none";
     box.style.display = "none";
     return;
 }
@@ -5367,9 +5519,20 @@ if (
     settings.fields[index % settings.fields.length];
 
 if (!field) {
+    ring.style.display = "none";
     box.style.display = "none";
     return;
 }
+
+    ring.style.display = "inline-block";
+    ring.style.background =
+        "conic-gradient(from var(--angle), " +
+        (settings.ringColor1 || "#22d3ee") + ", " +
+        (settings.ringColor2 || "#a855f7") + ", " +
+        (settings.ringColor3 || "#ec4899") + ", " +
+        (settings.ringColor1 || "#22d3ee") + ")";
+    ring.style.animationDuration =
+        (settings.ringSpeed || 6) + "s";
 
     box.style.display = "inline-flex";
     box.style.fontFamily = settings.font;
@@ -5425,12 +5588,37 @@ app.get("/overlay/webcam-simple", (req, res) => {
     const glow =
         webcam.glow !== false;
 
+    const futuristic =
+        webcam.futuristic === true;
+
+    const ringColor1 =
+        webcam.ringColor1 || "#22d3ee";
+
+    const ringColor2 =
+        webcam.ringColor2 || "#a855f7";
+
+    const ringColor3 =
+        webcam.ringColor3 || "#ec4899";
+
+    const ringSpeed =
+        webcam.ringSpeed || 6;
+
     res.send(`
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <style>
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
+
 body{
     margin:0;
     background:transparent;
@@ -5440,15 +5628,30 @@ body{
 #frame{
     width:500px;
     height:300px;
-    border:${border}px solid ${color};
+    box-sizing:border-box;
+    border:${futuristic ? "0" : border + "px solid " + color};
     border-radius:${radius}px;
-    box-shadow:${glow ? `0 0 20px ${color}` : "none"};
+    box-shadow:${!futuristic && glow ? `0 0 20px ${color}` : "none"};
+    padding:${futuristic ? border + "px" : "0"};
+    background:${futuristic
+        ? `conic-gradient(from var(--angle), ${ringColor1}, ${ringColor2}, ${ringColor3}, ${ringColor1})`
+        : "transparent"};
+    animation:${futuristic ? `spin ${ringSpeed}s linear infinite` : "none"};
+}
+
+#inner{
+    width:100%;
+    height:100%;
+    border-radius:${Math.max(0, radius - border)}px;
+    background:transparent;
 }
 </style>
 </head>
 <body>
 
-<div id="frame"></div>
+<div id="frame">
+    ${futuristic ? `<div id="inner"></div>` : ""}
+</div>
 
 </body>
 </html>
@@ -5487,12 +5690,25 @@ app.get("/overlay/webcam-custom", (req, res) => {
         shadow = "0 0 15px red, 0 0 25px blue, 0 0 35px lime";
     }
 
+    const futuristic =
+        style === "futuriste";
+
     res.send(`
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <style>
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
+
 body{
     margin:0;
     background:transparent;
@@ -5502,9 +5718,15 @@ body{
 .frame{
     width:500px;
     height:300px;
-    border:6px solid ${borderColor};
+    box-sizing:border-box;
+    border:${futuristic ? "0" : "6px solid " + borderColor};
     border-radius:${radius}px;
-    box-shadow:${shadow};
+    box-shadow:${futuristic ? "none" : shadow};
+    padding:${futuristic ? "4px" : "0"};
+    background:${futuristic
+        ? "conic-gradient(from var(--angle), #22d3ee, #a855f7, #ec4899, #22d3ee)"
+        : "transparent"};
+    animation:${futuristic ? "spin 6s linear infinite" : "none"};
 }
 </style>
 </head>
@@ -5578,13 +5800,39 @@ if (variation === "TikTok") {
     shadowStyle = "0 0 10px #ff0050, 0 0 25px #00f2ea";
 }
 
+    const ringColor1 =
+        likes.ringColor1 || "#22d3ee";
+
+    const ringColor2 =
+        likes.ringColor2 || "#a855f7";
+
+    const ringColor3 =
+        likes.ringColor3 || "#ec4899";
+
+    const ringSpeed =
+        likes.ringSpeed || 6;
+
+    const useFuturistic =
+        variation === "Futuriste";
+
      
     res.send(`
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 <style>
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
 
 body{
     margin:0;
@@ -5592,15 +5840,26 @@ body{
     overflow:hidden;
 }
 
+#ring{
+    display:inline-block;
+    padding:${useFuturistic ? "3px" : "0"};
+    border-radius:16px;
+    background:${useFuturistic
+        ? `conic-gradient(from var(--angle), ${ringColor1}, ${ringColor2}, ${ringColor3}, ${ringColor1})`
+        : "transparent"};
+    animation:${useFuturistic ? `spin ${ringSpeed}s linear infinite` : "none"};
+}
+
 #likesGoal{
     color:${textColor};
-    font-family:${font};
+    font-family:'${font}', 'Rajdhani', sans-serif;
     font-size:${fontSize}px;
-    border:${borderStyle};
-box-shadow:${shadowStyle};
+    letter-spacing:${likes.letterSpacing || 2}px;
+    border:${useFuturistic ? "none" : borderStyle};
+box-shadow:${useFuturistic ? "none" : shadowStyle};
     border-radius:12px;
     padding:14px 20px;
-    background:${remainingColor};
+    background:${useFuturistic ? "#05060f" : remainingColor};
     display:inline-block;
 }
 
@@ -5623,6 +5882,7 @@ box-shadow:${shadowStyle};
 </head>
 <body>
 
+<div id="ring">
 <div id="likesGoal">
 
    <div id="likesGoalText">
@@ -5635,6 +5895,7 @@ box-shadow:${shadowStyle};
 </div>
 ` : ""}
 
+</div>
 </div>
 <script>
 async function updateLikesGoal(){
@@ -5690,7 +5951,7 @@ app.get("/overlay/follow-goal", (req, res) => {
     const currentSettings =
         JSON.parse(
     fs.readFileSync(
-        path.join(__dirname,SETTINGS_FILE),
+        SETTINGS_FILE,
         "utf8"
     )
 );
@@ -5751,27 +6012,65 @@ if (variation === "TikTok") {
     shadowStyle = "0 0 10px #ff0050, 0 0 25px #00f2ea";
 }
 
+    const ringColor1 =
+        follow.ringColor1 || "#22d3ee";
+
+    const ringColor2 =
+        follow.ringColor2 || "#a855f7";
+
+    const ringColor3 =
+        follow.ringColor3 || "#ec4899";
+
+    const ringSpeed =
+        follow.ringSpeed || 6;
+
+    const useFuturistic =
+        variation === "Futuriste";
+
     res.send(`
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 <style>
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
+
 body{
     margin:0;
     background:transparent;
     overflow:hidden;
 }
 
+#ring{
+    display:inline-block;
+    padding:${useFuturistic ? "3px" : "0"};
+    border-radius:16px;
+    background:${useFuturistic
+        ? `conic-gradient(from var(--angle), ${ringColor1}, ${ringColor2}, ${ringColor3}, ${ringColor1})`
+        : "transparent"};
+    animation:${useFuturistic ? `spin ${ringSpeed}s linear infinite` : "none"};
+}
+
 #followGoal{
-box-shadow:${shadowStyle};
+box-shadow:${useFuturistic ? "none" : shadowStyle};
     color:${textColor};
-    font-family:${font};
+    font-family:'${font}', 'Rajdhani', sans-serif;
     font-size:${fontSize}px;
-    border:${borderStyle};
+    letter-spacing:${follow.letterSpacing || 2}px;
+    border:${useFuturistic ? "none" : borderStyle};
     border-radius:12px;
     padding:14px 20px;
-    background:${remainingColor};
+    background:${useFuturistic ? "#05060f" : remainingColor};
     display:inline-block;
 }
 
@@ -5793,6 +6092,7 @@ box-shadow:${shadowStyle};
 </head>
 <body>
 
+<div id="ring">
 <div id="followGoal">
 
     <div id="followGoalText">
@@ -5802,8 +6102,10 @@ box-shadow:${shadowStyle};
     ${showProgress ? `
 <div class="bar">
     <div class="fill"></div>
+</div>
 ` : ""}
 
+</div>
 </div>
 
 <script>
@@ -5863,6 +6165,177 @@ app.get("/follow-goal/status", (req, res) => {
 
 });
 
+app.get("/diamonds-goal/status", (req, res) => {
+
+    res.json({
+        diamonds: liveSessionStats.diamonds || 0
+    });
+
+});
+
+app.get("/overlay/diamonds-goal", (req, res) => {
+
+    const currentSettings =
+        JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
+
+    const goal =
+        currentSettings.diamondsGoal || {};
+
+    const text =
+        goal.text || "Objectif Diamants";
+
+    const target =
+        goal.target || 1000;
+
+    const font =
+        goal.font || "Orbitron";
+
+    const nameFont =
+        goal.nameFont || "Rajdhani";
+
+    const fontSize =
+        goal.fontSize || 22;
+
+    const showProgress =
+        goal.showProgress !== false;
+
+    const textColor =
+        goal.textColor || "#f5f7ff";
+
+    const progressColor =
+        goal.progressColor || "#22d3ee";
+
+    const icon =
+        goal.icon || "💎";
+
+    const ringColor1 =
+        goal.ringColor1 || "#22d3ee";
+
+    const ringColor2 =
+        goal.ringColor2 || "#a855f7";
+
+    const ringColor3 =
+        goal.ringColor3 || "#ec4899";
+
+    const ringSpeed =
+        goal.ringSpeed || 6;
+
+    res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+<style>
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
+
+body{
+    margin:0;
+    background:transparent;
+    overflow:hidden;
+}
+
+#ring{
+    display:inline-block;
+    padding:3px;
+    border-radius:18px;
+    background:conic-gradient(from var(--angle), ${ringColor1}, ${ringColor2}, ${ringColor3}, ${ringColor1});
+    animation:spin ${ringSpeed}s linear infinite;
+}
+
+#box{
+    min-width:280px;
+    box-sizing:border-box;
+    padding:16px 22px;
+    border-radius:16px;
+    background:#05060f;
+    color:${textColor};
+    font-family:'${nameFont}', sans-serif;
+    text-align:center;
+}
+
+#goalText{
+    font-family:'${font}', sans-serif;
+    font-size:${fontSize}px;
+    font-weight:700;
+    letter-spacing:1px;
+}
+
+.bar{
+    width:100%;
+    height:12px;
+    margin-top:10px;
+    background:rgba(255,255,255,0.08);
+    border-radius:20px;
+    overflow:hidden;
+}
+
+.fill{
+    width:0%;
+    height:100%;
+    background:${progressColor};
+    box-shadow:0 0 10px ${progressColor}aa;
+    transition:width 0.4s ease;
+}
+</style>
+</head>
+<body>
+
+<div id="ring">
+<div id="box">
+    <div id="goalText">${icon} ${text} : 0 / ${target}</div>
+    ${showProgress ? `<div class="bar"><div class="fill"></div></div>` : ""}
+</div>
+</div>
+
+<script>
+async function updateDiamondsGoal(){
+
+    const response =
+        await fetch("/diamonds-goal/status");
+
+    const data =
+        await response.json();
+
+    const current =
+        Number(data.diamonds || 0);
+
+    const target =
+        Number("${target}" || 1000);
+
+    const percent =
+        Math.min(100, Math.round((current / target) * 100));
+
+    document.getElementById("goalText").innerHTML =
+        "${icon} ${text} : " + current + " / " + target + " (" + percent + "%)";
+
+    const fill =
+        document.querySelector(".fill");
+
+    if (fill) {
+        fill.style.width = percent + "%";
+    }
+
+}
+
+setInterval(updateDiamondsGoal, 1000);
+updateDiamondsGoal();
+</script>
+
+</body>
+</html>
+`);
+});
+
 app.get("/overlay/banner", (req, res) => {
 
     const currentSettings =
@@ -5883,11 +6356,19 @@ app.get("/overlay/banner", (req, res) => {
     const bgColor =
         banner.bgColor || "#ff0050";
 
+    const bgColor2 =
+        banner.bgColor2 || "#a855f7";
+
+    const font =
+        banner.font || "Rajdhani";
+
     res.send(`
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 <style>
 
 body{
@@ -5901,13 +6382,16 @@ body{
     overflow:hidden;
     white-space:nowrap;
 
-    background:${bgColor};
+    background:linear-gradient(90deg, ${bgColor}, ${bgColor2});
     color:${textColor};
+    font-family:'${font}', sans-serif;
 
     padding:12px 0;
 
     font-size:28px;
-    font-weight:bold;
+    font-weight:700;
+    letter-spacing:1px;
+    text-shadow:0 0 10px ${bgColor}aa;
 }
 
 #banner span{

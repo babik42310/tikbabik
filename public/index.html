@@ -1127,8 +1127,6 @@
     </button>
 
 </div>
-<button id="giftBattleTestRed">🔴 Test 1</button>
-<button id="giftBattleTestBlue">🔵 Test 2</button>
             </div>
 
             <div class="overlayGameCard">
@@ -1188,6 +1186,18 @@
 
     <label>Pause Time</label>
     <input id="socialPauseTime" type="number" value="1">
+
+    <label>Anneau — couleur 1</label>
+    <input id="socialRingColor1" type="color" value="#22d3ee">
+
+    <label>Anneau — couleur 2</label>
+    <input id="socialRingColor2" type="color" value="#a855f7">
+
+    <label>Anneau — couleur 3</label>
+    <input id="socialRingColor3" type="color" value="#ec4899">
+
+    <label>Vitesse de rotation de l'anneau (secondes)</label>
+    <input id="socialRingSpeed" type="number" value="6" min="1">
 
     <br><br>
 
@@ -1383,6 +1393,9 @@
     <button id="topLikesCustomize">
     ⚙ Customize
 </button>
+    <button id="topLikesReset" class="dangerButton">
+        🗑 Réinitialiser
+    </button>
 
 </div>
 
@@ -1406,6 +1419,9 @@
                 <button id="topDonorsCustomize">
                     ⚙ Customize
                 </button>
+                <button id="topDonorsReset" class="dangerButton">
+                    🗑 Réinitialiser
+                </button>
 
             </div>
 
@@ -1428,6 +1444,9 @@
                 </button>
                 <button id="topPresenceCustomize">
                     ⚙ Customize
+                </button>
+                <button id="topPresenceReset" class="dangerButton">
+                    🗑 Réinitialiser
                 </button>
 
             </div>
@@ -1678,6 +1697,11 @@ value="/overlay/chrono"        readonly>
         Effet néon
     </label>
 
+    <label>
+        <input type="checkbox" id="webcamSimpleFuturistic">
+        Anneau animé façon CreatorPilot (remplace la couleur fixe)
+    </label>
+
 </div>
 
                 <div class="webcamPreview">
@@ -1710,6 +1734,7 @@ value="/overlay/chrono"        readonly>
         <option value="gaming">Gaming</option>
         <option value="tiktok">TikTok</option>
         <option value="rgb">RGB</option>
+        <option value="futuriste">Futuriste (anneau animé)</option>
 
     </select>
 
@@ -1789,11 +1814,24 @@ value="/overlay/chrono"        readonly>
 
     <label>Style</label>
     <select id="likesGoalVariation">
+        <option>Futuriste</option>
         <option>Clean Néon</option>
         <option>Néon Rose</option>
         <option>Néon Bleu</option>
         <option>TikTok</option>
     </select>
+
+    <label>Anneau — couleur 1 (mode Futuriste)</label>
+    <input type="color" id="likesGoalRingColor1" value="#22d3ee">
+
+    <label>Anneau — couleur 2 (mode Futuriste)</label>
+    <input type="color" id="likesGoalRingColor2" value="#a855f7">
+
+    <label>Anneau — couleur 3 (mode Futuriste)</label>
+    <input type="color" id="likesGoalRingColor3" value="#ec4899">
+
+    <label>Vitesse de rotation de l'anneau (secondes)</label>
+    <input type="number" id="likesGoalRingSpeed" value="6" min="1">
 
     <label>Mise en page</label>
     <select id="likesGoalLayout">
@@ -1822,9 +1860,11 @@ value="/overlay/chrono"        readonly>
 
     <div class="webcamPreview">
 
-    <div id="likesGoalPreview">
-        objectif 10k like et je vous répond : 0 / 0 (0%)
-    </div>
+    <iframe
+        src="/overlay/likes-goal"
+        class="likesGoalFrame"
+        style="width:420px;height:140px;border:none;max-width:100%;">
+    </iframe>
 
 </div>
 
@@ -1890,11 +1930,24 @@ value="/overlay/chrono"        readonly>
 
     <label>Style</label>
     <select id="followGoalVariation">
+        <option>Futuriste</option>
         <option>Clean Néon</option>
         <option>Néon Rose</option>
         <option>Néon Bleu</option>
         <option>TikTok</option>
     </select>
+
+    <label>Anneau — couleur 1 (mode Futuriste)</label>
+    <input type="color" id="followGoalRingColor1" value="#22d3ee">
+
+    <label>Anneau — couleur 2 (mode Futuriste)</label>
+    <input type="color" id="followGoalRingColor2" value="#a855f7">
+
+    <label>Anneau — couleur 3 (mode Futuriste)</label>
+    <input type="color" id="followGoalRingColor3" value="#ec4899">
+
+    <label>Vitesse de rotation de l'anneau (secondes)</label>
+    <input type="number" id="followGoalRingSpeed" value="6" min="1">
 
     <label>Couleur du texte</label>
     <input
@@ -1930,11 +1983,96 @@ value="/overlay/chrono"        readonly>
 
     <div class="webcamPreview">
 
-    <div id="followGoalPreview">
-        objectif 100 abonnés : 0 / 100 (0%)
-    </div>
+    <iframe
+        src="/overlay/follow-goal"
+        class="followGoalFrame"
+        style="width:420px;height:140px;border:none;max-width:100%;">
+    </iframe>
 
 </div>
+
+</div>
+
+<div class="webcamFrameCard">
+
+    <h3>💎 Objectif Diamants</h3>
+
+    <input
+        type="text"
+        class="overlayUrlInput"
+        value="/overlay/diamonds-goal"
+        readonly>
+
+    <button class="copyOverlayUrl" data-pro="true">🔒 Copier URL</button>
+    <button class="testOverlayUrl" data-pro="true">🔒 Tester</button>
+    <button id="customizeDiamondsGoal">⚙️ Personnaliser</button>
+
+    <div id="diamondsGoalCustomize" style="display:none;">
+
+        <label>Texte de l'objectif</label>
+        <input type="text" id="diamondsGoalText" value="Objectif Diamants">
+
+        <label>Objectif de diamants</label>
+        <input type="number" id="diamondsGoalTarget" value="1000">
+
+        <label>
+            <input type="checkbox" id="diamondsGoalShowProgress" checked>
+            Afficher la barre de progression
+        </label>
+
+        <label>Icône</label>
+        <select id="diamondsGoalIcon">
+            <option value="💎">💎 Diamant</option>
+            <option value="🪙">🪙 Pièce</option>
+            <option value="✨">✨ Étincelle</option>
+        </select>
+
+        <label>Police du titre</label>
+        <select id="diamondsGoalFont">
+            <option value="Orbitron">Orbitron (futuriste)</option>
+            <option value="Audiowide">Audiowide (futuriste)</option>
+            <option value="Arial">Arial</option>
+            <option value="Poppins">Poppins</option>
+        </select>
+
+        <label>Taille du texte</label>
+        <input type="number" id="diamondsGoalFontSize" value="22">
+
+        <label>Couleur du texte</label>
+        <input type="color" id="diamondsGoalTextColor" value="#f5f7ff">
+
+        <label>Couleur de la barre de progression</label>
+        <input type="color" id="diamondsGoalProgressColor" value="#22d3ee">
+
+        <label>Anneau — couleur 1</label>
+        <input type="color" id="diamondsGoalRingColor1" value="#22d3ee">
+
+        <label>Anneau — couleur 2</label>
+        <input type="color" id="diamondsGoalRingColor2" value="#a855f7">
+
+        <label>Anneau — couleur 3</label>
+        <input type="color" id="diamondsGoalRingColor3" value="#ec4899">
+
+        <label>Vitesse de rotation de l'anneau (secondes)</label>
+        <input type="number" id="diamondsGoalRingSpeed" value="6" min="1">
+
+        <br><br>
+
+        <button id="saveDiamondsGoal">
+            💾 Sauvegarder Objectif Diamants
+        </button>
+
+    </div>
+
+    <div class="webcamPreview">
+
+        <iframe
+            src="/overlay/diamonds-goal"
+            class="diamondsGoalFrame"
+            style="width:420px;height:140px;border:none;max-width:100%;">
+        </iframe>
+
+    </div>
 
 </div>
 
@@ -1954,11 +2092,11 @@ value="/overlay/chrono"        readonly>
 
     <div class="webcamPreview">
 
-        <div id="bannerPreview">
-    <span id="bannerPreviewText">
-        Bienvenue sur mon live !
-    </span>
-</div>
+        <iframe
+            src="/overlay/banner"
+            class="bannerFrame"
+            style="width:100%;height:70px;border:none;">
+        </iframe>
 
     </div>
 
@@ -1978,17 +2116,31 @@ value="/overlay/chrono"        readonly>
             max="50"
             value="20">
 
+        <label>Police</label>
+        <select id="bannerFont">
+            <option value="Rajdhani">Rajdhani (futuriste)</option>
+            <option value="Orbitron">Orbitron (futuriste)</option>
+            <option value="Arial">Arial</option>
+            <option value="Poppins">Poppins</option>
+        </select>
+
         <label>Couleur texte</label>
         <input
             type="color"
             id="bannerTextColor"
             value="#ffffff">
 
-        <label>Couleur fond</label>
+        <label>Couleur fond (début du dégradé)</label>
         <input
             type="color"
             id="bannerBgColor"
             value="#ff0050">
+
+        <label>Couleur fond (fin du dégradé)</label>
+        <input
+            type="color"
+            id="bannerBgColor2"
+            value="#a855f7">
 
         <button id="saveBanner">
             💾 Sauvegarder
@@ -2671,11 +2823,11 @@ value="/overlay/chrono"        readonly>
     <div id="startMainPage">
     <section class="cpWelcomeShell">
         <div class="cpWelcomeMetrics">
-            <article><span class="cpMetricIcon pink">♥</span><div><small>Likes</small><strong>152.6K</strong><em>+12.5%</em></div></article>
-            <article><span class="cpMetricIcon blue">♟</span><div><small>Abonnés</small><strong>8.45K</strong><em>+8.7%</em></div></article>
-            <article><span class="cpMetricIcon orange">🎁</span><div><small>Cadeaux</small><strong>327</strong><em>+15.3%</em></div></article>
-            <article><span class="cpMetricIcon cyan">◆</span><div><small>Diamants</small><strong>52.0K</strong><em>+22.1%</em></div></article>
-            <article><span class="cpMetricIcon violet">◷</span><div><small>Durée LIVE</small><strong>02:21:45</strong><em class="live">● En direct</em></div></article>
+            <article><span class="cpMetricIcon pink">♥</span><div><small>Likes</small><strong id="cpMetricLikes">0</strong><em id="cpMetricLikesTrend"></em></div></article>
+            <article><span class="cpMetricIcon blue">♟</span><div><small>Abonnés</small><strong id="cpMetricFollowers">0</strong><em id="cpMetricFollowersTrend"></em></div></article>
+            <article><span class="cpMetricIcon orange">🎁</span><div><small>Cadeaux</small><strong id="cpMetricGifts">0</strong><em id="cpMetricGiftsTrend"></em></div></article>
+            <article><span class="cpMetricIcon cyan">◆</span><div><small>Diamants</small><strong id="cpMetricDiamonds">0</strong><em id="cpMetricDiamondsTrend"></em></div></article>
+            <article><span class="cpMetricIcon violet">◷</span><div><small>Durée LIVE</small><strong id="cpMetricDuration">00:00:00</strong><em id="cpMetricLiveState" class="warning">● Hors ligne</em></div></article>
         </div>
 
         <section class="cpHeroCard">
@@ -2697,9 +2849,9 @@ value="/overlay/chrono"        readonly>
 
         <div class="cpSystemBar">
             <div><span class="cpStatusDot ok"></span><small>Statut</small><strong>Opérationnel</strong></div>
-            <div><span class="cpTikTokMini">♪</span><small>TikTok LIVE</small><strong class="warning">Non connecté</strong></div>
+            <div><span class="cpTikTokMini">♪</span><small>TikTok LIVE</small><strong id="cpTikTokStatus" class="warning">Non connecté</strong></div>
             <div><small>Version</small><strong>v2.0.0</strong></div>
-            <div><small>Licence</small><strong><b class="cpProPill">PRO</b></strong></div>
+            <div><small>Licence</small><strong><b id="cpLicenseBadge" class="cpProPill">GRATUIT</b></strong></div>
             <div><span class="cpCheck">✓</span><small>Mises à jour</small><strong>À jour</strong></div>
         </div>
 

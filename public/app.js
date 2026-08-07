@@ -1,5 +1,52 @@
 const socket = io();
 
+function openGiftDropdown(giftSelected, giftOptions) {
+
+    const isOpen =
+        giftOptions.style.display === "block";
+
+    if (isOpen) {
+        giftOptions.style.display = "none";
+        return;
+    }
+
+    const rect =
+        giftSelected.getBoundingClientRect();
+
+    document.body.appendChild(giftOptions);
+
+    giftOptions.style.position = "fixed";
+    giftOptions.style.left = rect.left + "px";
+    giftOptions.style.display = "block";
+
+    const margin = 10;
+    const desiredHeight = 350;
+
+    const spaceBelow =
+        window.innerHeight - rect.bottom - margin;
+
+    const spaceAbove =
+        rect.top - margin;
+
+    if (spaceBelow >= 180 || spaceBelow >= spaceAbove) {
+
+        giftOptions.style.top = (rect.bottom + 4) + "px";
+        giftOptions.style.bottom = "auto";
+        giftOptions.style.maxHeight =
+            Math.max(120, Math.min(desiredHeight, spaceBelow)) + "px";
+
+    } else {
+
+        giftOptions.style.top = "auto";
+        giftOptions.style.bottom =
+            (window.innerHeight - rect.top + 4) + "px";
+        giftOptions.style.maxHeight =
+            Math.max(120, Math.min(desiredHeight, spaceAbove)) + "px";
+
+    }
+
+}
+
 
 /* ==========================================================
    IDENTITÉ LOCALE CREATORPILOT
@@ -501,8 +548,7 @@ function addWheelRow(data = {}) {
     const giftOptions = row.querySelector(".giftOptions");
 
     giftSelected.onclick = () => {
-        giftOptions.style.display =
-            giftOptions.style.display === "block" ? "none" : "block";
+        openGiftDropdown(giftSelected, giftOptions);
     };
 
     
@@ -1002,6 +1048,10 @@ function getSocialSettings() {
         animation: document.getElementById("socialAnimation").value,
         displayTime: document.getElementById("socialDisplayTime").value,
         pauseTime: document.getElementById("socialPauseTime").value,
+        ringColor1: document.getElementById("socialRingColor1")?.value || "#22d3ee",
+        ringColor2: document.getElementById("socialRingColor2")?.value || "#a855f7",
+        ringColor3: document.getElementById("socialRingColor3")?.value || "#ec4899",
+        ringSpeed: Number(document.getElementById("socialRingSpeed")?.value || 6),
         fields: fields
     };
 }
@@ -1093,6 +1143,10 @@ if (savedSocialSettings) {
     document.getElementById("socialAnimation").value = savedSocialSettings.animation || "fade";
     document.getElementById("socialDisplayTime").value = savedSocialSettings.displayTime || 4;
     document.getElementById("socialPauseTime").value = savedSocialSettings.pauseTime || 1;
+    document.getElementById("socialRingColor1").value = savedSocialSettings.ringColor1 || "#22d3ee";
+    document.getElementById("socialRingColor2").value = savedSocialSettings.ringColor2 || "#a855f7";
+    document.getElementById("socialRingColor3").value = savedSocialSettings.ringColor3 || "#ec4899";
+    document.getElementById("socialRingSpeed").value = savedSocialSettings.ringSpeed || 6;
 
     socialFieldsBody.innerHTML = "";
 
@@ -1633,6 +1687,18 @@ if (topDonorsTest) {
     };
 }
 
+const topDonorsReset =
+    document.getElementById("topDonorsReset");
+
+if (topDonorsReset) {
+    topDonorsReset.onclick = async () => {
+        if (!confirm("Réinitialiser le classement Top Donateurs ?")) {
+            return;
+        }
+        await fetch("/top-donors/reset", { method: "POST" });
+    };
+}
+
 const topDonorsCopyUrl =
     document.getElementById("topDonorsCopyUrl");
 
@@ -1864,6 +1930,18 @@ if (topPresenceTest) {
         await fetch("/top-presence/test", {
             method: "POST"
         });
+    };
+}
+
+const topPresenceReset =
+    document.getElementById("topPresenceReset");
+
+if (topPresenceReset) {
+    topPresenceReset.onclick = async () => {
+        if (!confirm("Réinitialiser le classement Top Présence LIVE ?")) {
+            return;
+        }
+        await fetch("/top-presence/reset", { method: "POST" });
     };
 }
 
@@ -2680,12 +2758,7 @@ if (
 
 }
 giftSelected.onclick = () => {
-
-    giftOptions.style.display =
-        giftOptions.style.display === "block"
-            ? "none"
-            : "block";
-
+    openGiftDropdown(giftSelected, giftOptions);
 };
 
         });
@@ -3347,6 +3420,18 @@ topLikesTest.onclick = async () => {
     });
 
 };
+
+const topLikesReset =
+    document.getElementById("topLikesReset");
+
+if (topLikesReset) {
+    topLikesReset.onclick = async () => {
+        if (!confirm("Réinitialiser le classement Top J'aime ?")) {
+            return;
+        }
+        await fetch("/top-likes/reset", { method: "POST" });
+    };
+}
 
 topLikesCopyUrl.onclick = async () => {
 
@@ -4550,6 +4635,110 @@ socket.off("chat");
 let lastChatEventKey = "";
 let lastChatEventAt = 0;
 
+/* ==================== STATS RÉELLES (page Start) ==================== */
+
+function formatCompactNumber(value) {
+    const n = Number(value || 0);
+
+    if (n >= 1000000) {
+        return (n / 1000000).toFixed(1) + "M";
+    }
+
+    if (n >= 1000) {
+        return (n / 1000).toFixed(2) + "K";
+    }
+
+    return String(n);
+}
+
+let currentLiveStats = {
+    connected: false,
+    username: "",
+    startTime: null,
+    likes: 0,
+    followers: 0,
+    gifts: 0,
+    diamonds: 0
+};
+
+function renderLiveStats() {
+
+    const s = currentLiveStats;
+
+    const likesEl = document.getElementById("cpMetricLikes");
+    const followersEl = document.getElementById("cpMetricFollowers");
+    const giftsEl = document.getElementById("cpMetricGifts");
+    const diamondsEl = document.getElementById("cpMetricDiamonds");
+    const durationEl = document.getElementById("cpMetricDuration");
+    const liveStateEl = document.getElementById("cpMetricLiveState");
+    const tiktokStatusEl = document.getElementById("cpTikTokStatus");
+
+    if (likesEl) likesEl.textContent = formatCompactNumber(s.likes);
+    if (followersEl) followersEl.textContent = formatCompactNumber(s.followers);
+    if (giftsEl) giftsEl.textContent = formatCompactNumber(s.gifts);
+    if (diamondsEl) diamondsEl.textContent = formatCompactNumber(s.diamonds);
+
+    if (s.connected && s.startTime) {
+
+        const elapsed =
+            Math.max(0, Math.floor((Date.now() - s.startTime) / 1000));
+
+        const h = Math.floor(elapsed / 3600);
+        const m = Math.floor((elapsed % 3600) / 60);
+        const sec = elapsed % 60;
+
+        if (durationEl) {
+            durationEl.textContent =
+                String(h).padStart(2, "0") + ":" +
+                String(m).padStart(2, "0") + ":" +
+                String(sec).padStart(2, "0");
+        }
+
+        if (liveStateEl) {
+            liveStateEl.textContent = "● En direct";
+            liveStateEl.classList.remove("warning");
+            liveStateEl.classList.add("live");
+        }
+
+        if (tiktokStatusEl) {
+            tiktokStatusEl.textContent = "Connecté (@" + s.username + ")";
+            tiktokStatusEl.classList.remove("warning");
+        }
+
+    } else {
+
+        if (durationEl) durationEl.textContent = "00:00:00";
+
+        if (liveStateEl) {
+            liveStateEl.textContent = "● Hors ligne";
+            liveStateEl.classList.remove("live");
+            liveStateEl.classList.add("warning");
+        }
+
+        if (tiktokStatusEl) {
+            tiktokStatusEl.textContent = "Non connecté";
+            tiktokStatusEl.classList.add("warning");
+        }
+
+    }
+
+}
+
+fetch("/live-stats")
+    .then(response => response.json())
+    .then(data => {
+        currentLiveStats = data;
+        renderLiveStats();
+    })
+    .catch(() => {});
+
+socket.on("liveStats", data => {
+    currentLiveStats = data;
+    renderLiveStats();
+});
+
+setInterval(renderLiveStats, 1000);
+
 socket.on("chat", data => {
     const user = String(data?.user || "");
     const message = String(data?.message || "");
@@ -5130,11 +5319,8 @@ const giftOptions =
     row.querySelector(".eventGiftOptions");
 
     giftSelected.onclick = () => {
-    giftOptions.style.display =
-        giftOptions.style.display === "block"
-            ? "none"
-            : "block";
-};
+        openGiftDropdown(giftSelected, giftOptions);
+    };
 
     fetch("/giftLibrary.json?t=" + Date.now())
     .then(response => response.json())
@@ -5180,15 +5366,6 @@ const giftOptions =
         });
 
     });
-
-giftSelected.onclick = () => {
-
-    giftOptions.style.display =
-        giftOptions.style.display === "block"
-            ? "none"
-            : "block";
-
-};
 
     
 
@@ -5324,7 +5501,10 @@ const value =
         Number(document.getElementById("webcamSimpleRadius")?.value || 12),
 
     glow:
-        document.getElementById("webcamSimpleGlow")?.checked || false
+        document.getElementById("webcamSimpleGlow")?.checked || false,
+
+    futuristic:
+        document.getElementById("webcamSimpleFuturistic")?.checked || false
 };
 
 console.log("ENVOI SETTINGS :", appSettings);
@@ -6706,7 +6886,19 @@ barColor:
                 document.getElementById("likesGoalTextColor")?.value || "#00ff22",
 
             variation:
-                document.getElementById("likesGoalVariation")?.value || "Clean Néon"
+                document.getElementById("likesGoalVariation")?.value || "Clean Néon",
+
+            ringColor1:
+                document.getElementById("likesGoalRingColor1")?.value || "#22d3ee",
+
+            ringColor2:
+                document.getElementById("likesGoalRingColor2")?.value || "#a855f7",
+
+            ringColor3:
+                document.getElementById("likesGoalRingColor3")?.value || "#ec4899",
+
+            ringSpeed:
+                Number(document.getElementById("likesGoalRingSpeed")?.value || 6)
 
         };
 
@@ -6719,6 +6911,13 @@ barColor:
         })
         .then(response => response.json())
         .then(() => {
+
+            const frame =
+                document.querySelector(".likesGoalFrame");
+
+            if (frame) {
+                frame.src = "/overlay/likes-goal?t=" + Date.now();
+            }
 
             alert("Objectif Likes sauvegardé !");
 
@@ -6747,6 +6946,70 @@ if (
             followGoalCustomize.style.display === "none"
                 ? "block"
                 : "none";
+
+    };
+
+}
+
+const customizeDiamondsGoal =
+    document.getElementById("customizeDiamondsGoal");
+
+const diamondsGoalCustomize =
+    document.getElementById("diamondsGoalCustomize");
+
+if (customizeDiamondsGoal && diamondsGoalCustomize) {
+
+    customizeDiamondsGoal.onclick = () => {
+
+        diamondsGoalCustomize.style.display =
+            diamondsGoalCustomize.style.display === "none"
+                ? "block"
+                : "none";
+
+    };
+
+}
+
+const saveDiamondsGoal =
+    document.getElementById("saveDiamondsGoal");
+
+if (saveDiamondsGoal) {
+
+    saveDiamondsGoal.onclick = () => {
+
+        appSettings.diamondsGoal = {
+            text: document.getElementById("diamondsGoalText")?.value || "Objectif Diamants",
+            target: Number(document.getElementById("diamondsGoalTarget")?.value || 1000),
+            showProgress: document.getElementById("diamondsGoalShowProgress")?.checked !== false,
+            icon: document.getElementById("diamondsGoalIcon")?.value || "💎",
+            font: document.getElementById("diamondsGoalFont")?.value || "Orbitron",
+            fontSize: Number(document.getElementById("diamondsGoalFontSize")?.value || 22),
+            textColor: document.getElementById("diamondsGoalTextColor")?.value || "#f5f7ff",
+            progressColor: document.getElementById("diamondsGoalProgressColor")?.value || "#22d3ee",
+            ringColor1: document.getElementById("diamondsGoalRingColor1")?.value || "#22d3ee",
+            ringColor2: document.getElementById("diamondsGoalRingColor2")?.value || "#a855f7",
+            ringColor3: document.getElementById("diamondsGoalRingColor3")?.value || "#ec4899",
+            ringSpeed: Number(document.getElementById("diamondsGoalRingSpeed")?.value || 6)
+        };
+
+        fetch("/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(appSettings)
+        })
+        .then(response => response.json())
+        .then(() => {
+
+            const frame =
+                document.querySelector(".diamondsGoalFrame");
+
+            if (frame) {
+                frame.src = "/overlay/diamonds-goal?t=" + Date.now();
+            }
+
+            alert("Objectif Diamants sauvegardé !");
+
+        });
 
     };
 
@@ -6915,7 +7178,11 @@ if (saveFollowGoal) {
             progressColor: document.getElementById("followGoalProgressColor")?.value || "#ea00ff",
             remainingColor: document.getElementById("followGoalRemainingColor")?.value || "#010300",
             barColor: document.getElementById("followGoalBarColor")?.value || "#baff4a",
-            variation: document.getElementById("followGoalVariation")?.value || "Clean Néon"
+            variation: document.getElementById("followGoalVariation")?.value || "Clean Néon",
+            ringColor1: document.getElementById("followGoalRingColor1")?.value || "#22d3ee",
+            ringColor2: document.getElementById("followGoalRingColor2")?.value || "#a855f7",
+            ringColor3: document.getElementById("followGoalRingColor3")?.value || "#ec4899",
+            ringSpeed: Number(document.getElementById("followGoalRingSpeed")?.value || 6)
         };
 
         fetch("/settings", {
@@ -6925,6 +7192,14 @@ if (saveFollowGoal) {
         })
         .then(response => response.json())
         .then(() => {
+
+            const frame =
+                document.querySelector(".followGoalFrame");
+
+            if (frame) {
+                frame.src = "/overlay/follow-goal?t=" + Date.now();
+            }
+
             alert("Objectif Abonnés sauvegardé !");
         });
 
@@ -6954,56 +7229,30 @@ if (
 
 }
 
-const bannerPreview =
-    document.getElementById("bannerPreview");
+const bannerFrame =
+    document.querySelector(".bannerFrame");
 
-const bannerPreviewText =
-    document.getElementById("bannerPreviewText");
-
-function updateBannerPreview() {
-
-    if (!bannerPreview || !bannerPreviewText) {
-        return;
+function refreshBannerPreview() {
+    if (bannerFrame) {
+        bannerFrame.src = "/overlay/banner?t=" + Date.now();
     }
-
-    bannerPreviewText.innerHTML =
-        document.getElementById("bannerText")?.value ||
-        "Bienvenue sur mon live !";
-
-    bannerPreview.style.background =
-        document.getElementById("bannerBgColor")?.value || "#ff0050";
-
-    bannerPreview.style.color =
-        document.getElementById("bannerTextColor")?.value || "#ffffff";
-
-    const speed =
-        document.getElementById("bannerSpeed")?.value || 20;
-
-    bannerPreviewText.style.animationDuration =
-        speed + "s";
-
 }
 
 [
     "bannerText",
     "bannerSpeed",
+    "bannerFont",
     "bannerTextColor",
-    "bannerBgColor"
+    "bannerBgColor",
+    "bannerBgColor2"
 ].forEach(id => {
 
     document.getElementById(id)?.addEventListener(
-        "input",
-        updateBannerPreview
-    );
-
-    document.getElementById(id)?.addEventListener(
         "change",
-        updateBannerPreview
+        refreshBannerPreview
     );
 
 });
-
-updateBannerPreview();
 
 const saveBanner =
     document.getElementById("saveBanner");
@@ -7022,11 +7271,17 @@ if (saveBanner) {
                     document.getElementById("bannerSpeed")?.value || 20
                 ),
 
+            font:
+                document.getElementById("bannerFont")?.value || "Rajdhani",
+
             textColor:
                 document.getElementById("bannerTextColor")?.value || "#ffffff",
 
             bgColor:
-                document.getElementById("bannerBgColor")?.value || "#ff0050"
+                document.getElementById("bannerBgColor")?.value || "#ff0050",
+
+            bgColor2:
+                document.getElementById("bannerBgColor2")?.value || "#a855f7"
 
         };
 
@@ -7039,6 +7294,8 @@ if (saveBanner) {
         })
         .then(response => response.json())
         .then(() => {
+
+            refreshBannerPreview();
 
             alert("Bannière sauvegardée !");
 
@@ -7172,6 +7429,13 @@ function applyProDisplay() {
         }
 
     });
+
+    const licenseBadge =
+        document.getElementById("cpLicenseBadge");
+
+    if (licenseBadge) {
+        licenseBadge.textContent = isPro ? "PRO" : "GRATUIT";
+    }
 
 }
 
