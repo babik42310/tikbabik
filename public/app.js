@@ -300,12 +300,32 @@ const chronoCustomizePanel =
 
 if (chronoCustomize && chronoCustomizePanel) {
 
-    chronoCustomize.onclick = () => {
+    chronoCustomize.onclick = async () => {
 
         chronoCustomizePanel.style.display =
             chronoCustomizePanel.style.display === "none"
                 ? "block"
                 : "none";
+
+        if (chronoCustomizePanel.style.display === "block") {
+
+            const response = await fetch("/chrono/status");
+            const data = await response.json();
+            const s = data.settings || {};
+
+            document.getElementById("chronoFont").value = s.font || "Orbitron";
+            document.getElementById("chronoFontSize").value = s.fontSize || 42;
+            document.getElementById("chronoLetterSpacing").value = s.letterSpacing || 4;
+            document.getElementById("chronoTextColor").value = s.textColor || "#b700ff";
+            document.getElementById("chronoBgColor").value = s.bgColor || "#05060f";
+            document.getElementById("chronoLabelText").value = s.labelText || "";
+            document.getElementById("chronoLabelColor").value = s.labelColor || "#8b93b8";
+            document.getElementById("chronoRingColor1").value = s.ringColor1 || "#22d3ee";
+            document.getElementById("chronoRingColor2").value = s.ringColor2 || "#a855f7";
+            document.getElementById("chronoRingColor3").value = s.ringColor3 || "#ec4899";
+            document.getElementById("chronoRingSpeed").value = s.ringSpeed || 6;
+            document.getElementById("chronoDefaultMinutes").value = s.defaultMinutes || 5;
+        }
 
     };
 
@@ -753,6 +773,10 @@ function getWheelSettings() {
         announceDuration: Number(document.getElementById("wheelAnnounceDuration").value || 3),
         spinDuration: Number(document.getElementById("wheelSpinDuration").value || 10),
         waitDuration: Number(document.getElementById("wheelWaitDuration").value || 1),
+        ringColor1: document.getElementById("wheelRingColor1")?.value || "#22d3ee",
+        ringColor2: document.getElementById("wheelRingColor2")?.value || "#a855f7",
+        ringColor3: document.getElementById("wheelRingColor3")?.value || "#ec4899",
+        ringSpeed: Number(document.getElementById("wheelRingSpeed")?.value || 6),
         wheels
     };
 }
@@ -851,7 +875,13 @@ if (socialAddField && socialFieldsBody) {
     "chronoFontSize",
     "chronoLetterSpacing",
     "chronoTextColor",
-    "chronoBgColor"
+    "chronoBgColor",
+    "chronoLabelText",
+    "chronoLabelColor",
+    "chronoRingColor1",
+    "chronoRingColor2",
+    "chronoRingColor3",
+    "chronoRingSpeed"
 ].forEach(id => {
 
     const element =
@@ -899,7 +929,11 @@ async function saveWheelPreviewOnly() {
     "wheelSoundActive",
     "wheelAnnounceDuration",
     "wheelSpinDuration",
-    "wheelWaitDuration"
+    "wheelWaitDuration",
+    "wheelRingColor1",
+    "wheelRingColor2",
+    "wheelRingColor3",
+    "wheelRingSpeed"
 ].forEach(id => {
     const element =
         document.getElementById(id);
@@ -930,7 +964,13 @@ async function saveChronoPreviewOnly() {
             fontSize: Number(document.getElementById("chronoFontSize").value || 42),
             letterSpacing: Number(document.getElementById("chronoLetterSpacing").value || 4),
             textColor: document.getElementById("chronoTextColor").value,
-            bgColor: document.getElementById("chronoBgColor").value
+            bgColor: document.getElementById("chronoBgColor").value,
+            labelText: document.getElementById("chronoLabelText").value,
+            labelColor: document.getElementById("chronoLabelColor").value,
+            ringColor1: document.getElementById("chronoRingColor1").value,
+            ringColor2: document.getElementById("chronoRingColor2").value,
+            ringColor3: document.getElementById("chronoRingColor3").value,
+            ringSpeed: Number(document.getElementById("chronoRingSpeed").value || 6)
         })
     });
 
@@ -1205,11 +1245,22 @@ const saveTopLikesSettings =
 
 function getTopLikesSettings() {
     return {
-        font: document.getElementById("topLikesFont").value,
+        titleFont: document.getElementById("topLikesTitleFont").value,
+        nameFont: document.getElementById("topLikesNameFont").value,
         fontSize: document.getElementById("topLikesFontSize").value,
+        titleText: document.getElementById("topLikesTitleText").value,
+        titleColorStart: document.getElementById("topLikesTitleColorStart").value,
+        titleColorEnd: document.getElementById("topLikesTitleColorEnd").value,
         nameColor: document.getElementById("topLikesNameColor").value,
         likesColor: document.getElementById("topLikesLikesColor").value,
         rankColor: document.getElementById("topLikesRankColor").value,
+        bgColor: document.getElementById("topLikesBgColor").value,
+        rowColor: document.getElementById("topLikesRowColor").value,
+        ringColor1: document.getElementById("topLikesRingColor1").value,
+        ringColor2: document.getElementById("topLikesRingColor2").value,
+        ringColor3: document.getElementById("topLikesRingColor3").value,
+        ringSpeed: document.getElementById("topLikesRingSpeed").value,
+        heartIcon: document.getElementById("topLikesHeartIcon").value,
         showAvatar: document.getElementById("topLikesShowAvatar").checked,
         showCrown: document.getElementById("topLikesShowCrown").checked,
         showHeart: document.getElementById("topLikesShowHeart").checked
@@ -1219,32 +1270,58 @@ function getTopLikesSettings() {
 function applyTopLikesSettings() {
     const settings = getTopLikesSettings();
 
-    const frame =
-        document.querySelector('iframe[src^="/overlay/top-likes"]');
+    const frames =
+        document.querySelectorAll('iframe[src^="/overlay/top-likes"]');
 
-    if (frame) {
-        frame.src =
+    if (frames.length) {
+        const newSrc =
             "/overlay/top-likes" +
-            "?font=" + encodeURIComponent(settings.font) +
+            "?titleFont=" + encodeURIComponent(settings.titleFont) +
+            "&nameFont=" + encodeURIComponent(settings.nameFont) +
             "&fontSize=" + settings.fontSize +
+            "&titleText=" + encodeURIComponent(settings.titleText) +
+            "&titleColorStart=" + settings.titleColorStart.substring(1) +
+            "&titleColorEnd=" + settings.titleColorEnd.substring(1) +
             "&nameColor=" + settings.nameColor.substring(1) +
             "&likesColor=" + settings.likesColor.substring(1) +
             "&rankColor=" + settings.rankColor.substring(1) +
+            "&bgColor=" + settings.bgColor.substring(1) +
+            "&rowColor=" + settings.rowColor.substring(1) +
+            "&ringColor1=" + settings.ringColor1.substring(1) +
+            "&ringColor2=" + settings.ringColor2.substring(1) +
+            "&ringColor3=" + settings.ringColor3.substring(1) +
+            "&ringSpeed=" + settings.ringSpeed +
+            "&heartIcon=" + encodeURIComponent(settings.heartIcon) +
             "&showAvatar=" + settings.showAvatar +
             "&showCrown=" + settings.showCrown +
             "&showHeart=" + settings.showHeart +
             "&t=" + Date.now();
+
+        frames.forEach(frame => {
+            frame.src = newSrc;
+        });
     }
 
     return settings;
 }
 
 [
-    "topLikesFont",
+    "topLikesTitleFont",
+    "topLikesNameFont",
     "topLikesFontSize",
+    "topLikesTitleText",
+    "topLikesTitleColorStart",
+    "topLikesTitleColorEnd",
     "topLikesNameColor",
     "topLikesLikesColor",
     "topLikesRankColor",
+    "topLikesBgColor",
+    "topLikesRowColor",
+    "topLikesRingColor1",
+    "topLikesRingColor2",
+    "topLikesRingColor3",
+    "topLikesRingSpeed",
+    "topLikesHeartIcon",
     "topLikesShowAvatar",
     "topLikesShowCrown",
     "topLikesShowHeart"
@@ -1282,11 +1359,23 @@ const savedTopLikesSettings =
     JSON.parse(localStorage.getItem("topLikesSettings"));
 
 if (savedTopLikesSettings) {
-    document.getElementById("topLikesFont").value =
-        savedTopLikesSettings.font;
+    document.getElementById("topLikesTitleFont").value =
+        savedTopLikesSettings.titleFont || "Orbitron";
+
+    document.getElementById("topLikesNameFont").value =
+        savedTopLikesSettings.nameFont || "Rajdhani";
 
     document.getElementById("topLikesFontSize").value =
         savedTopLikesSettings.fontSize;
+
+    document.getElementById("topLikesTitleText").value =
+        savedTopLikesSettings.titleText || "Top J'aime";
+
+    document.getElementById("topLikesTitleColorStart").value =
+        savedTopLikesSettings.titleColorStart || "#22d3ee";
+
+    document.getElementById("topLikesTitleColorEnd").value =
+        savedTopLikesSettings.titleColorEnd || "#ff4d6d";
 
     document.getElementById("topLikesNameColor").value =
         savedTopLikesSettings.nameColor;
@@ -1296,6 +1385,27 @@ if (savedTopLikesSettings) {
 
     document.getElementById("topLikesRankColor").value =
         savedTopLikesSettings.rankColor;
+
+    document.getElementById("topLikesBgColor").value =
+        savedTopLikesSettings.bgColor || "#05060f";
+
+    document.getElementById("topLikesRowColor").value =
+        savedTopLikesSettings.rowColor || "#a855f7";
+
+    document.getElementById("topLikesRingColor1").value =
+        savedTopLikesSettings.ringColor1 || "#22d3ee";
+
+    document.getElementById("topLikesRingColor2").value =
+        savedTopLikesSettings.ringColor2 || "#a855f7";
+
+    document.getElementById("topLikesRingColor3").value =
+        savedTopLikesSettings.ringColor3 || "#ec4899";
+
+    document.getElementById("topLikesRingSpeed").value =
+        savedTopLikesSettings.ringSpeed || 6;
+
+    document.getElementById("topLikesHeartIcon").value =
+        savedTopLikesSettings.heartIcon || "❤️";
 
     document.getElementById("topLikesShowAvatar").checked =
         savedTopLikesSettings.showAvatar;
@@ -1307,6 +1417,474 @@ if (savedTopLikesSettings) {
         savedTopLikesSettings.showHeart;
 
     applyTopLikesSettings();
+}
+
+/* ==================== TOP DONATEURS (UI) ==================== */
+
+const saveTopDonorsSettings =
+    document.getElementById("saveTopDonorsSettings");
+
+function getTopDonorsSettings() {
+    return {
+        titleFont: document.getElementById("topDonorsTitleFont").value,
+        nameFont: document.getElementById("topDonorsNameFont").value,
+        fontSize: document.getElementById("topDonorsFontSize").value,
+        titleText: document.getElementById("topDonorsTitleText").value,
+        titleColorStart: document.getElementById("topDonorsTitleColorStart").value,
+        titleColorEnd: document.getElementById("topDonorsTitleColorEnd").value,
+        nameColor: document.getElementById("topDonorsNameColor").value,
+        coinsColor: document.getElementById("topDonorsCoinsColor").value,
+        rankColor: document.getElementById("topDonorsRankColor").value,
+        bgColor: document.getElementById("topDonorsBgColor").value,
+        rowColor: document.getElementById("topDonorsRowColor").value,
+        ringColor1: document.getElementById("topDonorsRingColor1").value,
+        ringColor2: document.getElementById("topDonorsRingColor2").value,
+        ringColor3: document.getElementById("topDonorsRingColor3").value,
+        ringSpeed: document.getElementById("topDonorsRingSpeed").value,
+        coinIcon: document.getElementById("topDonorsCoinIcon").value,
+        showAvatar: document.getElementById("topDonorsShowAvatar").checked,
+        showCrown: document.getElementById("topDonorsShowCrown").checked,
+        showCoin: document.getElementById("topDonorsShowCoin").checked
+    };
+}
+
+function applyTopDonorsSettings() {
+    const settings = getTopDonorsSettings();
+
+    const frames =
+        document.querySelectorAll('iframe[src^="/overlay/top-donors"]');
+
+    if (frames.length) {
+        const newSrc =
+            "/overlay/top-donors" +
+            "?titleFont=" + encodeURIComponent(settings.titleFont) +
+            "&nameFont=" + encodeURIComponent(settings.nameFont) +
+            "&fontSize=" + settings.fontSize +
+            "&titleText=" + encodeURIComponent(settings.titleText) +
+            "&titleColorStart=" + settings.titleColorStart.substring(1) +
+            "&titleColorEnd=" + settings.titleColorEnd.substring(1) +
+            "&nameColor=" + settings.nameColor.substring(1) +
+            "&coinsColor=" + settings.coinsColor.substring(1) +
+            "&rankColor=" + settings.rankColor.substring(1) +
+            "&bgColor=" + settings.bgColor.substring(1) +
+            "&rowColor=" + settings.rowColor.substring(1) +
+            "&ringColor1=" + settings.ringColor1.substring(1) +
+            "&ringColor2=" + settings.ringColor2.substring(1) +
+            "&ringColor3=" + settings.ringColor3.substring(1) +
+            "&ringSpeed=" + settings.ringSpeed +
+            "&coinIcon=" + encodeURIComponent(settings.coinIcon) +
+            "&showAvatar=" + settings.showAvatar +
+            "&showCrown=" + settings.showCrown +
+            "&showCoin=" + settings.showCoin +
+            "&t=" + Date.now();
+
+        frames.forEach(frame => {
+            frame.src = newSrc;
+        });
+    }
+
+    return settings;
+}
+
+[
+    "topDonorsTitleFont",
+    "topDonorsNameFont",
+    "topDonorsFontSize",
+    "topDonorsTitleText",
+    "topDonorsTitleColorStart",
+    "topDonorsTitleColorEnd",
+    "topDonorsNameColor",
+    "topDonorsCoinsColor",
+    "topDonorsRankColor",
+    "topDonorsBgColor",
+    "topDonorsRowColor",
+    "topDonorsRingColor1",
+    "topDonorsRingColor2",
+    "topDonorsRingColor3",
+    "topDonorsRingSpeed",
+    "topDonorsCoinIcon",
+    "topDonorsShowAvatar",
+    "topDonorsShowCrown",
+    "topDonorsShowCoin"
+].forEach(id => {
+    const element = document.getElementById(id);
+
+    if (element) {
+        element.addEventListener("input", applyTopDonorsSettings);
+        element.addEventListener("change", applyTopDonorsSettings);
+    }
+});
+
+if (saveTopDonorsSettings) {
+    saveTopDonorsSettings.onclick = () => {
+        const settings = applyTopDonorsSettings();
+
+        localStorage.setItem(
+            "topDonorsSettings",
+            JSON.stringify(settings)
+        );
+
+        fetch("/top-donors/settings", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(settings)
+        });
+
+        alert("Réglages Top Donateurs sauvegardés !");
+    };
+}
+
+const savedTopDonorsSettings =
+    JSON.parse(localStorage.getItem("topDonorsSettings"));
+
+if (savedTopDonorsSettings) {
+    document.getElementById("topDonorsTitleFont").value =
+        savedTopDonorsSettings.titleFont || "Orbitron";
+
+    document.getElementById("topDonorsNameFont").value =
+        savedTopDonorsSettings.nameFont || "Rajdhani";
+
+    document.getElementById("topDonorsFontSize").value =
+        savedTopDonorsSettings.fontSize;
+
+    document.getElementById("topDonorsTitleText").value =
+        savedTopDonorsSettings.titleText || "Top Donateurs";
+
+    document.getElementById("topDonorsTitleColorStart").value =
+        savedTopDonorsSettings.titleColorStart || "#22d3ee";
+
+    document.getElementById("topDonorsTitleColorEnd").value =
+        savedTopDonorsSettings.titleColorEnd || "#00e5ff";
+
+    document.getElementById("topDonorsNameColor").value =
+        savedTopDonorsSettings.nameColor;
+
+    document.getElementById("topDonorsCoinsColor").value =
+        savedTopDonorsSettings.coinsColor;
+
+    document.getElementById("topDonorsRankColor").value =
+        savedTopDonorsSettings.rankColor;
+
+    document.getElementById("topDonorsBgColor").value =
+        savedTopDonorsSettings.bgColor || "#05060f";
+
+    document.getElementById("topDonorsRowColor").value =
+        savedTopDonorsSettings.rowColor || "#a855f7";
+
+    document.getElementById("topDonorsRingColor1").value =
+        savedTopDonorsSettings.ringColor1 || "#22d3ee";
+
+    document.getElementById("topDonorsRingColor2").value =
+        savedTopDonorsSettings.ringColor2 || "#a855f7";
+
+    document.getElementById("topDonorsRingColor3").value =
+        savedTopDonorsSettings.ringColor3 || "#ec4899";
+
+    document.getElementById("topDonorsRingSpeed").value =
+        savedTopDonorsSettings.ringSpeed || 6;
+
+    document.getElementById("topDonorsCoinIcon").value =
+        savedTopDonorsSettings.coinIcon || "🪙";
+
+    document.getElementById("topDonorsShowAvatar").checked =
+        savedTopDonorsSettings.showAvatar;
+
+    document.getElementById("topDonorsShowCrown").checked =
+        savedTopDonorsSettings.showCrown;
+
+    document.getElementById("topDonorsShowCoin").checked =
+        savedTopDonorsSettings.showCoin;
+
+    applyTopDonorsSettings();
+}
+
+const topDonorsCustomize =
+    document.getElementById("topDonorsCustomize");
+
+const topDonorsCustomizeModal =
+    document.getElementById("topDonorsCustomizeModal");
+
+const closeTopDonorsSettings =
+    document.getElementById("closeTopDonorsSettings");
+
+if (topDonorsCustomize && topDonorsCustomizeModal) {
+    topDonorsCustomize.onclick = () => {
+        topDonorsCustomizeModal.style.display = "flex";
+        applyTopDonorsSettings();
+    };
+}
+
+if (closeTopDonorsSettings && topDonorsCustomizeModal) {
+    closeTopDonorsSettings.onclick = () => {
+        topDonorsCustomizeModal.style.display = "none";
+    };
+}
+
+const topDonorsTest =
+    document.getElementById("topDonorsTest");
+
+if (topDonorsTest) {
+    topDonorsTest.onclick = async () => {
+        await fetch("/top-donors/test", {
+            method: "POST"
+        });
+    };
+}
+
+const topDonorsCopyUrl =
+    document.getElementById("topDonorsCopyUrl");
+
+if (topDonorsCopyUrl) {
+    topDonorsCopyUrl.onclick = async () => {
+
+        const url =
+            window.location.origin +
+            "/overlay/top-donors";
+
+        try {
+            await navigator.clipboard.writeText(url);
+            alert("URL copiée : " + url);
+        } catch (error) {
+            alert("Impossible de copier automatiquement.\n\nURL : " + url);
+        }
+
+    };
+}
+
+/* ==================== TOP PRÉSENCE LIVE (UI) ==================== */
+
+const saveTopPresenceSettings =
+    document.getElementById("saveTopPresenceSettings");
+
+function getTopPresenceSettings() {
+    return {
+        titleFont: document.getElementById("topPresenceTitleFont").value,
+        nameFont: document.getElementById("topPresenceNameFont").value,
+        fontSize: document.getElementById("topPresenceFontSize").value,
+        titleText: document.getElementById("topPresenceTitleText").value,
+        titleColorStart: document.getElementById("topPresenceTitleColorStart").value,
+        titleColorEnd: document.getElementById("topPresenceTitleColorEnd").value,
+        nameColor: document.getElementById("topPresenceNameColor").value,
+        timeColor: document.getElementById("topPresenceTimeColor").value,
+        rankColor: document.getElementById("topPresenceRankColor").value,
+        bgColor: document.getElementById("topPresenceBgColor").value,
+        rowColor: document.getElementById("topPresenceRowColor").value,
+        ringColor1: document.getElementById("topPresenceRingColor1").value,
+        ringColor2: document.getElementById("topPresenceRingColor2").value,
+        ringColor3: document.getElementById("topPresenceRingColor3").value,
+        ringSpeed: document.getElementById("topPresenceRingSpeed").value,
+        clockIcon: document.getElementById("topPresenceClockIcon").value,
+        showAvatar: document.getElementById("topPresenceShowAvatar").checked,
+        showCrown: document.getElementById("topPresenceShowCrown").checked,
+        showClock: document.getElementById("topPresenceShowClock").checked
+    };
+}
+
+function applyTopPresenceSettings() {
+    const settings = getTopPresenceSettings();
+
+    const frames =
+        document.querySelectorAll('iframe[src^="/overlay/top-presence"]');
+
+    if (frames.length) {
+        const newSrc =
+            "/overlay/top-presence" +
+            "?titleFont=" + encodeURIComponent(settings.titleFont) +
+            "&nameFont=" + encodeURIComponent(settings.nameFont) +
+            "&fontSize=" + settings.fontSize +
+            "&titleText=" + encodeURIComponent(settings.titleText) +
+            "&titleColorStart=" + settings.titleColorStart.substring(1) +
+            "&titleColorEnd=" + settings.titleColorEnd.substring(1) +
+            "&nameColor=" + settings.nameColor.substring(1) +
+            "&timeColor=" + settings.timeColor.substring(1) +
+            "&rankColor=" + settings.rankColor.substring(1) +
+            "&bgColor=" + settings.bgColor.substring(1) +
+            "&rowColor=" + settings.rowColor.substring(1) +
+            "&ringColor1=" + settings.ringColor1.substring(1) +
+            "&ringColor2=" + settings.ringColor2.substring(1) +
+            "&ringColor3=" + settings.ringColor3.substring(1) +
+            "&ringSpeed=" + settings.ringSpeed +
+            "&clockIcon=" + encodeURIComponent(settings.clockIcon) +
+            "&showAvatar=" + settings.showAvatar +
+            "&showCrown=" + settings.showCrown +
+            "&showClock=" + settings.showClock +
+            "&t=" + Date.now();
+
+        frames.forEach(frame => {
+            frame.src = newSrc;
+        });
+    }
+
+    return settings;
+}
+
+[
+    "topPresenceTitleFont",
+    "topPresenceNameFont",
+    "topPresenceFontSize",
+    "topPresenceTitleText",
+    "topPresenceTitleColorStart",
+    "topPresenceTitleColorEnd",
+    "topPresenceNameColor",
+    "topPresenceTimeColor",
+    "topPresenceRankColor",
+    "topPresenceBgColor",
+    "topPresenceRowColor",
+    "topPresenceRingColor1",
+    "topPresenceRingColor2",
+    "topPresenceRingColor3",
+    "topPresenceRingSpeed",
+    "topPresenceClockIcon",
+    "topPresenceShowAvatar",
+    "topPresenceShowCrown",
+    "topPresenceShowClock"
+].forEach(id => {
+    const element = document.getElementById(id);
+
+    if (element) {
+        element.addEventListener("input", applyTopPresenceSettings);
+        element.addEventListener("change", applyTopPresenceSettings);
+    }
+});
+
+if (saveTopPresenceSettings) {
+    saveTopPresenceSettings.onclick = () => {
+        const settings = applyTopPresenceSettings();
+
+        localStorage.setItem(
+            "topPresenceSettings",
+            JSON.stringify(settings)
+        );
+
+        fetch("/top-presence/settings", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(settings)
+        });
+
+        alert("Réglages Top Présence LIVE sauvegardés !");
+    };
+}
+
+const savedTopPresenceSettings =
+    JSON.parse(localStorage.getItem("topPresenceSettings"));
+
+if (savedTopPresenceSettings) {
+    document.getElementById("topPresenceTitleFont").value =
+        savedTopPresenceSettings.titleFont || "Orbitron";
+
+    document.getElementById("topPresenceNameFont").value =
+        savedTopPresenceSettings.nameFont || "Rajdhani";
+
+    document.getElementById("topPresenceFontSize").value =
+        savedTopPresenceSettings.fontSize;
+
+    document.getElementById("topPresenceTitleText").value =
+        savedTopPresenceSettings.titleText || "Top Présence LIVE";
+
+    document.getElementById("topPresenceTitleColorStart").value =
+        savedTopPresenceSettings.titleColorStart || "#22d3ee";
+
+    document.getElementById("topPresenceTitleColorEnd").value =
+        savedTopPresenceSettings.titleColorEnd || "#7CFC00";
+
+    document.getElementById("topPresenceNameColor").value =
+        savedTopPresenceSettings.nameColor;
+
+    document.getElementById("topPresenceTimeColor").value =
+        savedTopPresenceSettings.timeColor;
+
+    document.getElementById("topPresenceRankColor").value =
+        savedTopPresenceSettings.rankColor;
+
+    document.getElementById("topPresenceBgColor").value =
+        savedTopPresenceSettings.bgColor || "#05060f";
+
+    document.getElementById("topPresenceRowColor").value =
+        savedTopPresenceSettings.rowColor || "#a855f7";
+
+    document.getElementById("topPresenceRingColor1").value =
+        savedTopPresenceSettings.ringColor1 || "#22d3ee";
+
+    document.getElementById("topPresenceRingColor2").value =
+        savedTopPresenceSettings.ringColor2 || "#a855f7";
+
+    document.getElementById("topPresenceRingColor3").value =
+        savedTopPresenceSettings.ringColor3 || "#ec4899";
+
+    document.getElementById("topPresenceRingSpeed").value =
+        savedTopPresenceSettings.ringSpeed || 6;
+
+    document.getElementById("topPresenceClockIcon").value =
+        savedTopPresenceSettings.clockIcon || "⏱️";
+
+    document.getElementById("topPresenceShowAvatar").checked =
+        savedTopPresenceSettings.showAvatar;
+
+    document.getElementById("topPresenceShowCrown").checked =
+        savedTopPresenceSettings.showCrown;
+
+    document.getElementById("topPresenceShowClock").checked =
+        savedTopPresenceSettings.showClock;
+
+    applyTopPresenceSettings();
+}
+
+const topPresenceCustomize =
+    document.getElementById("topPresenceCustomize");
+
+const topPresenceCustomizeModal =
+    document.getElementById("topPresenceCustomizeModal");
+
+const closeTopPresenceSettings =
+    document.getElementById("closeTopPresenceSettings");
+
+if (topPresenceCustomize && topPresenceCustomizeModal) {
+    topPresenceCustomize.onclick = () => {
+        topPresenceCustomizeModal.style.display = "flex";
+        applyTopPresenceSettings();
+    };
+}
+
+if (closeTopPresenceSettings && topPresenceCustomizeModal) {
+    closeTopPresenceSettings.onclick = () => {
+        topPresenceCustomizeModal.style.display = "none";
+    };
+}
+
+const topPresenceTest =
+    document.getElementById("topPresenceTest");
+
+if (topPresenceTest) {
+    topPresenceTest.onclick = async () => {
+        await fetch("/top-presence/test", {
+            method: "POST"
+        });
+    };
+}
+
+const topPresenceCopyUrl =
+    document.getElementById("topPresenceCopyUrl");
+
+if (topPresenceCopyUrl) {
+    topPresenceCopyUrl.onclick = async () => {
+
+        const url =
+            window.location.origin +
+            "/overlay/top-presence";
+
+        try {
+            await navigator.clipboard.writeText(url);
+            alert("URL copiée : " + url);
+        } catch (error) {
+            alert("Impossible de copier automatiquement.\n\nURL : " + url);
+        }
+
+    };
 }
 
 const topLikesTest =
@@ -1328,7 +1906,11 @@ function applyCoinMatchStyle() {
         shape: document.getElementById("coinShape").value,
         scale: document.getElementById("coinScale").value,
     duration: document.getElementById("coinDuration").value,
-    victorySound: localStorage.getItem("coinVictorySound") || "victory.mp3"
+    victorySound: localStorage.getItem("coinVictorySound") || "victory.mp3",
+    ringColor1: document.getElementById("coinRingColor1").value,
+    ringColor2: document.getElementById("coinRingColor2").value,
+    ringColor3: document.getElementById("coinRingColor3").value,
+    ringSpeed: Number(document.getElementById("coinRingSpeed").value || 6)
 
     };
 
@@ -1343,7 +1925,11 @@ function applyCoinMatchStyle() {
     "&timer=" + settings.timer.substring(1) +
     "&shape=" + settings.shape.replace("px", "") +
     "&scale=" + settings.scale +
-    "&sound=" + encodeURIComponent(settings.victorySound);
+    "&sound=" + encodeURIComponent(settings.victorySound) +
+    "&ringColor1=" + settings.ringColor1.substring(1) +
+    "&ringColor2=" + settings.ringColor2.substring(1) +
+    "&ringColor3=" + settings.ringColor3.substring(1) +
+    "&ringSpeed=" + settings.ringSpeed;
     return settings;
 }
 
@@ -1353,7 +1939,11 @@ function applyCoinMatchStyle() {
     "coinTextColor",
     "coinTimerColor",
     "coinShape",
-    "coinScale"
+    "coinScale",
+    "coinRingColor1",
+    "coinRingColor2",
+    "coinRingColor3",
+    "coinRingSpeed"
 ].forEach(id => {
 
     const element =
@@ -1441,6 +2031,18 @@ if (savedCoinStyle) {
     document.getElementById("coinTimerColor").value =
         savedCoinStyle.timer;
 
+    document.getElementById("coinRingColor1").value =
+        savedCoinStyle.ringColor1 || "#22d3ee";
+
+    document.getElementById("coinRingColor2").value =
+        savedCoinStyle.ringColor2 || "#a855f7";
+
+    document.getElementById("coinRingColor3").value =
+        savedCoinStyle.ringColor3 || "#ec4899";
+
+    document.getElementById("coinRingSpeed").value =
+        savedCoinStyle.ringSpeed || 6;
+
     document.getElementById("coinShape").value =
         savedCoinStyle.shape;
 
@@ -1460,7 +2062,11 @@ if (savedCoinStyle) {
     "coinTimerColor",
     "coinShape",
     "coinScale",
-    "coinDuration"
+    "coinDuration",
+    "coinRingColor1",
+    "coinRingColor2",
+    "coinRingColor3",
+    "coinRingSpeed"
 ].forEach(id => {
 
     const element =
@@ -1766,6 +2372,12 @@ function processTtsQueue() {
     speechSynthesis.speak(item.speech);
 
     item.speech.onend = () => {
+        ttsIsSpeaking = false;
+        processTtsQueue();
+    };
+
+    item.speech.onerror = (event) => {
+        console.log("ERREUR SYNTHÈSE VOCALE :", event.error);
         ttsIsSpeaking = false;
         processTtsQueue();
     };
@@ -2127,6 +2739,7 @@ if (topLikesCustomize && topLikesCustomizeModal) {
 
     topLikesCustomize.onclick = () => {
         topLikesCustomizeModal.style.display = "flex";
+        applyTopLikesSettings();
     };
 
 }
@@ -2228,6 +2841,24 @@ overlayButton.onclick = () => {
     openPanel(overlayPanel);
 };
 
+const quickOverlayButton =
+    document.getElementById("quickOverlayButton");
+
+if (quickOverlayButton) {
+    quickOverlayButton.onclick = () => {
+        openPanel(graphicOverlayPanel);
+    };
+}
+
+const quickMinigamesButton =
+    document.getElementById("quickMinigamesButton");
+
+if (quickMinigamesButton) {
+    quickMinigamesButton.onclick = () => {
+        openPanel(overlayPanel);
+    };
+}
+
 
 
 soundButton.onclick = () => {
@@ -2246,6 +2877,12 @@ const soundSettingsTab =
 const ttsChatContent =
     document.getElementById("ttsChatContent");
 
+const chatBotTab =
+    document.getElementById("chatBotTab");
+
+const chatBotContent =
+    document.getElementById("chatBotContent");
+
 const soundSettingsContent =
     document.getElementById("soundSettingsContent");
 
@@ -2258,6 +2895,7 @@ if (soundSettingsTab) {
         soundSettingsContent.style.display = "block";
         soundAlertsContent.style.display = "none";
         ttsChatContent.style.display = "none";
+        if (chatBotContent) chatBotContent.style.display = "none";
 
     };
 }
@@ -2269,6 +2907,7 @@ if (soundMainTab) {
         soundSettingsContent.style.display = "none";
         soundAlertsContent.style.display = "block";
         ttsChatContent.style.display = "none";
+        if (chatBotContent) chatBotContent.style.display = "none";
 
     };
 }
@@ -2279,6 +2918,20 @@ if (ttsChatTab) {
         soundSettingsContent.style.display = "none";
         soundAlertsContent.style.display = "none";
         ttsChatContent.style.display = "block";
+        if (chatBotContent) chatBotContent.style.display = "none";
+
+    };
+}
+
+if (chatBotTab) {
+    chatBotTab.onclick = () => {
+
+        soundSettingsContent.style.display = "none";
+        soundAlertsContent.style.display = "none";
+        ttsChatContent.style.display = "none";
+        chatBotContent.style.display = "block";
+
+        populateChatBotPanel();
 
     };
 }
@@ -2533,11 +3186,23 @@ engine:
     team:
         document.getElementById("ttsTeam")?.checked || false,
 
+    teamUsernames:
+        (document.getElementById("ttsTeamUsernames")?.value || "")
+            .split(",")
+            .map(u => u.trim().replace(/^@/, "").toLowerCase())
+            .filter(Boolean),
+
     topGifters:
         document.getElementById("ttsTopGifters")?.checked || false,
 
     whitelist:
         document.getElementById("ttsWhitelist")?.checked || false,
+
+    whitelistUsernames:
+        (document.getElementById("ttsWhitelistUsernames")?.value || "")
+            .split(",")
+            .map(u => u.trim().replace(/^@/, "").toLowerCase())
+            .filter(Boolean),
 
     /* Types de commentaires */
 
@@ -2545,6 +3210,9 @@ engine:
         document.getElementById("ttsCommand")?.value || "!tts",
 
     /* Coût */
+
+    pointsMode:
+        document.querySelector('input[name="ttsPointsMode"]:checked')?.value || "free",
 
     messageCost:
         Number(
@@ -3498,6 +4166,131 @@ function playAlert(sound, image, volume, text) {
 }
 
 /* CHAT */
+/* ==================== TTS : permissions, coût en points, voix spéciales ==================== */
+
+function isTtsUserAllowed(tts, userData) {
+
+    if (tts.allUsers) {
+        return true;
+    }
+
+    const username =
+        String(userData.uniqueId || userData.user || "")
+            .replace(/^@/, "")
+            .toLowerCase();
+
+    if (tts.followers && (userData.isFollower || userData.isFriend)) {
+        return true;
+    }
+
+    if (tts.subscribers && userData.isSubscriber) {
+        return true;
+    }
+
+    if (tts.moderators && userData.isModerator) {
+        return true;
+    }
+
+    if (tts.topGifters && userData.isTopGifter) {
+        return true;
+    }
+
+    if (
+        tts.team &&
+        Array.isArray(tts.teamUsernames) &&
+        tts.teamUsernames.includes(username)
+    ) {
+        return true;
+    }
+
+    if (
+        tts.whitelist &&
+        Array.isArray(tts.whitelistUsernames) &&
+        tts.whitelistUsernames.includes(username)
+    ) {
+        return true;
+    }
+
+    const anyToggleOn =
+        tts.allUsers || tts.followers || tts.subscribers ||
+        tts.moderators || tts.team || tts.topGifters || tts.whitelist;
+
+    /* Réglages jamais sauvegardés (ancienne installation) : ne pas couper le TTS existant */
+    if (!anyToggleOn) {
+        return true;
+    }
+
+    return false;
+}
+
+function spendTtsPoints(username, amount) {
+
+    if (!username || amount <= 0) {
+        return true;
+    }
+
+    const entry = pointsUsers[username];
+
+    if (!entry || (entry.points || 0) < amount) {
+        return false;
+    }
+
+    entry.points -= amount;
+
+    pointsTransactions.push({
+        action: "🔊 Lecture TTS",
+        user: username,
+        points: "-" + amount,
+        description: "Message lu à voix haute",
+        countForLevel: "Non",
+        manual: "Non",
+        date: new Date().toLocaleString("fr-FR")
+    });
+
+    localStorage.setItem("pointsTransactions", JSON.stringify(pointsTransactions));
+    localStorage.setItem("pointsUsers", JSON.stringify(pointsUsers));
+
+    if (typeof refreshPointsTransactionsTable === "function") {
+        refreshPointsTransactionsTable();
+    }
+
+    if (typeof refreshPointsUsersTable === "function") {
+        refreshPointsUsersTable();
+    }
+
+    return true;
+}
+
+const TTS_SPECIAL_VOICE_PRESETS = {
+    "Voix féminine": { pitch: 1.4, rate: 1 },
+    "Voix masculine": { pitch: 0.7, rate: 1 },
+    "Voix robot": { pitch: 0.1, rate: 0.9 },
+    "Voix drôle": { pitch: 1.8, rate: 1.3 }
+};
+
+function getTtsSpecialVoicePreset(tts, userData) {
+
+    if (!Array.isArray(tts.specialUsers)) {
+        return null;
+    }
+
+    const username =
+        String(userData.uniqueId || userData.user || "")
+            .replace(/^@/, "")
+            .toLowerCase();
+
+    const match =
+        tts.specialUsers.find(entry =>
+            String(entry.username || "").replace(/^@/, "").toLowerCase() === username
+        );
+
+    if (!match) {
+        return null;
+    }
+
+    return TTS_SPECIAL_VOICE_PRESETS[match.voice] || null;
+}
+
 function playTtsMessage(text, userData = {}) {
 
     if (!appSettings.ttsChat || !appSettings.ttsChat.enabled) {
@@ -3510,6 +4303,25 @@ function playTtsMessage(text, userData = {}) {
 
     const tts =
         appSettings.ttsChat;
+
+    if (!isTtsUserAllowed(tts, userData)) {
+        return;
+    }
+
+    const ttsUsername =
+        String(userData.uniqueId || userData.user || "")
+            .replace(/^@/, "")
+            .toLowerCase();
+
+    if (tts.pointsMode === "paid" && tts.messageCost > 0) {
+
+        const paid = spendTtsPoints(ttsUsername, tts.messageCost);
+
+        if (!paid) {
+            console.log("TTS ignoré : solde de points insuffisant pour", ttsUsername);
+            return;
+        }
+    }
 
         console.log("TTS USER DATA :", userData);
 
@@ -3688,6 +4500,17 @@ if (
 
     speech.rate =
         Number(tts.speed || 50) / 50;
+
+    if (isProUser()) {
+
+        const specialPreset =
+            getTtsSpecialVoicePreset(tts, userData);
+
+        if (specialPreset) {
+            speech.pitch = specialPreset.pitch;
+            speech.rate = speech.rate * specialPreset.rate;
+        }
+    }
 
     const maxQueue =
     Number(tts.queueLength || 5);
@@ -4604,6 +5427,8 @@ fetch("/settings")
 
     appSettings = settings;
 
+    populateChatBotPanel();
+
     const savedUserAtStart =
     JSON.parse(localStorage.getItem("tikbabikUser") || "null");
 
@@ -4859,11 +5684,24 @@ if (appSettings.ttsChat) {
     document.getElementById("ttsTeam").checked =
         tts.team;
 
+    document.getElementById("ttsTeamUsernames").value =
+        (tts.teamUsernames || []).join(", ");
+
     document.getElementById("ttsTopGifters").checked =
         tts.topGifters;
 
     document.getElementById("ttsWhitelist").checked =
         tts.whitelist;
+
+    document.getElementById("ttsWhitelistUsernames").value =
+        (tts.whitelistUsernames || []).join(", ");
+
+    const ttsPointsModeInput =
+        document.querySelector('input[name="ttsPointsMode"][value="' + (tts.pointsMode || "free") + '"]');
+
+    if (ttsPointsModeInput) {
+        ttsPointsModeInput.checked = true;
+    }
 
     document.getElementById("ttsCommand").value =
         tts.command;
@@ -5016,6 +5854,190 @@ function saveAppSettings(message = "Paramètres sauvegardés !") {
         alert("Erreur pendant la sauvegarde");
     });
 }
+
+/* ==================== CHATBOT ==================== */
+
+function getChatBotDefaults() {
+    return {
+        enabled: true,
+        prefix: "!",
+        cooldownSeconds: 8,
+        commands: {
+            roue: { enabled: true },
+            points: { enabled: true },
+            objectif: { enabled: true }
+        }
+    };
+}
+
+function renderChatBotCustomCommands() {
+
+    const list = document.getElementById("chatBotCustomCommandsList");
+
+    if (!list) {
+        return;
+    }
+
+    const cb = appSettings.chatBot || getChatBotDefaults();
+    const builtins = ["roue", "points", "objectif"];
+
+    const customEntries =
+        Object.entries(cb.commands || {})
+            .filter(([word]) => !builtins.includes(word));
+
+    if (customEntries.length === 0) {
+        list.innerHTML = "<p style=\"opacity:.6;\">Aucune commande personnalisée pour l'instant.</p>";
+        return;
+    }
+
+    list.innerHTML = customEntries.map(([word, conf]) => {
+        return "<div class=\"chatBotCustomRow\" data-word=\"" + word + "\">" +
+            "<b>!" + word + "</b> → " + (conf.actionName || "?") +
+            " <button type=\"button\" class=\"chatBotRemoveCommand\" data-word=\"" + word + "\">✕</button>" +
+            "</div>";
+    }).join("");
+
+    list.querySelectorAll(".chatBotRemoveCommand").forEach(btn => {
+        btn.onclick = () => {
+            const word = btn.getAttribute("data-word");
+            if (appSettings.chatBot && appSettings.chatBot.commands) {
+                delete appSettings.chatBot.commands[word];
+            }
+            renderChatBotCustomCommands();
+        };
+    });
+}
+
+function populateChatBotActionSelect() {
+
+    const select = document.getElementById("chatBotNewCommandAction");
+
+    if (!select) {
+        return;
+    }
+
+    const actionNames = (appSettings.actions || []).map(a => a.name);
+
+    select.innerHTML = actionNames.length
+        ? actionNames.map(name => "<option value=\"" + name + "\">" + name + "</option>").join("")
+        : "<option value=\"\">Aucune action disponible</option>";
+}
+
+function populateChatBotPanel() {
+
+    if (!appSettings.chatBot) {
+        appSettings.chatBot = getChatBotDefaults();
+    }
+
+    const cb = appSettings.chatBot;
+
+    const enabledEl = document.getElementById("chatBotEnabled");
+    const prefixEl = document.getElementById("chatBotPrefix");
+    const cooldownEl = document.getElementById("chatBotCooldown");
+    const roueEl = document.getElementById("chatBotCmdRoue");
+    const pointsEl = document.getElementById("chatBotCmdPoints");
+    const objectifEl = document.getElementById("chatBotCmdObjectif");
+
+    if (enabledEl) enabledEl.checked = cb.enabled !== false;
+    if (prefixEl) prefixEl.value = cb.prefix || "!";
+    if (cooldownEl) cooldownEl.value = cb.cooldownSeconds || 8;
+    if (roueEl) roueEl.checked = !!(cb.commands && cb.commands.roue && cb.commands.roue.enabled !== false);
+    if (pointsEl) pointsEl.checked = !!(cb.commands && cb.commands.points && cb.commands.points.enabled !== false);
+    if (objectifEl) objectifEl.checked = !!(cb.commands && cb.commands.objectif && cb.commands.objectif.enabled !== false);
+
+    populateChatBotActionSelect();
+    renderChatBotCustomCommands();
+}
+
+const chatBotAddCommandBtn = document.getElementById("chatBotAddCommand");
+
+if (chatBotAddCommandBtn) {
+
+    chatBotAddCommandBtn.onclick = () => {
+
+        const wordInput = document.getElementById("chatBotNewCommandWord");
+        const actionSelect = document.getElementById("chatBotNewCommandAction");
+
+        const word = (wordInput.value || "").trim().toLowerCase().replace(/\s+/g, "");
+        const actionName = actionSelect.value;
+
+        if (!word) {
+            alert("Indique un mot-clé pour la commande.");
+            return;
+        }
+
+        if (["roue", "points", "objectif"].includes(word)) {
+            alert("Ce mot-clé est déjà une commande intégrée.");
+            return;
+        }
+
+        if (!actionName) {
+            alert("Crée d'abord une action dans Alert Studio / Actions.");
+            return;
+        }
+
+        if (!appSettings.chatBot) {
+            appSettings.chatBot = getChatBotDefaults();
+        }
+        if (!appSettings.chatBot.commands) {
+            appSettings.chatBot.commands = {};
+        }
+
+        appSettings.chatBot.commands[word] = { enabled: true, actionName };
+
+        wordInput.value = "";
+        renderChatBotCustomCommands();
+    };
+}
+
+const saveChatBotSettingsBtn = document.getElementById("saveChatBotSettings");
+
+if (saveChatBotSettingsBtn) {
+
+    saveChatBotSettingsBtn.onclick = () => {
+
+        const cb = appSettings.chatBot || getChatBotDefaults();
+
+        cb.enabled = document.getElementById("chatBotEnabled")?.checked !== false;
+        cb.prefix = document.getElementById("chatBotPrefix")?.value || "!";
+        cb.cooldownSeconds = Number(document.getElementById("chatBotCooldown")?.value || 8);
+
+        cb.commands = cb.commands || {};
+        cb.commands.roue = { enabled: document.getElementById("chatBotCmdRoue")?.checked !== false };
+        cb.commands.points = { enabled: document.getElementById("chatBotCmdPoints")?.checked !== false };
+        cb.commands.objectif = { enabled: document.getElementById("chatBotCmdObjectif")?.checked !== false };
+
+        appSettings.chatBot = cb;
+
+        saveAppSettings("Commandes du chat sauvegardées !");
+    };
+}
+
+/* Réactions aux commandes du chat détectées côté serveur */
+
+socket.on("chatBotCommand", data => {
+
+    if (!data || !data.type) {
+        return;
+    }
+
+    if (data.type === "points") {
+
+        const entry = pointsUsers[data.user];
+        const balance = entry ? Math.round(entry.points || 0) : 0;
+        const currency = (appSettings.pointsSystem && appSettings.pointsSystem.currencyName) || "points";
+
+        playTtsMessage(data.user + " a " + balance + " " + currency + " !", { nickname: data.user });
+    }
+
+    if (data.type === "objectif") {
+
+        const goal = appSettings.followGoal;
+        const text = goal && goal.text ? goal.text : "un nouvel objectif d'abonnés";
+
+        playTtsMessage("Rappel : " + text + " !", { nickname: data.user });
+    }
+});
 
 function requirePro() {
 

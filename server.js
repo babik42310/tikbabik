@@ -621,6 +621,81 @@ try {
 
 }
 
+/* CHATBOT : valeurs par défaut si absentes du settings.json existant */
+if (!settings.chatBot) {
+    settings.chatBot = {
+        enabled: true,
+        prefix: "!",
+        cooldownSeconds: 8,
+        commands: {
+            points: { enabled: true },
+            objectif: { enabled: true },
+            roue: { enabled: true }
+        }
+    };
+}
+
+const chatBotCooldowns = {};
+
+function handleChatBotCommand(data, clientId) {
+
+    const cb = settings.chatBot;
+
+    if (!cb || !cb.enabled) {
+        return;
+    }
+
+    const raw = String(data.comment || "").trim();
+    const prefix = cb.prefix || "!";
+
+    if (!raw.startsWith(prefix)) {
+        return;
+    }
+
+    const word = raw.slice(prefix.length).split(/\s+/)[0].toLowerCase();
+
+    if (!word) {
+        return;
+    }
+
+    const user = data.nickname || data.uniqueId || "user";
+    const cooldownKey = clientId + ":" + user + ":" + word;
+    const now = Date.now();
+    const cooldownMs = (cb.cooldownSeconds || 8) * 1000;
+
+    if (chatBotCooldowns[cooldownKey] && now - chatBotCooldowns[cooldownKey] < cooldownMs) {
+        return;
+    }
+
+    const commandConfig = (cb.commands || {})[word];
+
+    if (!commandConfig || commandConfig.enabled === false) {
+        return;
+    }
+
+    chatBotCooldowns[cooldownKey] = now;
+
+    console.log("CHATBOT COMMANDE :", user, "->", word);
+
+    if (word === "roue") {
+        if (!actionWheel.spinning) {
+            spinActionWheel();
+            emitToCreatorPilotClient(clientId, "chatBotTriggered", { command: word, user });
+        }
+        return;
+    }
+
+    if (word === "points" || word === "objectif") {
+        emitToCreatorPilotClient(clientId, "chatBotCommand", { type: word, user });
+        return;
+    }
+
+    if (commandConfig.actionName) {
+        executeActionByName(commandConfig.actionName);
+        emitToCreatorPilotClient(clientId, "chatBotTriggered", { command: word, user, actionName: commandConfig.actionName });
+    }
+}
+
 function saveSettingsFile() {
 
     fs.writeFileSync(
@@ -1253,8 +1328,18 @@ function bindTikTokEvents(tiktokConnection, clientId) {
 
         emitToCreatorPilotClient(clientId, "chat", {
             user: data.nickname,
-            message: data.comment
+            uniqueId: data.uniqueId,
+            message: data.comment,
+            isFollower: (data.followRole || 0) >= 1,
+            isFriend: data.followRole === 2,
+            isModerator: !!data.isModerator,
+            isSubscriber: !!data.isSubscriber,
+            isTopGifter: data.topGifterRank !== null && data.topGifterRank !== undefined
         });
+
+        trackPresence(data.nickname, data.profilePictureUrl || data.profilePicture || "");
+
+        handleChatBotCommand(data, clientId);
 
     });
 
@@ -1377,6 +1462,28 @@ if (giftBattle.active) {
 
 }
 
+        const donorAvatar =
+            data.profilePictureUrl ||
+            data.user?.profilePictureUrl ||
+            data.avatar ||
+            "";
+
+        if (!topDonors[user]) {
+            topDonors[user] = {
+                diamonds: 0,
+                avatar: donorAvatar
+            };
+        }
+
+        topDonors[user].diamonds +=
+            Number(data.diamondCount || 0);
+
+        if (donorAvatar) {
+            topDonors[user].avatar = donorAvatar;
+        }
+
+        trackPresence(user, donorAvatar);
+
 emitToCreatorPilotClient(clientId, "gift", {
             user: user,
             gift: giftName,
@@ -1411,6 +1518,8 @@ if (!topLikes[user]) {
 }
 
 topLikes[user].likes += likes;
+
+trackPresence(user, data.profilePictureUrl || data.profilePicture || "");
 
 applyChronoTime(
     likes * Number(chrono.settings.perLike || 0)
@@ -2068,6 +2177,41 @@ console.log(
 });
 
 let topLikes = {};
+let topDonors = {};
+let topPresence = {};
+
+function trackPresence(user, avatar) {
+
+    if (!user) {
+        return;
+    }
+
+    if (!topPresence[user]) {
+        topPresence[user] = {
+            seconds: 0,
+            avatar: avatar || "",
+            lastSeen: Date.now()
+        };
+    }
+
+    topPresence[user].lastSeen = Date.now();
+
+    if (avatar) {
+        topPresence[user].avatar = avatar;
+    }
+}
+
+setInterval(() => {
+
+    const now = Date.now();
+
+    Object.keys(topPresence).forEach(user => {
+        if (now - topPresence[user].lastSeen <= 15000) {
+            topPresence[user].seconds += 5;
+        }
+    });
+
+}, 5000);
 
 let currentLikesGoalCount = 0;
 let currentFollowGoalCount = 0;
@@ -2193,7 +2337,11 @@ app.post("/coin-match/settings", (req, res) => {
         timer: req.body.timer || "#35cfff",
         shape: req.body.shape || "20",
         scale: req.body.scale || "1",
-        victorySound: req.body.victorySound || "victory.mp3"
+        victorySound: req.body.victorySound || "victory.mp3",
+        ringColor1: req.body.ringColor1 || "#22d3ee",
+        ringColor2: req.body.ringColor2 || "#a855f7",
+        ringColor3: req.body.ringColor3 || "#ec4899",
+        ringSpeed: Number(req.body.ringSpeed || 6)
     };
 
     saveSettingsFile();
@@ -2240,14 +2388,53 @@ const sound =
     coinSettings.victorySound ||
     "victory.mp3";
 
+const ringColor1 =
+    req.query.ringColor1 ||
+    (coinSettings.ringColor1 || "#22d3ee").replace("#", "");
+
+const ringColor2 =
+    req.query.ringColor2 ||
+    (coinSettings.ringColor2 || "#a855f7").replace("#", "");
+
+const ringColor3 =
+    req.query.ringColor3 ||
+    (coinSettings.ringColor3 || "#ec4899").replace("#", "");
+
+const ringSpeed =
+    req.query.ringSpeed ||
+    coinSettings.ringSpeed ||
+    "6";
+
     res.send(`
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <title>Coin Match Overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 
 <style>
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
+
+#ring{
+    display:inline-block;
+    padding:3px;
+    border-radius:${Number(shape) + 3}px;
+    background:conic-gradient(from var(--angle), #${ringColor1}, #${ringColor2}, #${ringColor3}, #${ringColor1});
+    animation:spin ${ringSpeed}s linear infinite;
+    position:relative;
+    top:-40px;
+    transform:scale(${scale});
+}
 
 .playerAvatar{
     width:55px;
@@ -2315,7 +2502,7 @@ body {
     margin: 0;
     background: transparent;
     color: white;
-    font-family: Arial, sans-serif;
+    font-family: 'Rajdhani', Arial, sans-serif;
     overflow: hidden;
 }
 
@@ -2325,12 +2512,9 @@ body {
     padding: 20px;
     border-radius: ${shape}px;
     background: #${bg};
-    border: 2px solid #${border};
+    border: none;
     color: #${text};
     text-align: center;
-    transform: scale(${scale});
-    position:relative;
-top:-40px;
 }
 
 #titleBar{
@@ -2400,6 +2584,7 @@ h1 {
     Coin Match
 </div>
 
+<div id="ring">
 <div id="box">
     
     <div id="timer">05:00</div>
@@ -2418,6 +2603,8 @@ h1 {
 
     </div>
 
+</div>
+</div>
 </div>
 </div>
 
@@ -2461,7 +2648,7 @@ victorySound.play();
         confetti.className = "confetti";
 
         confetti.innerHTML =
-            ["🎉", "✨", "🏆", "🪙"][Math.floor(Math.random() * 4)];
+            ["🎉", "✨", "🏆", "💎"][Math.floor(Math.random() * 4)];
 
         confetti.style.left =
             Math.random() * 100 + "vw";
@@ -2508,7 +2695,7 @@ if (players[0]) {
 
         '<div class="coinCount">' +
         players[0][1].coins +
-        ' 🪙</div>';
+        ' 💎</div>';
 
 }
 
@@ -2528,7 +2715,7 @@ if (players[1]) {
 
         '<div class="coinCount">' +
         players[1][1].coins +
-        ' 🪙</div>';
+        ' 💎</div>';
 
 }
 
@@ -2548,7 +2735,7 @@ if (players[2]) {
 
         '<div class="coinCount">' +
         players[2][1].coins +
-        ' 🪙</div>';
+        ' 💎</div>';
 
 }
 
@@ -2589,7 +2776,7 @@ if (!data.winnersShown) {
         user +
         " - " +
         info.coins +
-        " 🪙</span></div>";
+        " 💎</span></div>";
 
 });
 }
@@ -2613,6 +2800,10 @@ app.get("/overlay/coin-match-preview", (req, res) => {
     const shape = req.query.shape || "20";
     const scale = req.query.scale || "1";
     const sound = req.query.sound || "victory.mp3";
+    const ringColor1 = req.query.ringColor1 || "22d3ee";
+    const ringColor2 = req.query.ringColor2 || "a855f7";
+    const ringColor3 = req.query.ringColor3 || "ec4899";
+    const ringSpeed = req.query.ringSpeed || "6";
 
     res.redirect(
         "/overlay/coin-match" +
@@ -2622,7 +2813,11 @@ app.get("/overlay/coin-match-preview", (req, res) => {
         "&timer=" + timerColor +
         "&shape=" + shape +
         "&scale=" + scale +
-        "&sound=" + encodeURIComponent(sound)
+        "&sound=" + encodeURIComponent(sound) +
+        "&ringColor1=" + ringColor1 +
+        "&ringColor2=" + ringColor2 +
+        "&ringColor3=" + ringColor3 +
+        "&ringSpeed=" + ringSpeed
     );
 
 });
@@ -3064,11 +3259,22 @@ app.get("/top-likes/status", (req, res) => {
 app.get("/top-likes/settings", (req, res) => {
     res.json(
         settings.topLikes || {
-            font: "Arial",
+            titleFont: "Orbitron",
+            nameFont: "Rajdhani",
             fontSize: 24,
+            titleText: "Top J'aime",
+            titleColorStart: "#22d3ee",
+            titleColorEnd: "#ff4d6d",
             nameColor: "#ffffff",
             likesColor: "#ff4d6d",
             rankColor: "#ffd700",
+            bgColor: "#05060f",
+            rowColor: "#a855f7",
+            ringColor1: "#22d3ee",
+            ringColor2: "#a855f7",
+            ringColor3: "#ec4899",
+            ringSpeed: 6,
+            heartIcon: "❤️",
             showAvatar: true,
             showCrown: true,
             showHeart: true
@@ -3078,11 +3284,22 @@ app.get("/top-likes/settings", (req, res) => {
 
 app.post("/top-likes/settings", express.json(), (req, res) => {
     settings.topLikes = {
-        font: req.body.font || "Arial",
+        titleFont: req.body.titleFont || "Orbitron",
+        nameFont: req.body.nameFont || "Rajdhani",
         fontSize: Number(req.body.fontSize || 24),
+        titleText: req.body.titleText || "Top J'aime",
+        titleColorStart: req.body.titleColorStart || "#22d3ee",
+        titleColorEnd: req.body.titleColorEnd || "#ff4d6d",
         nameColor: req.body.nameColor || "#ffffff",
         likesColor: req.body.likesColor || "#ff4d6d",
         rankColor: req.body.rankColor || "#ffd700",
+        bgColor: req.body.bgColor || "#05060f",
+        rowColor: req.body.rowColor || "#a855f7",
+        ringColor1: req.body.ringColor1 || "#22d3ee",
+        ringColor2: req.body.ringColor2 || "#a855f7",
+        ringColor3: req.body.ringColor3 || "#ec4899",
+        ringSpeed: Number(req.body.ringSpeed || 6),
+        heartIcon: req.body.heartIcon || "❤️",
         showAvatar: req.body.showAvatar !== false,
         showCrown: req.body.showCrown !== false,
         showHeart: req.body.showHeart !== false
@@ -3099,117 +3316,206 @@ app.post("/top-likes/settings", express.json(), (req, res) => {
 app.get("/overlay/top-likes", (req, res) => {
 
     const topLikesSettings =
-    settings.topLikes || {};
+        settings.topLikes || {};
 
-const font =
-    req.query.font ||
-    topLikesSettings.font ||
-    "Arial";
+    const titleFont =
+        req.query.titleFont ||
+        topLikesSettings.titleFont ||
+        "Orbitron";
 
-const fontSize =
-    req.query.fontSize ||
-    topLikesSettings.fontSize ||
-    "24";
+    const nameFont =
+        req.query.nameFont ||
+        topLikesSettings.nameFont ||
+        "Rajdhani";
 
-const nameColor =
-    req.query.nameColor ||
-    (topLikesSettings.nameColor || "#ffffff").replace("#", "");
+    const fontSize =
+        req.query.fontSize ||
+        topLikesSettings.fontSize ||
+        "24";
 
-const likesColor =
-    req.query.likesColor ||
-    (topLikesSettings.likesColor || "#ff4d6d").replace("#", "");
+    const titleText =
+        req.query.titleText ||
+        topLikesSettings.titleText ||
+        "Top J'aime";
 
-const rankColor =
-    req.query.rankColor ||
-    (topLikesSettings.rankColor || "#ffd700").replace("#", "");
+    const titleColorStart =
+        req.query.titleColorStart ||
+        (topLikesSettings.titleColorStart || "#22d3ee").replace("#", "");
 
-const showAvatar =
-    req.query.showAvatar !== undefined
-        ? req.query.showAvatar !== "false"
-        : topLikesSettings.showAvatar !== false;
+    const titleColorEnd =
+        req.query.titleColorEnd ||
+        (topLikesSettings.titleColorEnd || "#ff4d6d").replace("#", "");
 
-const showCrown =
-    req.query.showCrown !== undefined
-        ? req.query.showCrown !== "false"
-        : topLikesSettings.showCrown !== false;
+    const nameColor =
+        req.query.nameColor ||
+        (topLikesSettings.nameColor || "#ffffff").replace("#", "");
 
-const showHeart =
-    req.query.showHeart !== undefined
-        ? req.query.showHeart !== "false"
-        : topLikesSettings.showHeart !== false;
+    const likesColor =
+        req.query.likesColor ||
+        (topLikesSettings.likesColor || "#ff4d6d").replace("#", "");
+
+    const rankColor =
+        req.query.rankColor ||
+        (topLikesSettings.rankColor || "#ffd700").replace("#", "");
+
+    const bgColor =
+        req.query.bgColor ||
+        (topLikesSettings.bgColor || "#05060f").replace("#", "");
+
+    const rowColor =
+        req.query.rowColor ||
+        (topLikesSettings.rowColor || "#a855f7").replace("#", "");
+
+    const ringColor1 =
+        req.query.ringColor1 ||
+        (topLikesSettings.ringColor1 || "#22d3ee").replace("#", "");
+
+    const ringColor2 =
+        req.query.ringColor2 ||
+        (topLikesSettings.ringColor2 || "#a855f7").replace("#", "");
+
+    const ringColor3 =
+        req.query.ringColor3 ||
+        (topLikesSettings.ringColor3 || "#ec4899").replace("#", "");
+
+    const ringSpeed =
+        req.query.ringSpeed ||
+        topLikesSettings.ringSpeed ||
+        "6";
+
+    const heartIcon =
+        req.query.heartIcon ||
+        topLikesSettings.heartIcon ||
+        "❤️";
+
+    const showAvatar =
+        req.query.showAvatar !== undefined
+            ? req.query.showAvatar !== "false"
+            : topLikesSettings.showAvatar !== false;
+
+    const showCrown =
+        req.query.showCrown !== undefined
+            ? req.query.showCrown !== "false"
+            : topLikesSettings.showCrown !== false;
+
+    const showHeart =
+        req.query.showHeart !== undefined
+            ? req.query.showHeart !== "false"
+            : topLikesSettings.showHeart !== false;
+
     res.send(`
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&family=Audiowide&family=Michroma&family=Exo+2:wght@500;700&display=swap" rel="stylesheet">
 
 <style>
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
+
 body{
     margin:0;
     background:transparent;
     overflow:hidden;
-    font-family:${font};
+    font-family:'${nameFont}', sans-serif;
     font-size:${fontSize}px;
+}
+
+#frame{
+    position:relative;
+    width:100%;
+    height:100%;
+    box-sizing:border-box;
+    padding:3px;
+    border-radius:22px;
+    background:conic-gradient(from var(--angle), #${ringColor1}, #${ringColor2}, #${ringColor3}, #${ringColor1});
+    animation:spin ${ringSpeed}s linear infinite;
 }
 
 #box{
     width:100%;
     height:100%;
     box-sizing:border-box;
-    padding:20px;
+    padding:22px 20px;
     border-radius:20px;
-    background:#1f1f1f;
-    border:2px solid #fd9902;
-    color:white;
-    font-family:${font};
+    background:radial-gradient(circle at 50% 0%, #${ringColor1}22, transparent 60%), #${bgColor};
+    color:#f5f7ff;
 }
 
 #title{
     text-align:center;
-    font-size:${Number(fontSize) + 6}px;
-    font-weight:bold;
-    margin-bottom:15px;
-    color:#${rankColor};
+    font-family:'${titleFont}', sans-serif;
+    font-size:${Number(fontSize) - 2}px;
+    font-weight:800;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    margin-bottom:16px;
+    background:linear-gradient(90deg, #${titleColorStart}, #${titleColorEnd});
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
 }
 
 .player{
     display:flex;
     justify-content:space-between;
+    align-items:center;
     margin:8px 0;
+    padding:6px 12px;
     font-size:${fontSize}px;
+    font-family:'${nameFont}', sans-serif;
+    background:rgba(255,255,255,0.04);
+    border:1px solid #${rowColor}40;
+    border-radius:10px;
 }
 
 .playerName{
     color:#${nameColor};
+    font-weight:500;
 }
 
 .likes{
+    font-family:'${titleFont}', sans-serif;
     color:#${likesColor};
-    font-weight:bold;
+    font-weight:600;
+    text-shadow:0 0 8px #${likesColor}88;
 }
 
 #firstLike{
     text-align:center;
-    font-size:${Number(fontSize) + 4}px;
-    font-weight:bold;
-    margin-bottom:15px;
+    font-family:'${nameFont}', sans-serif;
+    font-size:${Number(fontSize) + 2}px;
+    font-weight:700;
+    margin-bottom:14px;
     color:#${nameColor};
 }
 
 #secondLike,
 #thirdLike{
     text-align:center;
+    font-family:'${nameFont}', sans-serif;
     font-size:${fontSize}px;
-    font-weight:bold;
+    font-weight:700;
     color:#${nameColor};
 }
 
 .topAvatar{
-    width:90px;
-    height:90px;
+    width:84px;
+    height:84px;
     border-radius:50%;
     object-fit:cover;
-    border:3px solid gold;
+    padding:3px;
+    background:conic-gradient(from var(--angle), #${ringColor1}, #${ringColor2}, #${ringColor3}, #${ringColor1});
+    animation:spin ${ringSpeed}s linear infinite;
     margin:8px 0;
     display:${showAvatar ? "inline-block" : "none"};
 }
@@ -3217,15 +3523,17 @@ body{
 #otherLikes{
     display:flex;
     justify-content:space-around;
+    margin-bottom:12px;
 }
 </style>
 </head>
 
 <body>
 
+<div id="frame">
 <div id="box">
     <div id="title">
-        ${showHeart ? "❤️ " : ""}Top J'aime
+        ${showHeart ? heartIcon + " " : ""}${titleText}
     </div>
 
     <div id="topPodium">
@@ -3238,6 +3546,7 @@ body{
     </div>
 
     <div id="ranking"></div>
+</div>
 </div>
 
 <script>
@@ -3261,7 +3570,7 @@ async function load() {
             "<img class='topAvatar' src='" + (data.ranking[0][1].avatar || "") + "'>" +
             "<br>" +
             data.ranking[0][0] +
-            "<br><span class='likes'>${showHeart ? "❤️ " : ""}" +
+            "<br><span class='likes'>${showHeart ? heartIcon + " " : ""}" +
             data.ranking[0][1].likes +
             "</span>";
     }
@@ -3270,7 +3579,7 @@ async function load() {
         secondLike.innerHTML =
             "🥈<br>" +
             data.ranking[1][0] +
-            "<br><span class='likes'>${showHeart ? "❤️ " : ""}" +
+            "<br><span class='likes'>${showHeart ? heartIcon + " " : ""}" +
             data.ranking[1][1].likes +
             "</span>";
     }
@@ -3279,7 +3588,7 @@ async function load() {
         thirdLike.innerHTML =
             "🥉<br>" +
             data.ranking[2][0] +
-            "<br><span class='likes'>${showHeart ? "❤️ " : ""}" +
+            "<br><span class='likes'>${showHeart ? heartIcon + " " : ""}" +
             data.ranking[2][1].likes +
             "</span>";
     }
@@ -3290,7 +3599,7 @@ async function load() {
             "<span class='playerName'>" +
             (index + 4) + ". " + player[0] +
             "</span>" +
-            "<span class='likes'>${showHeart ? "❤️ " : ""}" +
+            "<span class='likes'>${showHeart ? heartIcon + " " : ""}" +
             player[1].likes +
             "</span>" +
             "</div>";
@@ -3324,6 +3633,801 @@ app.post("/top-likes/test", (req, res) => {
     res.json({
         success: true,
         topLikes
+    });
+
+});
+
+/* ==================== TOP DONATEURS ==================== */
+
+app.get("/top-donors/status", (req, res) => {
+
+    const ranking =
+        Object.entries(topDonors)
+            .sort((a, b) => b[1].diamonds - a[1].diamonds)
+            .slice(0, 10);
+
+    res.json({ ranking });
+
+});
+
+app.get("/top-donors/settings", (req, res) => {
+    res.json(
+        settings.topDonors || {
+            titleFont: "Orbitron",
+            nameFont: "Rajdhani",
+            fontSize: 24,
+            titleText: "Top Donateurs",
+            titleColorStart: "#22d3ee",
+            titleColorEnd: "#00e5ff",
+            nameColor: "#ffffff",
+            coinsColor: "#00e5ff",
+            rankColor: "#ffd700",
+            bgColor: "#05060f",
+            rowColor: "#a855f7",
+            ringColor1: "#22d3ee",
+            ringColor2: "#a855f7",
+            ringColor3: "#ec4899",
+            ringSpeed: 6,
+            coinIcon: "🪙",
+            showAvatar: true,
+            showCrown: true,
+            showCoin: true
+        }
+    );
+});
+
+app.post("/top-donors/settings", express.json(), (req, res) => {
+    settings.topDonors = {
+        titleFont: req.body.titleFont || "Orbitron",
+        nameFont: req.body.nameFont || "Rajdhani",
+        fontSize: Number(req.body.fontSize || 24),
+        titleText: req.body.titleText || "Top Donateurs",
+        titleColorStart: req.body.titleColorStart || "#22d3ee",
+        titleColorEnd: req.body.titleColorEnd || "#00e5ff",
+        nameColor: req.body.nameColor || "#ffffff",
+        coinsColor: req.body.coinsColor || "#00e5ff",
+        rankColor: req.body.rankColor || "#ffd700",
+        bgColor: req.body.bgColor || "#05060f",
+        rowColor: req.body.rowColor || "#a855f7",
+        ringColor1: req.body.ringColor1 || "#22d3ee",
+        ringColor2: req.body.ringColor2 || "#a855f7",
+        ringColor3: req.body.ringColor3 || "#ec4899",
+        ringSpeed: Number(req.body.ringSpeed || 6),
+        coinIcon: req.body.coinIcon || "🪙",
+        showAvatar: req.body.showAvatar !== false,
+        showCrown: req.body.showCrown !== false,
+        showCoin: req.body.showCoin !== false
+    };
+
+    saveSettingsFile();
+
+    res.json({
+        success: true,
+        settings: settings.topDonors
+    });
+});
+
+app.get("/overlay/top-donors", (req, res) => {
+
+    const topDonorsSettings =
+        settings.topDonors || {};
+
+    const titleFont =
+        req.query.titleFont ||
+        topDonorsSettings.titleFont ||
+        "Orbitron";
+
+    const nameFont =
+        req.query.nameFont ||
+        topDonorsSettings.nameFont ||
+        "Rajdhani";
+
+    const fontSize =
+        req.query.fontSize ||
+        topDonorsSettings.fontSize ||
+        "24";
+
+    const titleText =
+        req.query.titleText ||
+        topDonorsSettings.titleText ||
+        "Top Donateurs";
+
+    const titleColorStart =
+        req.query.titleColorStart ||
+        (topDonorsSettings.titleColorStart || "#22d3ee").replace("#", "");
+
+    const titleColorEnd =
+        req.query.titleColorEnd ||
+        (topDonorsSettings.titleColorEnd || "#00e5ff").replace("#", "");
+
+    const nameColor =
+        req.query.nameColor ||
+        (topDonorsSettings.nameColor || "#ffffff").replace("#", "");
+
+    const coinsColor =
+        req.query.coinsColor ||
+        (topDonorsSettings.coinsColor || "#00e5ff").replace("#", "");
+
+    const rankColor =
+        req.query.rankColor ||
+        (topDonorsSettings.rankColor || "#ffd700").replace("#", "");
+
+    const bgColor =
+        req.query.bgColor ||
+        (topDonorsSettings.bgColor || "#05060f").replace("#", "");
+
+    const rowColor =
+        req.query.rowColor ||
+        (topDonorsSettings.rowColor || "#a855f7").replace("#", "");
+
+    const ringColor1 =
+        req.query.ringColor1 ||
+        (topDonorsSettings.ringColor1 || "#22d3ee").replace("#", "");
+
+    const ringColor2 =
+        req.query.ringColor2 ||
+        (topDonorsSettings.ringColor2 || "#a855f7").replace("#", "");
+
+    const ringColor3 =
+        req.query.ringColor3 ||
+        (topDonorsSettings.ringColor3 || "#ec4899").replace("#", "");
+
+    const ringSpeed =
+        req.query.ringSpeed ||
+        topDonorsSettings.ringSpeed ||
+        "6";
+
+    const coinIcon =
+        req.query.coinIcon ||
+        topDonorsSettings.coinIcon ||
+        "🪙";
+
+    const showAvatar =
+        req.query.showAvatar !== undefined
+            ? req.query.showAvatar !== "false"
+            : topDonorsSettings.showAvatar !== false;
+
+    const showCrown =
+        req.query.showCrown !== undefined
+            ? req.query.showCrown !== "false"
+            : topDonorsSettings.showCrown !== false;
+
+    const showCoin =
+        req.query.showCoin !== undefined
+            ? req.query.showCoin !== "false"
+            : topDonorsSettings.showCoin !== false;
+
+    res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&family=Audiowide&family=Michroma&family=Exo+2:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
+
+body{
+    margin:0;
+    background:transparent;
+    overflow:hidden;
+    font-family:'${nameFont}', sans-serif;
+    font-size:${fontSize}px;
+}
+
+#frame{
+    position:relative;
+    width:100%;
+    height:100%;
+    box-sizing:border-box;
+    padding:3px;
+    border-radius:22px;
+    background:conic-gradient(from var(--angle), #${ringColor1}, #${ringColor2}, #${ringColor3}, #${ringColor1});
+    animation:spin ${ringSpeed}s linear infinite;
+}
+
+#box{
+    width:100%;
+    height:100%;
+    box-sizing:border-box;
+    padding:22px 20px;
+    border-radius:20px;
+    background:radial-gradient(circle at 50% 0%, #${ringColor1}22, transparent 60%), #${bgColor};
+    color:#f5f7ff;
+}
+
+#title{
+    text-align:center;
+    font-family:'${titleFont}', sans-serif;
+    font-size:${Number(fontSize) - 2}px;
+    font-weight:800;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    margin-bottom:16px;
+    background:linear-gradient(90deg, #${titleColorStart}, #${titleColorEnd});
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+}
+
+.player{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin:8px 0;
+    padding:6px 12px;
+    font-size:${fontSize}px;
+    font-family:'${nameFont}', sans-serif;
+    background:rgba(255,255,255,0.04);
+    border:1px solid #${rowColor}40;
+    border-radius:10px;
+}
+
+.playerName{
+    color:#${nameColor};
+    font-weight:500;
+}
+
+.coins{
+    font-family:'${titleFont}', sans-serif;
+    color:#${coinsColor};
+    font-weight:600;
+    text-shadow:0 0 8px #${coinsColor}88;
+}
+
+#firstDonor{
+    text-align:center;
+    font-family:'${nameFont}', sans-serif;
+    font-size:${Number(fontSize) + 2}px;
+    font-weight:700;
+    margin-bottom:14px;
+    color:#${nameColor};
+}
+
+#secondDonor,
+#thirdDonor{
+    text-align:center;
+    font-family:'${nameFont}', sans-serif;
+    font-size:${fontSize}px;
+    font-weight:700;
+    color:#${nameColor};
+}
+
+.topAvatar{
+    width:84px;
+    height:84px;
+    border-radius:50%;
+    object-fit:cover;
+    padding:3px;
+    background:conic-gradient(from var(--angle), #${ringColor1}, #${ringColor2}, #${ringColor3}, #${ringColor1});
+    animation:spin ${ringSpeed}s linear infinite;
+    margin:8px 0;
+    display:${showAvatar ? "inline-block" : "none"};
+}
+
+#otherDonors{
+    display:flex;
+    justify-content:space-around;
+    margin-bottom:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="frame">
+<div id="box">
+    <div id="title">
+        ${showCoin ? coinIcon + " " : ""}${titleText}
+    </div>
+
+    <div id="topPodium">
+        <div id="firstDonor"></div>
+
+        <div id="otherDonors">
+            <div id="secondDonor"></div>
+            <div id="thirdDonor"></div>
+        </div>
+    </div>
+
+    <div id="ranking"></div>
+</div>
+</div>
+
+<script>
+async function load() {
+    const response = await fetch("/top-donors/status");
+    const data = await response.json();
+
+    const ranking = document.getElementById("ranking");
+    const firstDonor = document.getElementById("firstDonor");
+    const secondDonor = document.getElementById("secondDonor");
+    const thirdDonor = document.getElementById("thirdDonor");
+
+    ranking.innerHTML = "";
+    firstDonor.innerHTML = "";
+    secondDonor.innerHTML = "";
+    thirdDonor.innerHTML = "";
+
+    if (data.ranking[0]) {
+        firstDonor.innerHTML =
+            "${showCrown ? "👑<br>" : ""}" +
+            "<img class='topAvatar' src='" + (data.ranking[0][1].avatar || "") + "'>" +
+            "<br>" +
+            data.ranking[0][0] +
+            "<br><span class='coins'>${showCoin ? coinIcon + " " : ""}" +
+            data.ranking[0][1].diamonds +
+            "</span>";
+    }
+
+    if (data.ranking[1]) {
+        secondDonor.innerHTML =
+            "🥈<br>" +
+            data.ranking[1][0] +
+            "<br><span class='coins'>${showCoin ? coinIcon + " " : ""}" +
+            data.ranking[1][1].diamonds +
+            "</span>";
+    }
+
+    if (data.ranking[2]) {
+        thirdDonor.innerHTML =
+            "🥉<br>" +
+            data.ranking[2][0] +
+            "<br><span class='coins'>${showCoin ? coinIcon + " " : ""}" +
+            data.ranking[2][1].diamonds +
+            "</span>";
+    }
+
+    data.ranking.slice(3).forEach((player, index) => {
+        ranking.innerHTML +=
+            "<div class='player'>" +
+            "<span class='playerName'>" +
+            (index + 4) + ". " + player[0] +
+            "</span>" +
+            "<span class='coins'>${showCoin ? coinIcon + " " : ""}" +
+            player[1].diamonds +
+            "</span>" +
+            "</div>";
+    });
+}
+
+setInterval(load, 1000);
+load();
+</script>
+
+</body>
+</html>
+`);
+});
+
+app.post("/top-donors/test", (req, res) => {
+
+    const user = "TestUser";
+
+    if (!topDonors[user]) {
+        topDonors[user] = {
+            diamonds: 0,
+            avatar: "https://placehold.co/80x80"
+        };
+    }
+
+    topDonors[user].diamonds += 100;
+
+    res.json({
+        success: true,
+        topDonors
+    });
+
+});
+
+/* ==================== TOP PRÉSENCE LIVE ==================== */
+
+function formatPresenceTime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return minutes + "m " + String(seconds).padStart(2, "0") + "s";
+}
+
+app.get("/top-presence/status", (req, res) => {
+
+    const ranking =
+        Object.entries(topPresence)
+            .sort((a, b) => b[1].seconds - a[1].seconds)
+            .slice(0, 10)
+            .map(([user, data]) => [
+                user,
+                { ...data, formatted: formatPresenceTime(data.seconds) }
+            ]);
+
+    res.json({ ranking });
+
+});
+
+app.get("/top-presence/settings", (req, res) => {
+    res.json(
+        settings.topPresence || {
+            titleFont: "Orbitron",
+            nameFont: "Rajdhani",
+            fontSize: 24,
+            titleText: "Top Présence LIVE",
+            titleColorStart: "#22d3ee",
+            titleColorEnd: "#7CFC00",
+            nameColor: "#ffffff",
+            timeColor: "#7CFC00",
+            rankColor: "#ffd700",
+            bgColor: "#05060f",
+            rowColor: "#a855f7",
+            ringColor1: "#22d3ee",
+            ringColor2: "#a855f7",
+            ringColor3: "#ec4899",
+            ringSpeed: 6,
+            clockIcon: "⏱️",
+            showAvatar: true,
+            showCrown: true,
+            showClock: true
+        }
+    );
+});
+
+app.post("/top-presence/settings", express.json(), (req, res) => {
+    settings.topPresence = {
+        titleFont: req.body.titleFont || "Orbitron",
+        nameFont: req.body.nameFont || "Rajdhani",
+        fontSize: Number(req.body.fontSize || 24),
+        titleText: req.body.titleText || "Top Présence LIVE",
+        titleColorStart: req.body.titleColorStart || "#22d3ee",
+        titleColorEnd: req.body.titleColorEnd || "#7CFC00",
+        nameColor: req.body.nameColor || "#ffffff",
+        timeColor: req.body.timeColor || "#7CFC00",
+        rankColor: req.body.rankColor || "#ffd700",
+        bgColor: req.body.bgColor || "#05060f",
+        rowColor: req.body.rowColor || "#a855f7",
+        ringColor1: req.body.ringColor1 || "#22d3ee",
+        ringColor2: req.body.ringColor2 || "#a855f7",
+        ringColor3: req.body.ringColor3 || "#ec4899",
+        ringSpeed: Number(req.body.ringSpeed || 6),
+        clockIcon: req.body.clockIcon || "⏱️",
+        showAvatar: req.body.showAvatar !== false,
+        showCrown: req.body.showCrown !== false,
+        showClock: req.body.showClock !== false
+    };
+
+    saveSettingsFile();
+
+    res.json({
+        success: true,
+        settings: settings.topPresence
+    });
+});
+
+app.get("/overlay/top-presence", (req, res) => {
+
+    const topPresenceSettings =
+        settings.topPresence || {};
+
+    const titleFont =
+        req.query.titleFont ||
+        topPresenceSettings.titleFont ||
+        "Orbitron";
+
+    const nameFont =
+        req.query.nameFont ||
+        topPresenceSettings.nameFont ||
+        "Rajdhani";
+
+    const fontSize =
+        req.query.fontSize ||
+        topPresenceSettings.fontSize ||
+        "24";
+
+    const titleText =
+        req.query.titleText ||
+        topPresenceSettings.titleText ||
+        "Top Présence LIVE";
+
+    const titleColorStart =
+        req.query.titleColorStart ||
+        (topPresenceSettings.titleColorStart || "#22d3ee").replace("#", "");
+
+    const titleColorEnd =
+        req.query.titleColorEnd ||
+        (topPresenceSettings.titleColorEnd || "#7CFC00").replace("#", "");
+
+    const nameColor =
+        req.query.nameColor ||
+        (topPresenceSettings.nameColor || "#ffffff").replace("#", "");
+
+    const timeColor =
+        req.query.timeColor ||
+        (topPresenceSettings.timeColor || "#7CFC00").replace("#", "");
+
+    const rankColor =
+        req.query.rankColor ||
+        (topPresenceSettings.rankColor || "#ffd700").replace("#", "");
+
+    const bgColor =
+        req.query.bgColor ||
+        (topPresenceSettings.bgColor || "#05060f").replace("#", "");
+
+    const rowColor =
+        req.query.rowColor ||
+        (topPresenceSettings.rowColor || "#a855f7").replace("#", "");
+
+    const ringColor1 =
+        req.query.ringColor1 ||
+        (topPresenceSettings.ringColor1 || "#22d3ee").replace("#", "");
+
+    const ringColor2 =
+        req.query.ringColor2 ||
+        (topPresenceSettings.ringColor2 || "#a855f7").replace("#", "");
+
+    const ringColor3 =
+        req.query.ringColor3 ||
+        (topPresenceSettings.ringColor3 || "#ec4899").replace("#", "");
+
+    const ringSpeed =
+        req.query.ringSpeed ||
+        topPresenceSettings.ringSpeed ||
+        "6";
+
+    const clockIcon =
+        req.query.clockIcon ||
+        topPresenceSettings.clockIcon ||
+        "⏱️";
+
+    const showAvatar =
+        req.query.showAvatar !== undefined
+            ? req.query.showAvatar !== "false"
+            : topPresenceSettings.showAvatar !== false;
+
+    const showCrown =
+        req.query.showCrown !== undefined
+            ? req.query.showCrown !== "false"
+            : topPresenceSettings.showCrown !== false;
+
+    const showClock =
+        req.query.showClock !== undefined
+            ? req.query.showClock !== "false"
+            : topPresenceSettings.showClock !== false;
+
+    res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&family=Audiowide&family=Michroma&family=Exo+2:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
+
+body{
+    margin:0;
+    background:transparent;
+    overflow:hidden;
+    font-family:'${nameFont}', sans-serif;
+    font-size:${fontSize}px;
+}
+
+#frame{
+    position:relative;
+    width:100%;
+    height:100%;
+    box-sizing:border-box;
+    padding:3px;
+    border-radius:22px;
+    background:conic-gradient(from var(--angle), #${ringColor1}, #${ringColor2}, #${ringColor3}, #${ringColor1});
+    animation:spin ${ringSpeed}s linear infinite;
+}
+
+#box{
+    width:100%;
+    height:100%;
+    box-sizing:border-box;
+    padding:22px 20px;
+    border-radius:20px;
+    background:radial-gradient(circle at 50% 0%, #${ringColor1}22, transparent 60%), #${bgColor};
+    color:#f5f7ff;
+}
+
+#title{
+    text-align:center;
+    font-family:'${titleFont}', sans-serif;
+    font-size:${Number(fontSize) - 2}px;
+    font-weight:800;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    margin-bottom:16px;
+    background:linear-gradient(90deg, #${titleColorStart}, #${titleColorEnd});
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+}
+
+.player{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin:8px 0;
+    padding:6px 12px;
+    font-size:${fontSize}px;
+    font-family:'${nameFont}', sans-serif;
+    background:rgba(255,255,255,0.04);
+    border:1px solid #${rowColor}40;
+    border-radius:10px;
+}
+
+.playerName{
+    color:#${nameColor};
+    font-weight:500;
+}
+
+.time{
+    font-family:'${titleFont}', sans-serif;
+    color:#${timeColor};
+    font-weight:600;
+    text-shadow:0 0 8px #${timeColor}88;
+}
+
+#firstPresence{
+    text-align:center;
+    font-family:'${nameFont}', sans-serif;
+    font-size:${Number(fontSize) + 2}px;
+    font-weight:700;
+    margin-bottom:14px;
+    color:#${nameColor};
+}
+
+#secondPresence,
+#thirdPresence{
+    text-align:center;
+    font-family:'${nameFont}', sans-serif;
+    font-size:${fontSize}px;
+    font-weight:700;
+    color:#${nameColor};
+}
+
+.topAvatar{
+    width:84px;
+    height:84px;
+    border-radius:50%;
+    object-fit:cover;
+    padding:3px;
+    background:conic-gradient(from var(--angle), #${ringColor1}, #${ringColor2}, #${ringColor3}, #${ringColor1});
+    animation:spin ${ringSpeed}s linear infinite;
+    margin:8px 0;
+    display:${showAvatar ? "inline-block" : "none"};
+}
+
+#otherPresence{
+    display:flex;
+    justify-content:space-around;
+    margin-bottom:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="frame">
+<div id="box">
+    <div id="title">
+        ${showClock ? clockIcon + " " : ""}${titleText}
+    </div>
+
+    <div id="topPodium">
+        <div id="firstPresence"></div>
+
+        <div id="otherPresence">
+            <div id="secondPresence"></div>
+            <div id="thirdPresence"></div>
+        </div>
+    </div>
+
+    <div id="ranking"></div>
+</div>
+</div>
+
+<script>
+async function load() {
+    const response = await fetch("/top-presence/status");
+    const data = await response.json();
+
+    const ranking = document.getElementById("ranking");
+    const firstPresence = document.getElementById("firstPresence");
+    const secondPresence = document.getElementById("secondPresence");
+    const thirdPresence = document.getElementById("thirdPresence");
+
+    ranking.innerHTML = "";
+    firstPresence.innerHTML = "";
+    secondPresence.innerHTML = "";
+    thirdPresence.innerHTML = "";
+
+    if (data.ranking[0]) {
+        firstPresence.innerHTML =
+            "${showCrown ? "👑<br>" : ""}" +
+            "<img class='topAvatar' src='" + (data.ranking[0][1].avatar || "") + "'>" +
+            "<br>" +
+            data.ranking[0][0] +
+            "<br><span class='time'>${showClock ? clockIcon + " " : ""}" +
+            data.ranking[0][1].formatted +
+            "</span>";
+    }
+
+    if (data.ranking[1]) {
+        secondPresence.innerHTML =
+            "🥈<br>" +
+            data.ranking[1][0] +
+            "<br><span class='time'>${showClock ? clockIcon + " " : ""}" +
+            data.ranking[1][1].formatted +
+            "</span>";
+    }
+
+    if (data.ranking[2]) {
+        thirdPresence.innerHTML =
+            "🥉<br>" +
+            data.ranking[2][0] +
+            "<br><span class='time'>${showClock ? clockIcon + " " : ""}" +
+            data.ranking[2][1].formatted +
+            "</span>";
+    }
+
+    data.ranking.slice(3).forEach((player, index) => {
+        ranking.innerHTML +=
+            "<div class='player'>" +
+            "<span class='playerName'>" +
+            (index + 4) + ". " + player[0] +
+            "</span>" +
+            "<span class='time'>${showClock ? clockIcon + " " : ""}" +
+            player[1].formatted +
+            "</span>" +
+            "</div>";
+    });
+}
+
+setInterval(load, 1000);
+load();
+</script>
+
+</body>
+</html>
+`);
+});
+
+app.post("/top-presence/test", (req, res) => {
+
+    const user = "TestUser";
+
+    if (!topPresence[user]) {
+        topPresence[user] = {
+            seconds: 0,
+            avatar: "https://placehold.co/80x80",
+            lastSeen: Date.now()
+        };
+    }
+
+    topPresence[user].seconds += 60;
+
+    res.json({
+        success: true,
+        topPresence
     });
 
 });
@@ -3452,7 +4556,19 @@ app.get("/overlay/action-wheel", (req, res) => {
 <html>
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 <style>
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
+
 body{
     margin:0;
     background:transparent;
@@ -3461,20 +4577,32 @@ body{
     justify-content:center;
     align-items:center;
     height:100vh;
-    font-family:Arial;
+    font-family:'Rajdhani', Arial;
+}
+
+#wheelRing{
+    width:264px;
+    height:264px;
+    border-radius:50%;
+    padding:9px;
+    box-sizing:border-box;
+    background:conic-gradient(from var(--angle), #22d3ee, #a855f7, #ec4899, #22d3ee);
+    animation:spin 6s linear infinite;
+    display:flex;
+    align-items:center;
+    justify-content:center;
 }
 
 #wheel{
-    width:240px;
-    height:240px;
+    width:100%;
+    height:100%;
     border-radius:50%;
-    border:8px solid #ffffff;
     position:relative;
     overflow:hidden;
     transition:transform 10s ease-out;
     box-shadow:
-        0 0 20px rgba(255,255,255,0.2),
-        0 0 50px rgba(255,0,80,0.4);
+        0 0 25px rgba(168,85,247,0.5),
+        inset 0 0 20px rgba(0,0,0,0.4);
 }
 
 #wheelWinner{
@@ -3482,17 +4610,18 @@ body{
     bottom:25px;
     left:50%;
     transform:translateX(-50%);
-    color:white;
-    background:rgba(0,0,0,0.75);
-    border:2px solid #ff0050;
+    color:#f5f7ff;
+    font-family:'Orbitron', sans-serif;
+    background:rgba(5,6,15,0.85);
+    border:1px solid #a855f7;
     border-radius:15px;
     padding:15px 30px;
-    font-size:34px;
-    font-weight:bold;
+    font-size:28px;
+    font-weight:700;
     text-align:center;
     display:none;
     z-index:20;
-    box-shadow:0 0 20px rgba(255,0,80,0.7);
+    box-shadow:0 0 25px rgba(168,85,247,0.6);
 }
 
 #segmentLabels{
@@ -3517,16 +4646,16 @@ body{
 
 #pointer{
     position:absolute;
-    top:15px;
+    top:8px;
     left:50%;
     transform:translateX(-50%);
     width:0;
     height:0;
-    border-left:18px solid transparent;
-    border-right:18px solid transparent;
-    border-top:35px solid #ff0050;
+    border-left:16px solid transparent;
+    border-right:16px solid transparent;
+    border-top:32px solid #22d3ee;
     z-index:10;
-    filter:drop-shadow(0 0 8px #000);
+    filter:drop-shadow(0 0 10px #22d3ee);
 }
 </style>
 </head>
@@ -3534,8 +4663,10 @@ body{
 
 <div id="pointer"></div>
 
+<div id="wheelRing">
 <div id="wheel">
     <div id="segmentLabels"></div>
+</div>
 </div>
 
 <div id="wheelWinner"></div>
@@ -3552,13 +4683,26 @@ async function load(){
 
     const wheel = document.getElementById("wheel");
     wheel.style.fontFamily =
-    settings.font || "Arial";
+    settings.font || "Rajdhani";
 
     wheel.style.transition =
     "transform " +
     (settings.spinDuration || 10) +
     "s ease-out";
 
+    const ring = document.getElementById("wheelRing");
+    ring.style.background =
+        "conic-gradient(from var(--angle), " +
+        (settings.ringColor1 || "#22d3ee") + ", " +
+        (settings.ringColor2 || "#a855f7") + ", " +
+        (settings.ringColor3 || "#ec4899") + ", " +
+        (settings.ringColor1 || "#22d3ee") + ")";
+    ring.style.animationDuration =
+        (settings.ringSpeed || 6) + "s";
+
+    const pointer = document.getElementById("pointer");
+    pointer.style.borderTopColor = settings.ringColor1 || "#22d3ee";
+    pointer.style.filter = "drop-shadow(0 0 10px " + (settings.ringColor1 || "#22d3ee") + ")";
 
     const labels = document.getElementById("segmentLabels");
     const winnerBox = document.getElementById("wheelWinner");
@@ -3635,7 +4779,7 @@ async function load(){
 
     } else {
         wheel.style.background =
-            "conic-gradient(#ff0050 0deg 180deg, #00f2ea 180deg 360deg)";
+            "conic-gradient(#22d3ee 0deg 180deg, #a855f7 180deg 360deg)";
 
         labels.innerHTML = "";
     }
@@ -3859,7 +5003,7 @@ app.post("/chrono/settings", express.json(), (req, res) => {
         Number(req.body.secondsPerCoin || 1),
 
     font:
-        req.body.font || "Arial",
+        req.body.font || "Orbitron",
 
     fontSize:
         Number(req.body.fontSize || 42),
@@ -3871,7 +5015,25 @@ app.post("/chrono/settings", express.json(), (req, res) => {
         req.body.textColor || "#b700ff",
 
     bgColor:
-        req.body.bgColor || "#2b2b2b"
+        req.body.bgColor || "#05060f",
+
+    labelText:
+        req.body.labelText || "",
+
+    labelColor:
+        req.body.labelColor || "#8b93b8",
+
+    ringColor1:
+        req.body.ringColor1 || "#22d3ee",
+
+    ringColor2:
+        req.body.ringColor2 || "#a855f7",
+
+    ringColor3:
+        req.body.ringColor3 || "#ec4899",
+
+    ringSpeed:
+        Number(req.body.ringSpeed || 6)
 };
 
 settings.chrono = chrono;
@@ -3925,28 +5087,64 @@ app.get("/overlay/chrono", (req, res) => {
 <html>
 <head>
 <meta charset="UTF-8">
-<link
-href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Orbitron:wght@400;700&display=swap"
-rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&family=Audiowide&family=Michroma&family=Exo+2:wght@500;700&display=swap" rel="stylesheet">
 <style>
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
+
 body{
     margin:0;
     background:transparent;
     overflow:hidden;
-    font-family:Arial, sans-serif;
+    font-family:'Rajdhani', sans-serif;
     text-align:center;
+}
+
+#frame{
+    display:inline-block;
+    padding:3px;
+    border-radius:22px;
+    background:conic-gradient(from var(--angle), #22d3ee, #a855f7, #ec4899, #22d3ee);
+    animation:spin 6s linear infinite;
+}
+
+#box{
+    padding:18px 34px;
+    border-radius:20px;
+    background:#05060f;
+}
+
+#label{
+    font-size:14px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    margin-bottom:6px;
+    color:#8b93b8;
+    display:none;
 }
 
 #timer{
     display:inline-block;
-    padding:8px 16px;
-    border-radius:10px;
+    font-family:'Orbitron', sans-serif;
 }
 </style>
 </head>
 <body>
 
-<div id="timer">00:05:00</div>
+<div id="frame">
+<div id="box">
+    <div id="label"></div>
+    <div id="timer">00:05:00</div>
+</div>
+</div>
 
 <script>
 async function load(){
@@ -3963,11 +5161,20 @@ async function load(){
     const settings =
         data.settings || {};
 
+    const frame =
+        document.getElementById("frame");
+
+    const box =
+        document.getElementById("box");
+
     const timer =
         document.getElementById("timer");
 
+    const label =
+        document.getElementById("label");
+
     timer.style.fontFamily =
-        settings.font || "Arial";
+        (settings.font || "Orbitron") + ", sans-serif";
 
     timer.style.fontSize =
         (settings.fontSize || 42) + "px";
@@ -3978,8 +5185,29 @@ async function load(){
     timer.style.color =
         settings.textColor || "#b700ff";
 
-    timer.style.background =
-        settings.bgColor || "#2b2b2b";
+    timer.style.textShadow =
+        "0 0 12px " + (settings.textColor || "#b700ff") + "aa";
+
+    box.style.background =
+        settings.bgColor || "#05060f";
+
+    frame.style.background =
+        "conic-gradient(from var(--angle), " +
+        (settings.ringColor1 || "#22d3ee") + ", " +
+        (settings.ringColor2 || "#a855f7") + ", " +
+        (settings.ringColor3 || "#ec4899") + ", " +
+        (settings.ringColor1 || "#22d3ee") + ")";
+
+    frame.style.animationDuration =
+        (settings.ringSpeed || 6) + "s";
+
+    if (settings.labelText) {
+        label.style.display = "block";
+        label.textContent = settings.labelText;
+        label.style.color = settings.labelColor || "#8b93b8";
+    } else {
+        label.style.display = "none";
+    }
 
     const h =
         Math.floor(remaining / 3600);
@@ -4746,12 +5974,24 @@ function getLiveAssistantStore() {
 }
 
 async function getLiveAssistantProState(email) {
+
+    /* Même source de vérité que le reste de CreatorPilot (Sons, Overlays, TTS...) */
+    if (settings.pro === true || settings.pro === "true") {
+        return true;
+    }
+
     if (!email) return false;
-    const result = await pool.query(
-        "SELECT pro FROM pro_users WHERE LOWER(email) = $1 LIMIT 1",
-        [email]
-    );
-    return result.rows[0]?.pro === true;
+
+    try {
+        const result = await pool.query(
+            "SELECT pro FROM pro_users WHERE LOWER(email) = $1 LIMIT 1",
+            [email]
+        );
+        return result.rows[0]?.pro === true;
+    } catch (error) {
+        console.error("Erreur getLiveAssistantProState (DB) :", error);
+        return false;
+    }
 }
 
 function getLiveAssistantAccess(pro) {

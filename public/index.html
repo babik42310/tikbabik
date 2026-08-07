@@ -14,6 +14,8 @@
         content="pvUPzdwyW6RgU38McFPnN9rjKiQuV8nJfSjEASbPMCM" />
 
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="v2-hub.css">
+    <link rel="stylesheet" href="premium-shell.css">
 </head>
 <body>
 
@@ -21,69 +23,56 @@
 </h1>
 
 <div id="sideMenu">
-    
-  <div class="topButtons">
+    <div class="cpMainBrand">
+        <div class="cpMainBrandLogo"><span>C</span><span>P</span></div>
+        <div class="cpMainBrandText"><strong>CreatorPilot</strong><small>LIVE CONTROL CENTER</small></div>
+    </div>
 
-    <button id="startButton" class="menuButton">
-        <span class="menuIcon">🏠</span>
-        <span>Start</span>
+    <div class="cpPrimaryNav">
+        <button id="startButton" class="menuButton">
+            <span class="menuIcon">⌂</span><span class="menuText">Start</span>
+        </button>
+        <button id="accountButton" class="menuButton">
+            <span class="menuIcon">⚿</span><span class="menuText">Connexion</span>
+        </button>
+        <button id="setupButton" class="menuButton">
+            <span class="menuIcon">⚙</span><span class="menuText">Setup</span>
+        </button>
+        <button id="statsButton" class="menuButton">
+            <span class="menuIcon">▥</span><span class="menuText">Statistiques</span>
+        </button>
+        <button id="soundButton" class="menuButton">
+            <span class="menuIcon">♫</span><span class="menuText">Sons</span>
+        </button>
+        <button id="settingsButton" class="menuButton">
+            <span class="menuIcon">ϟ</span><span class="menuText">Actions</span>
+        </button>
+        <button id="quickOverlayButton" class="menuButton">
+            <span class="menuIcon">▤</span><span class="menuText">Overlay</span>
+        </button>
+        <button id="quickMinigamesButton" class="menuButton">
+            <span class="menuIcon">🎮</span><span class="menuText">Mini jeux</span>
+        </button>
+    </div>
+
+    <div id="legacyMenuRoutes" style="display:none !important;">
+        <button id="liveAssistantButton" class="menuButton"><span>Assistant LIVE</span></button>
+        <button id="overlayButton" class="menuButton"><span>Mini jeux</span></button>
+        <button id="graphicOverlayButton" class="menuButton"><span>Overlays</span></button>
+        <button id="pointsButton" class="menuButton"><span>Points</span></button>
+        <button id="chatButton" class="menuButton"><span>Chat</span></button>
+    </div>
+
+    <button id="creatorHubButton" class="menuButton creatorHubMenuButton">
+        <span class="menuIcon">🚀</span>
+        <span class="creatorHubMenuCopy"><b>Creator Hub V2</b><small>Tout ton univers créateur</small></span>
+        <span class="creatorHubV2Badge">V2</span>
     </button>
 
-    <button id="accountButton" class="menuButton">
-        <span class="menuIcon">🔑</span>
-        <span>Connexion</span>
-    </button>
-
-</div>
-
-    <button id="setupButton" class="menuButton">
-        <span class="menuIcon">🛠️</span>
-        <span class="menuText">Setup</span>
-    </button>
-
-    <button id="statsButton" class="menuButton">
-        <span class="menuIcon">📊</span>
-        <span class="menuText">Statistiques</span>
-    </button>
-
-
-    <button id="liveAssistantButton" class="menuButton">
-        <span class="menuIcon">🤖</span>
-        <span class="menuText">Assistant LIVE</span>
-    </button>
-
-    <button id="overlayButton" class="menuButton">
-        <span class="menuIcon">🖼️</span>
-        <span class="menuText">Mini jeux</span>
-    </button>
-
-<button id="graphicOverlayButton" class="menuButton">
-    <div>📺</div>
-    <span>Overlays</span>
-</button>
-
-    <button id="settingsButton" class="menuButton">
-        <span class="menuIcon">⚙️</span>
-        <span class="menuText">Actions</span>
-    </button>
-
-    <button id="soundButton" class="menuButton">
-        <span class="menuIcon">🔊</span>
-        <span class="menuText">Sons</span>
-    </button>
-
-    <button id="pointsButton" class="menuButton">
-        <span class="menuIcon">🏆</span>
-        <span class="menuText">Points</span>
-    </button>
-
-    <button id="chatButton" class="menuButton">
-        <span class="menuIcon">💬</span>
-        <span class="menuText">Chat</span>
-    </button>
-
-
-
+    <div class="cpSidebarStatus">
+        <div><i class="ok"></i><span>CreatorPilot opérationnel</span></div>
+        <div><i></i><span>TikTok en attente</span></div>
+    </div>
 </div>
 
 <button id="voiceButton">Voix ON</button>
@@ -94,6 +83,145 @@
 <img id="giftImage">
 <div id="followAlert"></div>
 <div id="messages"></div>
+
+<div id="creatorHubPanel" class="creatorHubPanel" style="display:none;">
+    <aside class="creatorHubSidebar">
+        <div class="creatorHubBrand">
+            <div class="creatorHubLogo">CP</div>
+            <div><strong>CreatorPilot V2</strong><small>Control Center</small></div>
+        </div>
+
+        <div class="hubNavGroup">
+            <span class="hubNavLabel">LIVE CONTROL</span>
+            <button class="creatorHubTab active" data-hub-page="dashboard"><span class="hubTabIcon">⌂</span><span>Dashboard LIVE</span></button>
+            <button class="creatorHubTab" data-hub-page="tops"><span class="hubTabIcon">♛</span><span>Top Center</span></button>
+            <button class="creatorHubTab" data-hub-page="assistant"><span class="hubTabIcon">◉</span><span>Assistant LIVE</span></button>
+        </div>
+        <div class="hubNavGroup">
+            <span class="hubNavLabel">CREATION</span>
+            <button class="creatorHubTab" data-hub-page="alerts"><span class="hubTabIcon">✦</span><span>Alert Studio</span></button>
+            <button class="creatorHubTab" data-hub-page="overlays"><span class="hubTabIcon">◫</span><span>Overlay Studio</span></button>
+        </div>
+        <div class="hubNavGroup">
+            <span class="hubNavLabel">OUTILS</span>
+            <button class="creatorHubTab" data-hub-page="gaming"><span class="hubTabIcon">⌁</span><span>Gaming Center</span></button>
+            <button class="creatorHubTab" data-hub-page="analytics"><span class="hubTabIcon">▥</span><span>Analytics</span></button>
+        </div>
+
+        <div class="hubSidebarFooter">
+            <div class="hubTinyStatus"><i class="hubTinyDot ok"></i><span>CreatorPilot opérationnel</span></div>
+            <div class="hubTinyStatus"><i class="hubTinyDot" id="hubSidebarLiveDot"></i><span id="hubSidebarLiveText">TikTok en attente</span></div>
+        </div>
+    </aside>
+
+    <main class="creatorHubContent">
+        <header class="creatorHubHeader">
+            <div><span class="creatorHubEyebrow">CREATORPILOT CONTROL CENTER</span><h2 id="creatorHubPageTitle">Dashboard LIVE</h2></div>
+            <div class="hubHeaderRight">
+                <div class="creatorHubLiveState"><span id="creatorHubLiveDot"></span><span id="creatorHubLiveLabel">En attente du LIVE</span></div>
+                <div class="hubHeaderProfile"><div class="hubHeaderAvatar">CP</div><div><strong>Session CreatorPilot</strong><small>Tableau de bord V2</small></div></div>
+            </div>
+        </header>
+
+        <section class="creatorHubPage active" data-hub-content="dashboard">
+            <section class="hubPremiumHero">
+                <div class="hubPremiumCopy"><span>CreatorPilot V2</span><h3>Contrôle.<br><em>Anime.</em><br>Domine ton LIVE.</h3><p>Un seul centre de contrôle pour tes alertes, overlays, tops, outils gaming et analyses.</p><button type="button" data-hub-page-jump="alerts">Découvrir les outils <b>→</b></button></div>
+                <div class="hubPremiumVisual"><div class="hubPremiumLogo">CP</div><i></i><i></i><i></i></div>
+            </section>
+            <div class="creatorHubMetrics">
+                <article class="creatorMetric" style="--metric-color:#ff5d8f"><div class="metricTop"><span class="metricLabel"><i class="metricIcon">♥</i> Likes</span><i class="metricPulse"></i></div><strong id="hubMetricLikes">0</strong><small>Total du LIVE</small></article>
+                <article class="creatorMetric" style="--metric-color:#ffd05c"><div class="metricTop"><span class="metricLabel"><i class="metricIcon">✦</i> Cadeaux</span><i class="metricPulse"></i></div><strong id="hubMetricGifts">0</strong><small>Événements reçus</small></article>
+                <article class="creatorMetric" style="--metric-color:#ffad42"><div class="metricTop"><span class="metricLabel"><i class="metricIcon">●</i> Pièces</span><i class="metricPulse"></i></div><strong id="hubMetricCoins">0</strong><small>Valeur reçue</small></article>
+                <article class="creatorMetric" style="--metric-color:#72e994"><div class="metricTop"><span class="metricLabel"><i class="metricIcon">★</i> Follows</span><i class="metricPulse"></i></div><strong id="hubMetricFollows">0</strong><small>Nouveaux abonnés</small></article>
+                <article class="creatorMetric" style="--metric-color:#66c8ff"><div class="metricTop"><span class="metricLabel"><i class="metricIcon">↗</i> Partages</span><i class="metricPulse"></i></div><strong id="hubMetricShares">0</strong><small>Ce LIVE</small></article>
+                <article class="creatorMetric" style="--metric-color:#9d82ff"><div class="metricTop"><span class="metricLabel"><i class="metricIcon">◷</i> Durée</span><i class="metricPulse"></i></div><strong id="hubMetricDuration">00:00:00</strong><small>Session CreatorPilot</small></article>
+            </div>
+
+            <div class="creatorHubDashboardGrid">
+                <article class="creatorHubCard">
+                    <div class="creatorHubCardHead"><h3><i class="cardIcon">⌁</i>Activité en direct</h3><div class="hubChartLegend"><span><i></i>activité</span><span><i class="purple"></i>intensité</span><span>60 sec</span></div></div>
+                    <div id="hubActivityChart" class="hubActivityChart"></div>
+                </article>
+                <article class="creatorHubCard">
+                    <div class="creatorHubCardHead"><h3><i class="cardIcon">♛</i>Top donateurs</h3><span>Top 5</span></div>
+                    <div id="hubTopGifters" class="hubRanking"></div>
+                </article>
+                <article class="creatorHubCard">
+                    <div class="creatorHubCardHead"><h3><i class="cardIcon">♥</i>Top Likes</h3><span>Top 5</span></div>
+                    <div id="hubTopLikes" class="hubRanking"></div>
+                </article>
+                <article class="creatorHubCard">
+                    <div class="creatorHubCardHead"><h3><i class="cardIcon">⚡</i>Derniers événements</h3><span>temps réel</span></div>
+                    <div id="hubEventFeed" class="hubEventFeed"><div class="hubEmpty">Les événements du LIVE apparaîtront ici.</div></div>
+                </article>
+            </div>
+
+            <div class="hubSystemStrip">
+                <div class="hubSystemItem"><span><i class="hubSystemDot ok"></i>CreatorPilot</span><b>PRÊT</b></div>
+                <div class="hubSystemItem"><span><i class="hubSystemDot" id="hubSystemTikTok"></i>TikTok LIVE</span><b id="hubSystemTikTokText">ATTENTE</b></div>
+                <div class="hubSystemItem"><span><i class="hubSystemDot"></i>OBS</span><b>OPTIONNEL</b></div>
+                <div class="hubSystemItem"><span><i class="hubSystemDot"></i>Minecraft</span><b>OPTIONNEL</b></div>
+                <div class="hubSystemItem"><span><i class="hubSystemDot"></i>Streamer.bot</span><b>OPTIONNEL</b></div>
+            </div>
+        </section>
+
+        <section class="creatorHubPage" data-hub-content="tops">
+            <div class="creatorHubIntro"><h3>Top Center</h3><p>Tous les classements LIVE et leurs overlays réunis au même endroit.</p></div>
+            <div class="creatorHubFeatureGrid">
+                <article class="creatorFeature"><span>♛</span><h3>Top Donateurs</h3><p>Classement en pièces, podium LIVE et historique des meilleurs donateurs.</p><button data-open-existing="statsButton">Ouvrir les statistiques</button></article>
+                <article class="creatorFeature"><span>♥</span><h3>Top Likes</h3><p>Podium des viewers les plus actifs avec overlay dédié.</p><button data-open-existing="graphicOverlayButton">Configurer l'overlay</button></article>
+                <article class="creatorFeature"><span>✦</span><h3>Top Gifts</h3><p>Analyse des cadeaux qui génèrent le plus d'activité pendant le LIVE.</p><button data-hub-action="refresh">Actualiser</button></article>
+                <article class="creatorFeature"><span>★</span><h3>Top communauté</h3><p>Follows, partages et fidélité regroupés dans le Control Center.</p><button data-hub-action="dashboard">Voir le Dashboard</button></article>
+            </div>
+        </section>
+
+        <section class="creatorHubPage" data-hub-content="alerts">
+            <div class="creatorHubIntro"><h3>Alert Studio</h3><p>Centralise les sons, alertes, TTS, tests et actions cadeaux.</p></div>
+            <div class="creatorHubFeatureGrid">
+                <article class="creatorFeature"><span>◖</span><h3>Sound Alerts</h3><p>Configure un son différent par événement et prévisualise le résultat.</p><button data-open-existing="soundButton">Ouvrir les sons</button></article>
+                <article class="creatorFeature"><span>⚙</span><h3>Actions cadeaux</h3><p>Associe chaque cadeau TikTok aux actions CreatorPilot existantes.</p><button data-open-existing="settingsButton">Ouvrir les actions</button></article>
+                <article class="creatorFeature"><span>◉</span><h3>TTS</h3><p>Gère les lectures vocales avec le système TTS déjà intégré.</p><button data-open-existing="soundButton">Configurer le TTS</button></article>
+                <article class="creatorFeature"><span>◫</span><h3>Tests rapides</h3><p>Teste les alertes avant le LIVE sans modifier ta configuration.</p><button data-open-existing="settingsButton">Tester une action</button></article>
+            </div>
+        </section>
+
+        <section class="creatorHubPage" data-hub-content="overlays">
+            <div class="creatorHubIntro"><h3>Overlay Studio</h3><p>Le centre de création pour tes overlays, objectifs et widgets LIVE.</p></div>
+            <div class="creatorHubFeatureGrid">
+                <article class="creatorFeature"><span>▣</span><h3>Overlays graphiques</h3><p>Top Likes, objectifs, compteurs et composants pour OBS/TikTok Studio.</p><button data-open-existing="graphicOverlayButton">Ouvrir les overlays</button></article>
+                <article class="creatorFeature"><span>⌁</span><h3>Mini-jeux</h3><p>Coin Match, Gift Battle et autres expériences interactives.</p><button data-open-existing="overlayButton">Ouvrir les mini-jeux</button></article>
+                <article class="creatorFeature"><span>↗</span><h3>URLs Browser Source</h3><p>Retrouve rapidement les URLs utilisables dans OBS.</p><button data-open-existing="graphicOverlayButton">Voir les URLs</button></article>
+                <article class="creatorFeature"><span>✦</span><h3>Personnalisation</h3><p>Police, tailles, couleurs et styles restent compatibles avec tes overlays.</p><button data-open-existing="graphicOverlayButton">Personnaliser</button></article>
+            </div>
+        </section>
+
+        <section class="creatorHubPage" data-hub-content="gaming">
+            <div class="creatorHubIntro"><h3>Gaming Center</h3><p>Connexions gaming et automatismes externes regroupés dans un seul espace.</p></div>
+            <div class="creatorHubFeatureGrid">
+                <article class="creatorFeature"><span>⛏</span><h3>Minecraft</h3><p>Connexion et actions Minecraft depuis les réglages Setup.</p><button data-open-setup-tab="minecraftSetupTab">Configurer Minecraft</button></article>
+                <article class="creatorFeature"><span>◉</span><h3>Streamer.bot</h3><p>Déclenche les actions externes et automatisations OBS.</p><button data-open-setup-tab="streamerBotSetupTab">Configurer Streamer.bot</button></article>
+                <article class="creatorFeature"><span>▣</span><h3>OBS</h3><p>Accède à la connexion OBS déjà présente dans CreatorPilot.</p><button data-open-setup-tab="obsConnectionSetupTab">Configurer OBS</button></article>
+                <article class="creatorFeature"><span>⌁</span><h3>FiveM / GTA</h3><p>Emplacement prêt pour le futur module de connexion serveur.</p><button disabled>Bientôt disponible</button></article>
+            </div>
+        </section>
+
+        <section class="creatorHubPage" data-hub-content="analytics">
+            <div class="creatorHubIntro"><h3>Analytics</h3><p>Une lecture instantanée des performances collectées par CreatorPilot.</p></div>
+            <div class="creatorHubAnalytics">
+                <article><span>Total pièces enregistrées</span><strong id="hubAnalyticsCoins">0</strong></article>
+                <article><span>Donateurs uniques</span><strong id="hubAnalyticsGifters">0</strong></article>
+                <article><span>Cadeaux dans l'historique</span><strong id="hubAnalyticsGiftEvents">0</strong></article>
+                <article><span>Likes LIVE</span><strong id="hubAnalyticsLikes">0</strong></article>
+            </div>
+            <button class="creatorHubPrimary" data-open-existing="statsButton">Ouvrir les statistiques détaillées</button>
+        </section>
+
+        <section class="creatorHubPage" data-hub-content="assistant">
+            <div class="creatorHubIntro"><h3>Assistant LIVE</h3><p>Accès direct à l'assistant LIVE tout en conservant les droits Free / Pro existants.</p></div>
+            <button class="creatorHubPrimary" data-open-existing="liveAssistantButton">Ouvrir Assistant LIVE</button>
+        </section>
+    </main>
+</div>
 
 <div id="settingsPanel" style="display:none;">
 
@@ -874,6 +1002,18 @@
     <label>Couleur texte</label>
     <input type="color" id="coinTextColor" value="#ffffff">
 
+    <label>Anneau — couleur 1</label>
+    <input type="color" id="coinRingColor1" value="#22d3ee">
+
+    <label>Anneau — couleur 2</label>
+    <input type="color" id="coinRingColor2" value="#a855f7">
+
+    <label>Anneau — couleur 3</label>
+    <input type="color" id="coinRingColor3" value="#ec4899">
+
+    <label>Vitesse de rotation de l'anneau (secondes)</label>
+    <input type="number" id="coinRingSpeed" value="6" min="1">
+
     <label>Durée du match</label>
 <select id="coinDuration">
     <option value="60">1 minute</option>
@@ -1083,7 +1223,7 @@
 </div>
 
 
-            <div class="overlayGameCard">
+            <div class="overlayGameCard" id="overlayWheelCard">
 
     <h3>Roue des actions <span class="proBadge">PRO</span></h3>
 
@@ -1178,6 +1318,18 @@
         <label>Durée attente</label>
         <input id="wheelWaitDuration" type="number" value="1">
 
+        <label>Anneau — couleur 1</label>
+        <input id="wheelRingColor1" type="color" value="#22d3ee">
+
+        <label>Anneau — couleur 2</label>
+        <input id="wheelRingColor2" type="color" value="#a855f7">
+
+        <label>Anneau — couleur 3</label>
+        <input id="wheelRingColor3" type="color" value="#ec4899">
+
+        <label>Vitesse de rotation de l'anneau (secondes)</label>
+        <input id="wheelRingSpeed" type="number" value="6" min="1">
+
     </div>
 
     <br>
@@ -1235,6 +1387,52 @@
 </div>
 
             <div class="overlayGameCard">
+                <h3>🏆 Top Donateurs</h3>
+
+                <p>Classement des viewers qui ont envoyé le plus de pièces pendant le LIVE.</p>
+
+                <iframe
+                    src="/overlay/top-donors"
+                    class="overlayPreview"
+                    scrolling="no">
+                </iframe>
+
+                <button id="topDonorsCopyUrl">
+                    🔗 Copy URL
+                </button>
+                <button id="topDonorsTest">
+                    🪙 Test cadeau
+                </button>
+                <button id="topDonorsCustomize">
+                    ⚙ Customize
+                </button>
+
+            </div>
+
+            <div class="overlayGameCard">
+                <h3>⏱️ Top Présence LIVE</h3>
+
+                <p>Classement des viewers les plus actifs (chat, likes, cadeaux) pendant le LIVE. Approximation basée sur l'activité, TikTok ne fournit pas de temps de visionnage officiel par viewer.</p>
+
+                <iframe
+                    src="/overlay/top-presence"
+                    class="overlayPreview"
+                    scrolling="no">
+                </iframe>
+
+                <button id="topPresenceCopyUrl">
+                    🔗 Copy URL
+                </button>
+                <button id="topPresenceTest">
+                    ⏱️ Test présence
+                </button>
+                <button id="topPresenceCustomize">
+                    ⚙ Customize
+                </button>
+
+            </div>
+
+            <div class="overlayGameCard" id="overlayChronoCard">
                 <h3 style="color:#35cfff;">Chrono</h3>
 
 <p>Affiche le compte à rebours.</p>
@@ -1301,6 +1499,10 @@ value="/overlay/chrono"        readonly>
 
     <label>Police</label>
 <select id="chronoFont">
+    <option value="Orbitron">Orbitron (futuriste)</option>
+    <option value="Audiowide">Audiowide (futuriste)</option>
+    <option value="Michroma">Michroma (futuriste)</option>
+    <option value="Exo 2">Exo 2 (futuriste)</option>
     <option value="Arial">Arial</option>
     <option value="Verdana">Verdana</option>
     <option value="Tahoma">Tahoma</option>
@@ -1308,7 +1510,6 @@ value="/overlay/chrono"        readonly>
     <option value="Impact">Impact</option>
     <option value="Georgia">Georgia</option>
     <option value="Courier New">Courier New</option>
-    <option value="Orbitron">Orbitron</option>
     <option value="Poppins">Poppins</option>
 </select>
     <label>Taille du texte</label>
@@ -1321,7 +1522,25 @@ value="/overlay/chrono"        readonly>
     <input id="chronoTextColor" type="color" value="#b700ff">
 
     <label>Fond chrono</label>
-    <input id="chronoBgColor" type="color" value="#2b2b2b">
+    <input id="chronoBgColor" type="color" value="#05060f">
+
+    <label>Texte au-dessus (optionnel)</label>
+    <input id="chronoLabelText" type="text" placeholder="ex: SUBATHON">
+
+    <label>Couleur du texte au-dessus</label>
+    <input id="chronoLabelColor" type="color" value="#8b93b8">
+
+    <label>Anneau — couleur 1</label>
+    <input id="chronoRingColor1" type="color" value="#22d3ee">
+
+    <label>Anneau — couleur 2</label>
+    <input id="chronoRingColor2" type="color" value="#a855f7">
+
+    <label>Anneau — couleur 3</label>
+    <input id="chronoRingColor3" type="color" value="#ec4899">
+
+    <label>Vitesse de rotation de l'anneau (secondes)</label>
+    <input id="chronoRingSpeed" type="number" value="6" min="1">
 
     <label>Valeur départ en minutes</label>
     <input id="chronoDefaultMinutes" type="number" value="5">
@@ -1803,6 +2022,10 @@ value="/overlay/chrono"        readonly>
     💬 TTS Chat
 </button>
 
+        <button class="soundTab" id="chatBotTab">
+    🤖 ChatBot
+</button>
+
     </div>
 
     <div id="soundContent">
@@ -2000,6 +2223,11 @@ value="/overlay/chrono"        readonly>
     </div>
 
     <div class="ttsRow">
+        <label>Pseudos équipe (séparés par une virgule)</label>
+        <input type="text" id="ttsTeamUsernames" placeholder="@pseudo1, @pseudo2">
+    </div>
+
+    <div class="ttsRow">
         <label>Top Donateurs</label>
         <input type="checkbox" id="ttsTopGifters">
     </div>
@@ -2008,6 +2236,11 @@ value="/overlay/chrono"        readonly>
     <label>Liste blanche</label>
     <input type="checkbox" id="ttsWhitelist">
 </div>
+
+    <div class="ttsRow">
+        <label>Pseudos liste blanche (séparés par une virgule)</label>
+        <input type="text" id="ttsWhitelistUsernames" placeholder="@pseudo1, @pseudo2">
+    </div>
 
 </div> <!-- Utilisateurs autorisés -->
 
@@ -2047,12 +2280,12 @@ value="/overlay/chrono"        readonly>
 
     <div class="ttsRow">
         <label>Lecture gratuite</label>
-        <input type="radio" name="ttsPointsMode" checked>
+        <input type="radio" name="ttsPointsMode" value="free" checked>
     </div>
 
     <div class="ttsRow">
         <label>Faire payer des points</label>
-        <input type="radio" name="ttsPointsMode">
+        <input type="radio" name="ttsPointsMode" value="paid">
     </div>
 
     <div class="ttsRow">
@@ -2186,6 +2419,61 @@ value="/overlay/chrono"        readonly>
 </div>
 
 </div> <!-- ttsGrid -->
+
+</div>
+
+<div id="chatBotContent" style="display:none;">
+
+    <h2>🤖 ChatBot</h2>
+
+    <p>
+        Tes viewers déclenchent des actions en tapant une commande dans le chat TikTok LIVE.
+        CreatorPilot les détecte et réagit automatiquement (roue, points, objectif, sons).
+    </p>
+
+    <label>
+        <input type="checkbox" id="chatBotEnabled" checked>
+        Activer le ChatBot
+    </label>
+
+    <label>Préfixe des commandes</label>
+    <input type="text" id="chatBotPrefix" value="!" maxlength="3" style="max-width:80px;">
+
+    <label>Anti-spam (secondes entre 2 commandes du même viewer)</label>
+    <input type="number" id="chatBotCooldown" value="8" min="1">
+
+    <h3 style="margin-top:18px;">Commandes intégrées</h3>
+
+    <label>
+        <input type="checkbox" id="chatBotCmdRoue" checked>
+        <b>!roue</b> — lance la roue de la fortune
+    </label>
+    <label>
+        <input type="checkbox" id="chatBotCmdPoints" checked>
+        <b>!points</b> — annonce le solde de points du viewer
+    </label>
+    <label>
+        <input type="checkbox" id="chatBotCmdObjectif" checked>
+        <b>!objectif</b> — rappelle l'objectif abonnés en cours
+    </label>
+
+    <h3 style="margin-top:18px;">Commandes personnalisées</h3>
+
+    <p>Associe un mot-clé à une action existante (Alert Studio / Actions).</p>
+
+    <div id="chatBotCustomCommandsList"></div>
+
+    <div style="display:flex;gap:8px;margin-top:8px;">
+        <input type="text" id="chatBotNewCommandWord" placeholder="mot-clé (ex: coucou)" style="max-width:180px;">
+        <select id="chatBotNewCommandAction"></select>
+        <button type="button" id="chatBotAddCommand">➕ Ajouter</button>
+    </div>
+
+    <br>
+
+    <button id="saveChatBotSettings">
+        💾 Sauvegarder les commandes du chat
+    </button>
 
 </div>
 
@@ -2380,86 +2668,82 @@ value="/overlay/chrono"        readonly>
 
 </div>
 
-    <div style="max-width:900px; margin:20px auto; line-height:1.6;">
-
-    <h1>Pour redémarrer CreatorPilot, cliquez sur "Reload" ou "Force Reload" en haut à gauche.</h1>
-
-<p>
-    CreatorPilot est une application TikTok LIVE conçue pour les créateurs souhaitant rendre leurs lives plus interactifs grâce aux alertes cadeaux, au TTS vocal, aux overlays personnalisés, aux mini-jeux, aux objectifs de likes et aux statistiques en direct.
-
-    Si vous venez d'effectuer une modification, pensez à sauvegarder puis à redéployer l'application afin que les changements soient pris en compte.
-</p>
-
-    <p>
-        Développé par TikBabik, CreatorPilot permet de gérer les interactions
-        en temps réel, les sons personnalisés, les événements du live,
-        les animations visuelles et les outils de fidélisation de communauté.
-    </p>
-
-    <p>
-        Compatible avec Windows, CreatorPilot est pensé pour les créateurs,
-        streamers et animateurs TikTok LIVE qui souhaitent améliorer
-        l'expérience de leurs spectateurs et développer leur audience.
-    </p>
-
-</div>
-
-        <h2>Bienvenue !</h2>
-
-        <p>
-            Bienvenue dans CreatorPilot, ton outil pour gérer ton live TikTok.
-        </p>
-<div class="startCard">
-    <h3>🚀 Télécharger CreatorPilot</h3>
-
-    <p>
-        Télécharge l'application CreatorPilot pour Windows.
-    </p>
-
-    <a
-    href="https://github.com/babik42310/tikbabik/releases/latest"
-    target="_blank"
-    class="downloadButton"
->
-        ⬇️ Télécharger CreatorPilot
-    </a>
-</div>
-        <div class="startCard">
-            <h3>Connexion TikTok LIVE</h3>
-            <p>
-                Une fois ton live lancé, connecte CreatorPilot à ton compte TikTok.
-            </p>
-            <button id="startConnectTikTokButton">
-                Connecter à TikTok LIVE
-            </button>
+    <div id="startMainPage">
+    <section class="cpWelcomeShell">
+        <div class="cpWelcomeMetrics">
+            <article><span class="cpMetricIcon pink">♥</span><div><small>Likes</small><strong>152.6K</strong><em>+12.5%</em></div></article>
+            <article><span class="cpMetricIcon blue">♟</span><div><small>Abonnés</small><strong>8.45K</strong><em>+8.7%</em></div></article>
+            <article><span class="cpMetricIcon orange">🎁</span><div><small>Cadeaux</small><strong>327</strong><em>+15.3%</em></div></article>
+            <article><span class="cpMetricIcon cyan">◆</span><div><small>Diamants</small><strong>52.0K</strong><em>+22.1%</em></div></article>
+            <article><span class="cpMetricIcon violet">◷</span><div><small>Durée LIVE</small><strong>02:21:45</strong><em class="live">● En direct</em></div></article>
         </div>
 
-        <div class="startCard">
-            <h3>Accès rapide</h3>
-
-            <div class="quickGrid">
-                <div class="quickCard">
-                    <h4>TTS Chat</h4>
-                    <label>
-    <input
-        type="checkbox"
-        id="quickTtsEnabled">
-    Activé
-</label>
-                </div>
-
-                <div class="quickCard">
-                    <h4>Alertes sonores</h4>
-                    <label><input type="checkbox" checked> Activé</label>
-                </div>
-
-                <div class="quickCard">
-                    <h4>Actions & Événements</h4>
-                    <label><input type="checkbox" checked> Activé</label>
+        <section class="cpHeroCard">
+            <div class="cpHeroCopy">
+                <span class="cpHeroTag">CreatorPilot V2</span>
+                <h3><span>Contrôle.</span><br><span>Anime.</span><br><span>Domine ton LIVE.</span></h3>
+                <p>Tous les outils pour interagir, fidéliser et faire exploser ton audience.</p>
+                <div class="cpHeroActions">
+                    <button id="startConnectTikTokButton" class="cpPrimaryAction">Connecter TikTok LIVE <b>→</b></button>
+                    <button type="button" class="cpSecondaryAction" onclick="document.getElementById('creatorHubButton')?.click()">Découvrir le Creator Hub V2</button>
                 </div>
             </div>
+            <div class="cpHeroVisual" aria-hidden="true">
+                <div class="cpOrbit cpOrbitOne"></div><div class="cpOrbit cpOrbitTwo"></div><div class="cpOrbit cpOrbitThree"></div>
+                <div class="cpHeroLogo"><span>C</span><span>P</span></div>
+                <i class="cpSpark s1"></i><i class="cpSpark s2"></i><i class="cpSpark s3"></i><i class="cpSpark s4"></i>
+            </div>
+        </section>
+
+        <div class="cpSystemBar">
+            <div><span class="cpStatusDot ok"></span><small>Statut</small><strong>Opérationnel</strong></div>
+            <div><span class="cpTikTokMini">♪</span><small>TikTok LIVE</small><strong class="warning">Non connecté</strong></div>
+            <div><small>Version</small><strong>v2.0.0</strong></div>
+            <div><small>Licence</small><strong><b class="cpProPill">PRO</b></strong></div>
+            <div><span class="cpCheck">✓</span><small>Mises à jour</small><strong>À jour</strong></div>
         </div>
 
+        <div class="cpWelcomeGrid">
+            <article class="cpWelcomeCard cpConnectionCard">
+                <div class="cpCardHead"><span class="cpRoundIcon purple">ϟ</span><div><h3>Connexion rapide</h3><p>Connecte CreatorPilot à ton compte TikTok LIVE en un clic.</p></div></div>
+                <div class="cpTikTokOrb"><span>♪</span></div>
+                <button type="button" class="cpPrimaryAction" onclick="document.getElementById('startConnectTikTokButton')?.click()">Connecter TikTok LIVE <b>→</b></button>
+                <a href="#" onclick="document.getElementById('accountButton')?.click();return false;">Voir guide de connexion ↗</a>
+            </article>
+
+            <article class="cpWelcomeCard">
+                <div class="cpCardHead"><span class="cpRoundIcon cyan">ↄ</span><div><h3>Accès rapides</h3><p>Tes outils essentiels de ton LIVE.</p></div></div>
+                <div class="cpQuickLinks">
+                    <button type="button" onclick="document.getElementById('soundButton')?.click()"><span>★</span><div><b>Alert Studio</b><small>Alertes, sons & TTS</small></div><i>›</i></button>
+                    <button type="button" onclick="document.getElementById('graphicOverlayButton')?.click()"><span>▣</span><div><b>Overlay Studio</b><small>Widgets et overlays</small></div><i>›</i></button>
+                    <button type="button" onclick="document.getElementById('liveAssistantButton')?.click()"><span>☻</span><div><b>Assistant LIVE</b><small>Ton assistant IA</small></div><i>›</i></button>
+                    <button type="button" onclick="document.getElementById('statsButton')?.click()"><span>♛</span><div><b>Top Center</b><small>Classements en direct</small></div><i>›</i></button>
+                    <button type="button" onclick="document.getElementById('chatButton')?.click()"><span>🤖</span><div><b>ChatBot</b><small>Commandes du chat LIVE</small></div><i>›</i></button>
+                </div>
+                <a class="cpOutlineLink" href="#" onclick="document.getElementById('creatorHubButton')?.click();return false;">Voir plus d'outils →</a>
+            </article>
+
+            <article class="cpWelcomeCard cpNewsCard">
+                <div class="cpCardHead"><span class="cpRoundIcon orange">★</span><div><h3>Nouveautés</h3><p>Les dernières mises à jour CreatorPilot.</p></div><span class="cpNewPill">NOUVEAU</span></div>
+                <div class="cpNewsList">
+                    <div><span>🚀</span><p><b>Creator Hub V2</b><small>Nouveau design, + rapide & complet</small></p></div>
+                    <div><span>🤖</span><p><b>Assistant LIVE</b><small>Suggestions intelligentes pendant le LIVE</small></p></div>
+                    <div><span>🎨</span><p><b>Overlay Studio</b><small>Nouveaux widgets & animations</small></p></div>
+                </div>
+                <a class="cpOutlineLink" href="#" onclick="document.getElementById('creatorHubButton')?.click();return false;">Voir toutes les nouveautés →</a>
+            </article>
+        </div>
+
+        <div class="cpFooterCommunity">
+            <div><strong>Rejoins la communauté CreatorPilot</strong><span>Des milliers de créateurs nous font déjà confiance.</span></div>
+            <div class="cpFooterPills"><span>🎮 Discord</span><span>♪ TikTok</span><span>▶ YouTube</span><span>▤ Documentation</span></div>
+        </div>
+
+        <div class="cpHiddenCompat" aria-hidden="true">
+            <input type="checkbox" id="quickTtsEnabled">
+            <a href="https://github.com/babik42310/tikbabik/releases/latest" target="_blank" class="downloadButton">Télécharger CreatorPilot</a>
+        </div>
+    </section>
     </div>
 
     <div id="agencyPage" style="display:none;">
@@ -2679,18 +2963,38 @@ value="/overlay/chrono"        readonly>
 
 </div>
 
+
+    
+</div> <!-- pointsContent -->
+</div> <!-- pointsPanel -->
+
 <div id="topLikesCustomizeModal" class="customizeModal">
 
-    <div class="customizeContent">
+    <div class="customizeContentWithPreview">
+
+    <div class="customizeControls">
 
         <h2>❤️ Paramètres Top J'aime</h2>
 
-        <label>Police</label>
-        <select id="topLikesFont">
-            <option>Arial</option>
-            <option>Poppins</option>
-            <option>Pacifico</option>
-            <option>Montserrat</option>
+        <label>Police du titre</label>
+        <select id="topLikesTitleFont">
+            <option value="Orbitron">Orbitron (futuriste)</option>
+            <option value="Audiowide">Audiowide (futuriste)</option>
+            <option value="Michroma">Michroma (futuriste)</option>
+            <option value="Exo 2">Exo 2 (futuriste)</option>
+            <option value="Arial">Arial</option>
+            <option value="Poppins">Poppins</option>
+            <option value="Montserrat">Montserrat</option>
+        </select>
+
+        <label>Police des pseudos</label>
+        <select id="topLikesNameFont">
+            <option value="Rajdhani">Rajdhani (futuriste)</option>
+            <option value="Orbitron">Orbitron (futuriste)</option>
+            <option value="Exo 2">Exo 2 (futuriste)</option>
+            <option value="Arial">Arial</option>
+            <option value="Poppins">Poppins</option>
+            <option value="Montserrat">Montserrat</option>
         </select>
 
         <label>Taille du texte</label>
@@ -2698,6 +3002,24 @@ value="/overlay/chrono"        readonly>
             type="number"
             id="topLikesFontSize"
             value="24">
+
+        <label>Texte du titre</label>
+        <input
+            type="text"
+            id="topLikesTitleText"
+            value="Top J'aime">
+
+        <label>Couleur du titre (début du dégradé)</label>
+        <input
+            type="color"
+            id="topLikesTitleColorStart"
+            value="#22d3ee">
+
+        <label>Couleur du titre (fin du dégradé)</label>
+        <input
+            type="color"
+            id="topLikesTitleColorEnd"
+            value="#ff4d6d">
 
         <label>Couleur des pseudos</label>
         <input
@@ -2711,11 +3033,57 @@ value="/overlay/chrono"        readonly>
             id="topLikesLikesColor"
             value="#ff4d6d">
 
-        <label>Couleur du classement</label>
+        <label>Couleur du classement (texte "N.")</label>
         <input
             type="color"
             id="topLikesRankColor"
             value="#ffd700">
+
+        <label>Couleur de fond</label>
+        <input
+            type="color"
+            id="topLikesBgColor"
+            value="#05060f">
+
+        <label>Couleur des cartes de classement</label>
+        <input
+            type="color"
+            id="topLikesRowColor"
+            value="#a855f7">
+
+        <label>Anneau — couleur 1</label>
+        <input
+            type="color"
+            id="topLikesRingColor1"
+            value="#22d3ee">
+
+        <label>Anneau — couleur 2</label>
+        <input
+            type="color"
+            id="topLikesRingColor2"
+            value="#a855f7">
+
+        <label>Anneau — couleur 3</label>
+        <input
+            type="color"
+            id="topLikesRingColor3"
+            value="#ec4899">
+
+        <label>Vitesse de rotation de l'anneau (secondes par tour)</label>
+        <input
+            type="number"
+            id="topLikesRingSpeed"
+            value="6"
+            min="1">
+
+        <label>Icône</label>
+        <select id="topLikesHeartIcon">
+            <option value="❤️">❤️ Cœur</option>
+            <option value="💗">💗 Cœur rose</option>
+            <option value="🔥">🔥 Feu</option>
+            <option value="⭐">⭐ Étoile</option>
+            <option value="👍">👍 Pouce</option>
+        </select>
 
         <label>
             <input
@@ -2738,7 +3106,7 @@ value="/overlay/chrono"        readonly>
                 type="checkbox"
                 id="topLikesShowHeart"
                 checked>
-            Afficher le cœur
+            Afficher l'icône
         </label>
 
         <button id="saveTopLikesSettings">
@@ -2751,9 +3119,335 @@ value="/overlay/chrono"        readonly>
 
     </div>
 
-    
-</div> <!-- pointsContent -->
-</div> <!-- pointsPanel -->
+    <div class="customizePreviewPane">
+        <span class="customizePreviewLabel">Aperçu en direct</span>
+        <iframe id="topLikesPreviewFrame" src="/overlay/top-likes"></iframe>
+    </div>
+
+    </div>
+
+</div>
+
+<div id="topDonorsCustomizeModal" class="customizeModal">
+
+    <div class="customizeContentWithPreview">
+
+    <div class="customizeControls">
+
+        <h2>🏆 Paramètres Top Donateurs</h2>
+
+        <label>Police du titre</label>
+        <select id="topDonorsTitleFont">
+            <option value="Orbitron">Orbitron (futuriste)</option>
+            <option value="Audiowide">Audiowide (futuriste)</option>
+            <option value="Michroma">Michroma (futuriste)</option>
+            <option value="Exo 2">Exo 2 (futuriste)</option>
+            <option value="Arial">Arial</option>
+            <option value="Poppins">Poppins</option>
+            <option value="Montserrat">Montserrat</option>
+        </select>
+
+        <label>Police des pseudos</label>
+        <select id="topDonorsNameFont">
+            <option value="Rajdhani">Rajdhani (futuriste)</option>
+            <option value="Orbitron">Orbitron (futuriste)</option>
+            <option value="Exo 2">Exo 2 (futuriste)</option>
+            <option value="Arial">Arial</option>
+            <option value="Poppins">Poppins</option>
+            <option value="Montserrat">Montserrat</option>
+        </select>
+
+        <label>Taille du texte</label>
+        <input
+            type="number"
+            id="topDonorsFontSize"
+            value="24">
+
+        <label>Texte du titre</label>
+        <input
+            type="text"
+            id="topDonorsTitleText"
+            value="Top Donateurs">
+
+        <label>Couleur du titre (début du dégradé)</label>
+        <input
+            type="color"
+            id="topDonorsTitleColorStart"
+            value="#22d3ee">
+
+        <label>Couleur du titre (fin du dégradé)</label>
+        <input
+            type="color"
+            id="topDonorsTitleColorEnd"
+            value="#00e5ff">
+
+        <label>Couleur des pseudos</label>
+        <input
+            type="color"
+            id="topDonorsNameColor"
+            value="#ffffff">
+
+        <label>Couleur des pièces</label>
+        <input
+            type="color"
+            id="topDonorsCoinsColor"
+            value="#00e5ff">
+
+        <label>Couleur du classement (texte "N.")</label>
+        <input
+            type="color"
+            id="topDonorsRankColor"
+            value="#ffd700">
+
+        <label>Couleur de fond</label>
+        <input
+            type="color"
+            id="topDonorsBgColor"
+            value="#05060f">
+
+        <label>Couleur des cartes de classement</label>
+        <input
+            type="color"
+            id="topDonorsRowColor"
+            value="#a855f7">
+
+        <label>Anneau — couleur 1</label>
+        <input
+            type="color"
+            id="topDonorsRingColor1"
+            value="#22d3ee">
+
+        <label>Anneau — couleur 2</label>
+        <input
+            type="color"
+            id="topDonorsRingColor2"
+            value="#a855f7">
+
+        <label>Anneau — couleur 3</label>
+        <input
+            type="color"
+            id="topDonorsRingColor3"
+            value="#ec4899">
+
+        <label>Vitesse de rotation de l'anneau (secondes par tour)</label>
+        <input
+            type="number"
+            id="topDonorsRingSpeed"
+            value="6"
+            min="1">
+
+        <label>Icône de la pièce</label>
+        <select id="topDonorsCoinIcon">
+            <option value="🪙">🪙 Pièce</option>
+            <option value="💰">💰 Sac</option>
+            <option value="💎">💎 Diamant</option>
+            <option value="⭐">⭐ Étoile</option>
+            <option value="🔶">🔶 Losange</option>
+            <option value="🎯">🎯 Cible</option>
+        </select>
+
+        <label>
+            <input
+                type="checkbox"
+                id="topDonorsShowAvatar"
+                checked>
+            Afficher les avatars
+        </label>
+
+        <label>
+            <input
+                type="checkbox"
+                id="topDonorsShowCrown"
+                checked>
+            Afficher la couronne du Top 1
+        </label>
+
+        <label>
+            <input
+                type="checkbox"
+                id="topDonorsShowCoin"
+                checked>
+            Afficher l'icône de pièce
+        </label>
+
+        <button id="saveTopDonorsSettings">
+            💾 Sauvegarder
+        </button>
+
+        <button id="closeTopDonorsSettings">
+            ❌ Fermer
+        </button>
+
+    </div>
+
+    <div class="customizePreviewPane">
+        <span class="customizePreviewLabel">Aperçu en direct</span>
+        <iframe id="topDonorsPreviewFrame" src="/overlay/top-donors"></iframe>
+    </div>
+
+    </div>
+
+</div>
+
+<div id="topPresenceCustomizeModal" class="customizeModal">
+
+    <div class="customizeContentWithPreview">
+
+    <div class="customizeControls">
+
+        <h2>⏱️ Paramètres Top Présence LIVE</h2>
+
+        <label>Police du titre</label>
+        <select id="topPresenceTitleFont">
+            <option value="Orbitron">Orbitron (futuriste)</option>
+            <option value="Audiowide">Audiowide (futuriste)</option>
+            <option value="Michroma">Michroma (futuriste)</option>
+            <option value="Exo 2">Exo 2 (futuriste)</option>
+            <option value="Arial">Arial</option>
+            <option value="Poppins">Poppins</option>
+            <option value="Montserrat">Montserrat</option>
+        </select>
+
+        <label>Police des pseudos</label>
+        <select id="topPresenceNameFont">
+            <option value="Rajdhani">Rajdhani (futuriste)</option>
+            <option value="Orbitron">Orbitron (futuriste)</option>
+            <option value="Exo 2">Exo 2 (futuriste)</option>
+            <option value="Arial">Arial</option>
+            <option value="Poppins">Poppins</option>
+            <option value="Montserrat">Montserrat</option>
+        </select>
+
+        <label>Taille du texte</label>
+        <input
+            type="number"
+            id="topPresenceFontSize"
+            value="24">
+
+        <label>Texte du titre</label>
+        <input
+            type="text"
+            id="topPresenceTitleText"
+            value="Top Présence LIVE">
+
+        <label>Couleur du titre (début du dégradé)</label>
+        <input
+            type="color"
+            id="topPresenceTitleColorStart"
+            value="#22d3ee">
+
+        <label>Couleur du titre (fin du dégradé)</label>
+        <input
+            type="color"
+            id="topPresenceTitleColorEnd"
+            value="#7CFC00">
+
+        <label>Couleur des pseudos</label>
+        <input
+            type="color"
+            id="topPresenceNameColor"
+            value="#ffffff">
+
+        <label>Couleur du temps</label>
+        <input
+            type="color"
+            id="topPresenceTimeColor"
+            value="#7CFC00">
+
+        <label>Couleur du classement (texte "N.")</label>
+        <input
+            type="color"
+            id="topPresenceRankColor"
+            value="#ffd700">
+
+        <label>Couleur de fond</label>
+        <input
+            type="color"
+            id="topPresenceBgColor"
+            value="#05060f">
+
+        <label>Couleur des cartes de classement</label>
+        <input
+            type="color"
+            id="topPresenceRowColor"
+            value="#a855f7">
+
+        <label>Anneau — couleur 1</label>
+        <input
+            type="color"
+            id="topPresenceRingColor1"
+            value="#22d3ee">
+
+        <label>Anneau — couleur 2</label>
+        <input
+            type="color"
+            id="topPresenceRingColor2"
+            value="#a855f7">
+
+        <label>Anneau — couleur 3</label>
+        <input
+            type="color"
+            id="topPresenceRingColor3"
+            value="#ec4899">
+
+        <label>Vitesse de rotation de l'anneau (secondes par tour)</label>
+        <input
+            type="number"
+            id="topPresenceRingSpeed"
+            value="6"
+            min="1">
+
+        <label>Icône</label>
+        <select id="topPresenceClockIcon">
+            <option value="⏱️">⏱️ Chrono</option>
+            <option value="🕐">🕐 Horloge</option>
+            <option value="🔥">🔥 Feu</option>
+            <option value="⚡">⚡ Éclair</option>
+            <option value="👁️">👁️ Œil</option>
+        </select>
+
+        <label>
+            <input
+                type="checkbox"
+                id="topPresenceShowAvatar"
+                checked>
+            Afficher les avatars
+        </label>
+
+        <label>
+            <input
+                type="checkbox"
+                id="topPresenceShowCrown"
+                checked>
+            Afficher la couronne du Top 1
+        </label>
+
+        <label>
+            <input
+                type="checkbox"
+                id="topPresenceShowClock"
+                checked>
+            Afficher l'icône
+        </label>
+
+        <button id="saveTopPresenceSettings">
+            💾 Sauvegarder
+        </button>
+
+        <button id="closeTopPresenceSettings">
+            ❌ Fermer
+        </button>
+
+    </div>
+
+    <div class="customizePreviewPane">
+        <span class="customizePreviewLabel">Aperçu en direct</span>
+        <iframe id="topPresencePreviewFrame" src="/overlay/top-presence"></iframe>
+    </div>
+
+    </div>
+
+</div>
 <div id="keySelectorPanel" style="display:none;">
 
     <button id="closeKeySelector">✖</button>
@@ -3019,5 +3713,7 @@ value="/overlay/chrono"        readonly>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
 <script src="app.js"></script>
+<script src="v2-hub.js"></script>
+<script src="premium-shell.js"></script>
 </body>
 </html>
