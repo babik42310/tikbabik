@@ -6833,6 +6833,21 @@ app.get("/diamonds-goal/status", (req, res) => {
 
 });
 
+app.post("/diamonds-goal/reset", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    getLiveSessionStats(clientId).diamonds = 0;
+
+    getGoalAnnouncedState(clientId).diamonds = false;
+
+    emitLiveStats(clientId);
+
+    res.json({ success: true });
+
+});
+
 app.get("/overlay/diamonds-goal", (req, res) => {
 
     const clientId =
