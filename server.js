@@ -5969,11 +5969,8 @@ loadSocial();
 
 app.get("/overlay/webcam-simple", (req, res) => {
 
-    const currentSettings =
-        JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
-
     const webcam =
-        currentSettings.webcamSimple || {};
+        getClientSettings(resolveClientId(req)).webcamSimple || {};
 
     const color =
         webcam.color || "#35cfff";
@@ -6058,11 +6055,8 @@ body{
 });
 app.get("/overlay/webcam-custom", (req, res) => {
 
-    const currentSettings =
-        JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
-
     const custom =
-        currentSettings.webcamCustom || {};
+        getClientSettings(resolveClientId(req)).webcamCustom || {};
 
     const style =
         custom.style || "neon";
@@ -6140,11 +6134,11 @@ body{
 
 app.get("/overlay/likes-goal", (req, res) => {
 
-    const currentSettings =
-        JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
+    const clientId =
+        resolveClientId(req);
 
     const likes =
-        currentSettings.likesGoal || {};
+        getClientSettings(clientId).likesGoal || {};
 
     const text =
         likes.text || "Objectif Likes";
@@ -6347,16 +6341,11 @@ app.get("/likes-goal/status", (req, res) => {
 
 app.get("/overlay/follow-goal", (req, res) => {
 
-    const currentSettings =
-        JSON.parse(
-    fs.readFileSync(
-        SETTINGS_FILE,
-        "utf8"
-    )
-);
+    const clientId =
+        resolveClientId(req);
 
     const follow =
-        currentSettings.followGoal || {};
+        getClientSettings(clientId).followGoal || {};
 
     const text =
         follow.text || "Objectif Abonnés";
@@ -6574,11 +6563,11 @@ app.get("/diamonds-goal/status", (req, res) => {
 
 app.get("/overlay/diamonds-goal", (req, res) => {
 
-    const currentSettings =
-        JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
+    const clientId =
+        resolveClientId(req);
 
     const goal =
-        currentSettings.diamondsGoal || {};
+        getClientSettings(clientId).diamondsGoal || {};
 
     const text =
         goal.text || "Objectif Diamants";
@@ -6700,7 +6689,7 @@ body{
 async function updateDiamondsGoal(){
 
     const response =
-        await fetch("/diamonds-goal/status");
+        await fetch("/diamonds-goal/status?client=${clientId}");
 
     const data =
         await response.json();
@@ -6737,11 +6726,11 @@ updateDiamondsGoal();
 
 app.get("/overlay/banner", (req, res) => {
 
-    const currentSettings =
-        JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
+    const clientId =
+        resolveClientId(req);
 
     const banner =
-        currentSettings.banner || {};
+        getClientSettings(clientId).banner || {};
 
     const text =
         banner.text || "Bienvenue sur mon live !";
