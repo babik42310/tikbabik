@@ -1773,6 +1773,14 @@ value="/overlay/chrono"        readonly>
 </button>
 
 <div id="likesGoalCustomize" style="display:none;">
+
+<div class="goalSubTabs">
+    <button type="button" class="goalSubTabBtn active" data-goal-tab="likesGoalTabObjectif">🎯 Objectif</button>
+    <button type="button" class="goalSubTabBtn" data-goal-tab="likesGoalTabAnnounce">🔊 Annonce vocale</button>
+</div>
+
+<div id="likesGoalTabObjectif" class="goalSubTabContent">
+
 <label>Texte de l'objectif</label>
 
 <input
@@ -1851,7 +1859,24 @@ value="/overlay/chrono"        readonly>
 
 <label>Couleur de la barre</label>
 <input type="color" id="likesGoalBarColor" value="#baff4a">
-   
+
+</div>
+
+<div id="likesGoalTabAnnounce" class="goalSubTabContent" style="display:none;">
+
+    <label>
+        <input type="checkbox" id="likesGoalAnnounceEnabled">
+        Lire automatiquement un message quand l'objectif est atteint
+    </label>
+
+    <label>Message à annoncer (lu à voix haute via TTS)</label>
+    <input
+        type="text"
+        id="likesGoalAnnounceMessage"
+        value="Objectif de likes atteint ! Merci à tous !">
+
+</div>
+
     <button id="saveLikesGoal">
     💾 Sauvegarder Objectif Likes
 </button>
@@ -1887,6 +1912,13 @@ value="/overlay/chrono"        readonly>
 <button id="customizeFollowGoal">⚙️ Personnaliser</button>
 
 <div id="followGoalCustomize" style="display:none;">
+
+<div class="goalSubTabs">
+    <button type="button" class="goalSubTabBtn active" data-goal-tab="followGoalTabObjectif">🎯 Objectif</button>
+    <button type="button" class="goalSubTabBtn" data-goal-tab="followGoalTabAnnounce">🔊 Annonce vocale</button>
+</div>
+
+<div id="followGoalTabObjectif" class="goalSubTabContent">
 
     <label>Texte de l'objectif</label>
     <input
@@ -1973,6 +2005,23 @@ value="/overlay/chrono"        readonly>
         id="followGoalBarColor"
         value="#baff4a">
 
+</div>
+
+<div id="followGoalTabAnnounce" class="goalSubTabContent" style="display:none;">
+
+    <label>
+        <input type="checkbox" id="followGoalAnnounceEnabled">
+        Lire automatiquement un message quand l'objectif est atteint
+    </label>
+
+    <label>Message à annoncer (lu à voix haute via TTS)</label>
+    <input
+        type="text"
+        id="followGoalAnnounceMessage"
+        value="Objectif d'abonnés atteint ! Merci à tous !">
+
+</div>
+
     <br><br>
 
     <button id="saveFollowGoal">
@@ -2006,8 +2055,16 @@ value="/overlay/chrono"        readonly>
     <button class="copyOverlayUrl" data-pro="true">🔒 Copier URL</button>
     <button class="testOverlayUrl" data-pro="true">🔒 Tester</button>
     <button id="customizeDiamondsGoal">⚙️ Personnaliser</button>
+    <button id="resetDiamondsGoal" class="dangerButton">🗑 Réinitialiser</button>
 
     <div id="diamondsGoalCustomize" style="display:none;">
+
+<div class="goalSubTabs">
+    <button type="button" class="goalSubTabBtn active" data-goal-tab="diamondsGoalTabObjectif">🎯 Objectif</button>
+    <button type="button" class="goalSubTabBtn" data-goal-tab="diamondsGoalTabAnnounce">🔊 Annonce vocale</button>
+</div>
+
+<div id="diamondsGoalTabObjectif" class="goalSubTabContent">
 
         <label>Texte de l'objectif</label>
         <input type="text" id="diamondsGoalText" value="Objectif Diamants">
@@ -2055,6 +2112,23 @@ value="/overlay/chrono"        readonly>
 
         <label>Vitesse de rotation de l'anneau (secondes)</label>
         <input type="number" id="diamondsGoalRingSpeed" value="6" min="1">
+
+</div>
+
+<div id="diamondsGoalTabAnnounce" class="goalSubTabContent" style="display:none;">
+
+    <label>
+        <input type="checkbox" id="diamondsGoalAnnounceEnabled">
+        Lire automatiquement un message quand l'objectif est atteint
+    </label>
+
+    <label>Message à annoncer (lu à voix haute via TTS)</label>
+    <input
+        type="text"
+        id="diamondsGoalAnnounceMessage"
+        value="Objectif de diamants atteint ! Merci à tous !">
+
+</div>
 
         <br><br>
 

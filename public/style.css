@@ -4080,3 +4080,26 @@ iframe {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+.goalSubTabs{
+    display:flex;
+    gap:8px;
+    margin-bottom:15px;
+}
+
+.goalSubTabBtn{
+    flex:1;
+    padding:10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,0.15);
+    background:rgba(7,10,15,0.72);
+    color:#8b93b8;
+    cursor:pointer;
+    font-weight:600;
+}
+
+.goalSubTabBtn.active{
+    background:linear-gradient(90deg,#22d3ee,#a855f7);
+    color:#05060f;
+    border-color:transparent;
+}

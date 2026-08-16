@@ -54,6 +54,25 @@ function openGiftDropdown(giftSelected, giftOptions) {
    ========================================================== */
 
 function getCreatorPilotClientId() {
+
+    /* Priorité au cookie de session serveur (identité partagée
+       entre les requêtes HTTP classiques et les sockets) */
+    const cookieMatch =
+        document.cookie.match(/(?:^|;\s*)cp_session=([^;]+)/);
+
+    if (cookieMatch) {
+
+        const cookieId =
+            decodeURIComponent(cookieMatch[1]);
+
+        localStorage.setItem(
+            "creatorpilot-client-id",
+            cookieId
+        );
+
+        return cookieId;
+    }
+
     let clientId =
         localStorage.getItem(
             "creatorpilot-client-id"
@@ -4739,6 +4758,56 @@ socket.on("liveStats", data => {
 
 setInterval(renderLiveStats, 1000);
 
+/* ==================== ANNONCE VOCALE D'OBJECTIF ATTEINT ==================== */
+
+socket.on("goalReached", data => {
+
+    if (!data || !data.message) {
+        return;
+    }
+
+    playTtsMessage(data.message, { nickname: "CreatorPilot" });
+
+});
+
+/* Bascule des onglets internes (Objectif / Annonce vocale) */
+document.querySelectorAll(".goalSubTabBtn").forEach(btn => {
+
+    btn.onclick = () => {
+
+        const targetId =
+            btn.getAttribute("data-goal-tab");
+
+        const targetContent =
+            document.getElementById(targetId);
+
+        if (!targetContent) {
+            return;
+        }
+
+        const tabGroup =
+            btn.closest(".goalSubTabs");
+
+        tabGroup.querySelectorAll(".goalSubTabBtn").forEach(b => {
+            b.classList.remove("active");
+        });
+
+        btn.classList.add("active");
+
+        let sibling =
+            tabGroup.nextElementSibling;
+
+        while (sibling && sibling.classList.contains("goalSubTabContent")) {
+            sibling.style.display = "none";
+            sibling = sibling.nextElementSibling;
+        }
+
+        targetContent.style.display = "block";
+
+    };
+
+});
+
 socket.on("chat", data => {
     const user = String(data?.user || "");
     const message = String(data?.message || "");
@@ -5669,6 +5738,12 @@ if (!savedUserAtStart || !savedUserAtStart.email) {
     document.getElementById("followGoalVariation").value =
         appSettings.followGoal.variation || "Clean Néon";
 
+    document.getElementById("followGoalAnnounceEnabled").checked =
+        appSettings.followGoal.announceEnabled || false;
+
+    document.getElementById("followGoalAnnounceMessage").value =
+        appSettings.followGoal.announceMessage || "Objectif d'abonnés atteint ! Merci à tous !";
+
     updateFollowGoalPreview();
 }
 
@@ -5707,7 +5782,59 @@ document.getElementById("likesGoalBarColor").value =
     document.getElementById("likesGoalVariation").value =
         appSettings.likesGoal.variation || "Clean Néon";
 
+    document.getElementById("likesGoalAnnounceEnabled").checked =
+        appSettings.likesGoal.announceEnabled || false;
+
+    document.getElementById("likesGoalAnnounceMessage").value =
+        appSettings.likesGoal.announceMessage || "Objectif de likes atteint ! Merci à tous !";
+
     updateLikesGoalPreview();
+}
+
+    if (appSettings.diamondsGoal) {
+
+    document.getElementById("diamondsGoalText").value =
+        appSettings.diamondsGoal.text || "Objectif Diamants";
+
+    document.getElementById("diamondsGoalTarget").value =
+        appSettings.diamondsGoal.target || 1000;
+
+    document.getElementById("diamondsGoalShowProgress").checked =
+        appSettings.diamondsGoal.showProgress !== false;
+
+    document.getElementById("diamondsGoalIcon").value =
+        appSettings.diamondsGoal.icon || "💎";
+
+    document.getElementById("diamondsGoalFont").value =
+        appSettings.diamondsGoal.font || "Orbitron";
+
+    document.getElementById("diamondsGoalFontSize").value =
+        appSettings.diamondsGoal.fontSize || 22;
+
+    document.getElementById("diamondsGoalTextColor").value =
+        appSettings.diamondsGoal.textColor || "#f5f7ff";
+
+    document.getElementById("diamondsGoalProgressColor").value =
+        appSettings.diamondsGoal.progressColor || "#22d3ee";
+
+    document.getElementById("diamondsGoalRingColor1").value =
+        appSettings.diamondsGoal.ringColor1 || "#22d3ee";
+
+    document.getElementById("diamondsGoalRingColor2").value =
+        appSettings.diamondsGoal.ringColor2 || "#a855f7";
+
+    document.getElementById("diamondsGoalRingColor3").value =
+        appSettings.diamondsGoal.ringColor3 || "#ec4899";
+
+    document.getElementById("diamondsGoalRingSpeed").value =
+        appSettings.diamondsGoal.ringSpeed || 6;
+
+    document.getElementById("diamondsGoalAnnounceEnabled").checked =
+        appSettings.diamondsGoal.announceEnabled || false;
+
+    document.getElementById("diamondsGoalAnnounceMessage").value =
+        appSettings.diamondsGoal.announceMessage || "Objectif de diamants atteint ! Merci à tous !";
+
 }
 
     if (appSettings.webcamCustom) {
@@ -6898,7 +7025,14 @@ barColor:
                 document.getElementById("likesGoalRingColor3")?.value || "#ec4899",
 
             ringSpeed:
-                Number(document.getElementById("likesGoalRingSpeed")?.value || 6)
+                Number(document.getElementById("likesGoalRingSpeed")?.value || 6),
+
+            announceEnabled:
+                document.getElementById("likesGoalAnnounceEnabled")?.checked || false,
+
+            announceMessage:
+                document.getElementById("likesGoalAnnounceMessage")?.value ||
+                "Objectif de likes atteint ! Merci à tous !"
 
         };
 
@@ -6970,6 +7104,30 @@ if (customizeDiamondsGoal && diamondsGoalCustomize) {
 
 }
 
+const resetDiamondsGoal =
+    document.getElementById("resetDiamondsGoal");
+
+if (resetDiamondsGoal) {
+
+    resetDiamondsGoal.onclick = async () => {
+
+        if (!confirm("Réinitialiser l'objectif Diamants à zéro ?")) {
+            return;
+        }
+
+        await fetch("/diamonds-goal/reset", { method: "POST" });
+
+        const frame =
+            document.querySelector(".diamondsGoalFrame");
+
+        if (frame) {
+            frame.src = "/overlay/diamonds-goal?t=" + Date.now();
+        }
+
+    };
+
+}
+
 const saveDiamondsGoal =
     document.getElementById("saveDiamondsGoal");
 
@@ -6989,7 +7147,10 @@ if (saveDiamondsGoal) {
             ringColor1: document.getElementById("diamondsGoalRingColor1")?.value || "#22d3ee",
             ringColor2: document.getElementById("diamondsGoalRingColor2")?.value || "#a855f7",
             ringColor3: document.getElementById("diamondsGoalRingColor3")?.value || "#ec4899",
-            ringSpeed: Number(document.getElementById("diamondsGoalRingSpeed")?.value || 6)
+            ringSpeed: Number(document.getElementById("diamondsGoalRingSpeed")?.value || 6),
+            announceEnabled: document.getElementById("diamondsGoalAnnounceEnabled")?.checked || false,
+            announceMessage: document.getElementById("diamondsGoalAnnounceMessage")?.value ||
+                "Objectif de diamants atteint ! Merci à tous !"
         };
 
         fetch("/settings", {
@@ -7182,7 +7343,10 @@ if (saveFollowGoal) {
             ringColor1: document.getElementById("followGoalRingColor1")?.value || "#22d3ee",
             ringColor2: document.getElementById("followGoalRingColor2")?.value || "#a855f7",
             ringColor3: document.getElementById("followGoalRingColor3")?.value || "#ec4899",
-            ringSpeed: Number(document.getElementById("followGoalRingSpeed")?.value || 6)
+            ringSpeed: Number(document.getElementById("followGoalRingSpeed")?.value || 6),
+            announceEnabled: document.getElementById("followGoalAnnounceEnabled")?.checked || false,
+            announceMessage: document.getElementById("followGoalAnnounceMessage")?.value ||
+                "Objectif d'abonnés atteint ! Merci à tous !"
         };
 
         fetch("/settings", {
