@@ -121,6 +121,82 @@ app.use((req, res, next) => {
     next();
 });
 
+/*
+   Détection hébergement distant (ex: Railway, qui fournit
+   process.env.PORT) pour savoir sur quelle interface écouter.
+*/
+const CP_REMOTE_HOSTING =
+    !!process.env.PORT;
+
+/*
+   ============================================================
+   SESSION PAR CLIENT (étape 1 du multi-utilisateur)
+   Chaque visiteur reçoit un identifiant stable stocké dans un
+   cookie. Cet identifiant sera utilisé pour isoler les données
+   de chaque client (réglages, classements, stats...) dans les
+   prochaines étapes.
+   ============================================================
+*/
+
+function cpParseCookies(req) {
+
+    const raw =
+        req.headers.cookie || "";
+
+    const cookies = {};
+
+    raw.split(";").forEach(pair => {
+
+        const idx =
+            pair.indexOf("=");
+
+        if (idx === -1) {
+            return;
+        }
+
+        const key =
+            pair.slice(0, idx).trim();
+
+        const value =
+            pair.slice(idx + 1).trim();
+
+        if (key) {
+            cookies[key] = decodeURIComponent(value);
+        }
+
+    });
+
+    return cookies;
+
+}
+
+app.use((req, res, next) => {
+
+    const cookies =
+        cpParseCookies(req);
+
+    let sessionId =
+        cookies.cp_session;
+
+    if (!sessionId) {
+
+        sessionId =
+            crypto.randomUUID();
+
+        res.setHeader(
+            "Set-Cookie",
+            "cp_session=" + sessionId +
+            "; Path=/; Max-Age=31536000; SameSite=Lax"
+        );
+
+    }
+
+    req.cpSessionId =
+        sessionId;
+
+    next();
+
+});
 
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -6629,6 +6705,30 @@ app.post("/api/live-assistant/reset", async (req, res) => {
 
 
 
-server.listen(3000, () => {
-    console.log("CreatorPilot lancé");
-});
+const CP_PORT =
+    process.env.PORT || 3000;
+
+if (CP_REMOTE_HOSTING) {
+
+    /* Hébergement distant (Railway...) : pas d'adresse forcée,
+       pour rester compatible IPv4 + IPv6 comme attendu par la
+       plateforme. */
+    server.listen(CP_PORT, () => {
+        console.log(
+            "CreatorPilot lancé sur le port " + CP_PORT +
+            " (hébergement distant détecté)"
+        );
+    });
+
+} else {
+
+    /* Local (installation client) : verrouillé sur cet
+       ordinateur uniquement, jamais exposé au réseau. */
+    server.listen(CP_PORT, "127.0.0.1", () => {
+        console.log(
+            "CreatorPilot lancé sur 127.0.0.1:" + CP_PORT +
+            " (accessible uniquement depuis cet ordinateur)"
+        );
+    });
+
+}
