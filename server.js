@@ -6629,6 +6629,8 @@ app.post("/api/live-assistant/reset", async (req, res) => {
 
 
 
-server.listen(3000, "127.0.0.1", () => {
-    console.log("CreatorPilot lancé (accessible uniquement depuis cet ordinateur)");
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, "0.0.0.0", () => {
+    console.log(`CreatorPilot lancé sur le port ${PORT}`);
 });
