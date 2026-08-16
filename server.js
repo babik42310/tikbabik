@@ -1327,25 +1327,6 @@ app.get("/import-gifts", async (req, res) => {
 
 /* CONNEXION LIVE */
 
-
-function applyChronoTime(seconds) {
-
-    seconds = Number(seconds || 0);
-
-    if (seconds <= 0) {
-        return;
-    }
-
-    chrono.remaining = getChronoRemaining();
-
-    if (chrono.settings.giftMode === "remove") {
-        setChronoRemaining(chrono.remaining - seconds);
-    } else {
-        setChronoRemaining(chrono.remaining + seconds);
-    }
-
-}
-
 function sendKeyShortcut(key) {
 
     if (!key) {
@@ -1508,7 +1489,7 @@ function bindTikTokEvents(tiktokConnection, clientId) {
 
         console.log("CHAT REÇU :", data.nickname, data.comment);
 
-        applyChronoTime(chrono.settings.perChat);
+        applyChronoTime(clientId, getClientChrono(clientId).settings.perChat);
 
         emitToCreatorPilotClient(clientId, "chat", {
             user: data.nickname,
@@ -1590,17 +1571,20 @@ if (wheelToTrigger) {
        const giftCoinsForChrono =
     Number(data.diamondCount || 0);
 
+const clientChronoForGift =
+    getClientChrono(clientId);
+
 if (
     giftCoinsForChrono > 0 &&
-    chrono.settings.giftAutoEnabled &&
-    chrono.settings.giftMode !== "off"
+    clientChronoForGift.settings.giftAutoEnabled &&
+    clientChronoForGift.settings.giftMode !== "off"
 ) {
 
     const secondsToChange =
         giftCoinsForChrono *
-        Number(chrono.settings.secondsPerCoin || 1);
+        Number(clientChronoForGift.settings.secondsPerCoin || 1);
 
-    applyChronoTime(secondsToChange);
+    applyChronoTime(clientId, secondsToChange);
 
 }
 
@@ -1724,7 +1708,8 @@ clientTopLikes[user].likes += likes;
 trackPresence(clientId, user, data.profilePictureUrl || data.profilePicture || "");
 
 applyChronoTime(
-    likes * Number(chrono.settings.perLike || 0)
+    clientId,
+    likes * Number(getClientChrono(clientId).settings.perLike || 0)
 );
 
         emitToCreatorPilotClient(clientId, "like", {
@@ -1743,7 +1728,7 @@ tiktokConnection.on("social", data => {
 
     console.log("FOLLOW REÇU :", data.nickname);
 
-    applyChronoTime(chrono.settings.perFollow);
+    applyChronoTime(clientId, getClientChrono(clientId).settings.perFollow);
 
     console.log("TOUTES ALERTES SON :", settings.soundAlerts);
 
@@ -4838,7 +4823,9 @@ app.post("/top-presence/reset", (req, res) => {
 
 });
 
-let chrono = {
+const chronoByClient = new Map();
+
+const chronoDefaultTemplate = {
     active: false,
     duration: 300,
     remaining: 300,
@@ -4865,6 +4852,18 @@ let chrono = {
         bgColor: "#ff7b00"
     }
 };
+
+function getClientChrono(clientId) {
+
+    if (!chronoByClient.has(clientId)) {
+        chronoByClient.set(
+            clientId,
+            JSON.parse(JSON.stringify(chronoDefaultTemplate))
+        );
+    }
+
+    return chronoByClient.get(clientId);
+}
 
 let actionWheel = {
     spinning: false,
@@ -4894,7 +4893,11 @@ if (settings.actionWheel) {
     actionWheel = settings.actionWheel;
 }
 
-function getChronoRemaining() {
+function getChronoRemaining(clientId) {
+
+    const chrono =
+        getClientChrono(clientId);
+
     if (chrono.active && chrono.endTime) {
         const remaining = Math.max(
             0,
@@ -4914,7 +4917,11 @@ function getChronoRemaining() {
     return chrono.remaining;
 }
 
-function setChronoRemaining(seconds) {
+function setChronoRemaining(clientId, seconds) {
+
+    const chrono =
+        getClientChrono(clientId);
+
     chrono.remaining = Math.max(0, Number(seconds || 0));
 
     if (chrono.active) {
@@ -4922,26 +4929,36 @@ function setChronoRemaining(seconds) {
     }
 }
 
-function applyChronoTime(seconds) {
+function applyChronoTime(clientId, seconds) {
 
     seconds = Number(seconds || 0);
 
-    if (seconds <= 0) {
+    if (seconds <= 0 || !clientId) {
         return;
     }
 
-    chrono.remaining = getChronoRemaining();
+    const chrono =
+        getClientChrono(clientId);
+
+    chrono.remaining = getChronoRemaining(clientId);
 
     if (chrono.settings.giftMode === "remove") {
-        setChronoRemaining(chrono.remaining - seconds);
+        setChronoRemaining(clientId, chrono.remaining - seconds);
     } else {
-        setChronoRemaining(chrono.remaining + seconds);
+        setChronoRemaining(clientId, chrono.remaining + seconds);
     }
 
 }
 
 app.get("/chrono/status", (req, res) => {
-    chrono.remaining = getChronoRemaining();
+
+    const clientId =
+        resolveClientId(req);
+
+    const chrono =
+        getClientChrono(clientId);
+
+    chrono.remaining = getChronoRemaining(clientId);
 
     res.json({
         active: chrono.active,
@@ -5296,6 +5313,13 @@ actionWheel.winner =
 
 
 app.post("/chrono/start", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const chrono =
+        getClientChrono(clientId);
+
     chrono.duration =
         Number(chrono.settings.defaultMinutes || 5) * 60;
 
@@ -5310,7 +5334,14 @@ app.post("/chrono/start", (req, res) => {
 });
 
 app.post("/chrono/pause", (req, res) => {
-    chrono.remaining = getChronoRemaining();
+
+    const clientId =
+        resolveClientId(req);
+
+    const chrono =
+        getClientChrono(clientId);
+
+    chrono.remaining = getChronoRemaining(clientId);
     chrono.active = false;
     chrono.endTime = null;
 
@@ -5321,7 +5352,14 @@ app.post("/chrono/pause", (req, res) => {
 });
 
 app.post("/chrono/resume", (req, res) => {
-    chrono.remaining = getChronoRemaining();
+
+    const clientId =
+        resolveClientId(req);
+
+    const chrono =
+        getClientChrono(clientId);
+
+    chrono.remaining = getChronoRemaining(clientId);
 
     if (chrono.remaining > 0) {
         chrono.active = true;
@@ -5335,6 +5373,13 @@ app.post("/chrono/resume", (req, res) => {
 });
 
 app.post("/chrono/reset", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const chrono =
+        getClientChrono(clientId);
+
     chrono.duration =
         Number(chrono.settings.defaultMinutes || 5) * 60;
 
@@ -5349,11 +5394,18 @@ app.post("/chrono/reset", (req, res) => {
 });
 
 app.post("/chrono/increase", express.json(), (req, res) => {
-    chrono.remaining = getChronoRemaining();
+
+    const clientId =
+        resolveClientId(req);
+
+    const chrono =
+        getClientChrono(clientId);
+
+    chrono.remaining = getChronoRemaining(clientId);
 
     const seconds = Number(req.body.seconds || 60);
 
-    setChronoRemaining(chrono.remaining + seconds);
+    setChronoRemaining(clientId, chrono.remaining + seconds);
 
     res.json({
         success: true,
@@ -5362,11 +5414,18 @@ app.post("/chrono/increase", express.json(), (req, res) => {
 });
 
 app.post("/chrono/decrease", express.json(), (req, res) => {
-    chrono.remaining = getChronoRemaining();
+
+    const clientId =
+        resolveClientId(req);
+
+    const chrono =
+        getClientChrono(clientId);
+
+    chrono.remaining = getChronoRemaining(clientId);
 
     const seconds = Number(req.body.seconds || 60);
 
-    setChronoRemaining(chrono.remaining - seconds);
+    setChronoRemaining(clientId, chrono.remaining - seconds);
 
     res.json({
         success: true,
@@ -5375,6 +5434,12 @@ app.post("/chrono/decrease", express.json(), (req, res) => {
 });
 
 app.post("/chrono/settings", express.json(), (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const chrono =
+        getClientChrono(clientId);
 
     chrono.settings = {
 
@@ -5442,10 +5507,6 @@ app.post("/chrono/settings", express.json(), (req, res) => {
         Number(req.body.ringSpeed || 6)
 };
 
-settings.chrono = chrono;
-
-saveSettingsFile();
-
     chrono.duration =
         chrono.settings.defaultMinutes * 60;
 
@@ -5462,6 +5523,12 @@ saveSettingsFile();
 
 app.post("/chrono/test-gift", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
+    const chrono =
+        getClientChrono(clientId);
+
     const giftCoins = 100;
 
     if (
@@ -5471,12 +5538,12 @@ app.post("/chrono/test-gift", (req, res) => {
         const secondsToChange =
             giftCoins * Number(chrono.settings.secondsPerCoin || 1);
 
-        chrono.remaining = getChronoRemaining();
+        chrono.remaining = getChronoRemaining(clientId);
 
         if (chrono.settings.giftMode === "remove") {
-            setChronoRemaining(chrono.remaining - secondsToChange);
+            setChronoRemaining(clientId, chrono.remaining - secondsToChange);
         } else {
-            setChronoRemaining(chrono.remaining + secondsToChange);
+            setChronoRemaining(clientId, chrono.remaining + secondsToChange);
         }
     }
 
@@ -5488,6 +5555,10 @@ app.post("/chrono/test-gift", (req, res) => {
 });
 
 app.get("/overlay/chrono", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
     res.send(`
 <!DOCTYPE html>
 <html>
@@ -5556,7 +5627,7 @@ body{
 async function load(){
 
     const response =
-        await fetch("/chrono/status");
+        await fetch("/chrono/status?client=${clientId}");
 
     const data =
         await response.json();
