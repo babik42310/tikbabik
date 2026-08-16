@@ -1601,7 +1601,10 @@ if (
 
 }
 
-        if (coinMatch.active) {
+        const clientCoinMatch =
+            getClientCoinMatch(clientId);
+
+        if (clientCoinMatch.active) {
 
     const coins =
     Number(data.diamondCount || 0);
@@ -1612,21 +1615,24 @@ const avatar =
     data.avatar ||
     "";
 
-if (!coinMatch.players[user]) {
-    coinMatch.players[user] = {
+if (!clientCoinMatch.players[user]) {
+    clientCoinMatch.players[user] = {
         coins: 0,
         avatar: avatar
     };
 }
 
-coinMatch.players[user].coins += coins;
+clientCoinMatch.players[user].coins += coins;
 
 if (avatar) {
-    coinMatch.players[user].avatar = avatar;
+    clientCoinMatch.players[user].avatar = avatar;
 }
 }
 
-if (giftBattle.active) {
+const clientGiftBattle =
+    getClientGiftBattle(clientId);
+
+if (clientGiftBattle.active) {
 
     const coins =
         Number(data.diamondCount || 0);
@@ -1634,9 +1640,9 @@ if (giftBattle.active) {
     if (coins > 0) {
 
         if (Math.random() < 0.5) {
-            giftBattle.teamRed += coins;
+            clientGiftBattle.teamRed += coins;
         } else {
-            giftBattle.teamBlue += coins;
+            clientGiftBattle.teamBlue += coins;
         }
 
     }
@@ -1675,6 +1681,13 @@ if (giftBattle.active) {
         clientLiveStats.diamonds += Number(data.diamondCount || 0);
         emitLiveStats(clientId);
 
+        checkGoalAnnouncement(
+            clientId,
+            "diamonds",
+            clientLiveStats.diamonds,
+            getClientSettings(clientId).diamondsGoal
+        );
+
 emitToCreatorPilotClient(clientId, "gift", {
             user: user,
             gift: giftName,
@@ -1689,13 +1702,22 @@ emitToCreatorPilotClient(clientId, "gift", {
 
         console.log("LIKE REÇU :", data.nickname, data.likeCount, data.totalLikeCount);
 
-        currentLikesGoalCount =
-    Number(data.totalLikeCount || data.likeCount || 0);
+        const newLikesCount =
+            Number(data.totalLikeCount || data.likeCount || 0);
+
+        likesGoalCountByClient.set(clientId, newLikesCount);
 
         getLiveSessionStats(clientId).likes =
-    Number(data.totalLikeCount || currentLikesGoalCount || 0);
+    Number(data.totalLikeCount || newLikesCount || 0);
 
         emitLiveStats(clientId);
+
+        checkGoalAnnouncement(
+            clientId,
+            "likes",
+            newLikesCount,
+            getClientSettings(clientId).likesGoal
+        );
 
         const user =
     data.nickname || "Utilisateur";
@@ -1764,6 +1786,18 @@ tiktokConnection.on("social", data => {
     emitToCreatorPilotClient(clientId, "follow", {
         user: data.nickname
     });
+
+    const newFollowCount =
+        (followGoalCountByClient.get(clientId) || 0) + 1;
+
+    followGoalCountByClient.set(clientId, newFollowCount);
+
+    checkGoalAnnouncement(
+        clientId,
+        "follow",
+        newFollowCount,
+        getClientSettings(clientId).followGoal
+    );
 
     getLiveSessionStats(clientId).followers += 1;
     emitLiveStats(clientId);
@@ -2492,10 +2526,65 @@ setInterval(() => {
 
 }, 5000);
 
-let currentLikesGoalCount = 0;
-let currentFollowGoalCount = 0;
+const likesGoalCountByClient = new Map();
+const followGoalCountByClient = new Map();
+const goalAnnouncedByClient = new Map();
 
-let coinMatch = {
+function getLikesGoalCount(clientId) {
+    return likesGoalCountByClient.get(clientId) || 0;
+}
+
+function getFollowGoalCount(clientId) {
+    return followGoalCountByClient.get(clientId) || 0;
+}
+
+function getGoalAnnouncedState(clientId) {
+    if (!goalAnnouncedByClient.has(clientId)) {
+        goalAnnouncedByClient.set(clientId, { likes: false, follow: false, diamonds: false });
+    }
+    return goalAnnouncedByClient.get(clientId);
+}
+
+function checkGoalAnnouncement(clientId, type, current, goalSettings) {
+
+    if (!goalSettings || !goalSettings.announceEnabled) {
+        return;
+    }
+
+    const target =
+        Number(goalSettings.target || 0);
+
+    if (target <= 0) {
+        return;
+    }
+
+    const announced =
+        getGoalAnnouncedState(clientId);
+
+    if (current >= target) {
+
+        if (!announced[type]) {
+            announced[type] = true;
+
+            const message =
+                goalSettings.announceMessage ||
+                "Objectif atteint ! Merci à tous !";
+
+            emitToCreatorPilotClient(clientId, "goalReached", {
+                type,
+                message
+            });
+        }
+
+    } else {
+        announced[type] = false;
+    }
+
+}
+
+const coinMatchByClient = new Map();
+
+const coinMatchDefaultTemplate = {
     active: false,
     ended: false,
     winnersShown: false,
@@ -2504,7 +2593,21 @@ let coinMatch = {
     endTime: null
 };
 
-let giftBattle = {
+function getClientCoinMatch(clientId) {
+
+    if (!coinMatchByClient.has(clientId)) {
+        coinMatchByClient.set(
+            clientId,
+            JSON.parse(JSON.stringify(coinMatchDefaultTemplate))
+        );
+    }
+
+    return coinMatchByClient.get(clientId);
+}
+
+const giftBattleByClient = new Map();
+
+const giftBattleDefaultTemplate = {
     active: false,
     teamRed: 0,
     teamBlue: 0,
@@ -2512,14 +2615,39 @@ let giftBattle = {
     winner: null,
 
     duration: 300,
-endTime: null
-};
-let giftBattleGiftTeams = {
-    red: [],
-    blue: []
+    endTime: null
 };
 
+function getClientGiftBattle(clientId) {
+
+    if (!giftBattleByClient.has(clientId)) {
+        giftBattleByClient.set(
+            clientId,
+            JSON.parse(JSON.stringify(giftBattleDefaultTemplate))
+        );
+    }
+
+    return giftBattleByClient.get(clientId);
+}
+
+const giftBattleGiftTeamsByClient = new Map();
+
+function getClientGiftBattleTeams(clientId) {
+
+    if (!giftBattleGiftTeamsByClient.has(clientId)) {
+        giftBattleGiftTeamsByClient.set(clientId, { red: [], blue: [] });
+    }
+
+    return giftBattleGiftTeamsByClient.get(clientId);
+}
+
 app.get("/coin-match/status", (req, res) => {
+
+  const clientId =
+      resolveClientId(req);
+
+  const coinMatch =
+      getClientCoinMatch(clientId);
 
   let remaining = 0;
 
@@ -2552,6 +2680,13 @@ res.json({
 });
 
 app.post("/coin-match/start", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const coinMatch =
+        getClientCoinMatch(clientId);
+
     coinMatch.active = true;
     coinMatch.ended = false;
     coinMatch.winnersShown = false;
@@ -2564,6 +2699,13 @@ app.post("/coin-match/start", (req, res) => {
 });
 
 app.post("/coin-match/end", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const coinMatch =
+        getClientCoinMatch(clientId);
+
     coinMatch.active = false;
     coinMatch.ended = true;
 
@@ -2571,17 +2713,33 @@ app.post("/coin-match/end", (req, res) => {
 });
 
 app.post("/coin-match/reset", (req, res) => {
-    coinMatch = {
+
+    const clientId =
+        resolveClientId(req);
+
+    const duration =
+        getClientCoinMatch(clientId).duration || 300;
+
+    coinMatchByClient.set(clientId, {
         active: false,
         ended: false,
         winnersShown: false,
-        players: {}
-    };
+        players: {},
+        duration,
+        endTime: null
+    });
 
-    res.json({ success: true, coinMatch });
+    res.json({ success: true, coinMatch: getClientCoinMatch(clientId) });
 });
 
 app.post("/coin-match/show-winners", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const coinMatch =
+        getClientCoinMatch(clientId);
+
     coinMatch.winnersShown = true;
 
     const winners =
@@ -2595,8 +2753,12 @@ coinMatch.winners = winners;
 });
 
 app.get("/coin-match/settings", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
     res.json(
-        settings.coinMatch || {
+        getClientSettings(clientId).coinMatch || {
             bg: "#1f1f1f",
             border: "#ff0050",
             text: "#ffffff",
@@ -2609,7 +2771,14 @@ app.get("/coin-match/settings", (req, res) => {
 });
 
 app.post("/coin-match/settings", (req, res) => {
-    settings.coinMatch = {
+
+    const clientId =
+        resolveClientId(req);
+
+    const clientSettings =
+        getClientSettings(clientId);
+
+    clientSettings.coinMatch = {
         bg: req.body.bg || "#1f1f1f",
         border: req.body.border || "#ff0050",
         text: req.body.text || "#ffffff",
@@ -2623,18 +2792,21 @@ app.post("/coin-match/settings", (req, res) => {
         ringSpeed: Number(req.body.ringSpeed || 6)
     };
 
-    saveSettingsFile();
+    saveClientSettings(clientId, clientSettings);
 
     res.json({
         success: true,
-        settings: settings.coinMatch
+        settings: clientSettings.coinMatch
     });
 });
 
 app.get("/overlay/coin-match", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
    const coinSettings =
-    settings.coinMatch || {};
+    getClientSettings(clientId).coinMatch || {};
 
 const bg =
     req.query.bg ||
@@ -2893,7 +3065,7 @@ h1 {
 
 <script>
 async function load() {
-    const response = await fetch("/coin-match/status");
+    const response = await fetch("/coin-match/status?client=${clientId}");
     const data = await response.json();
 
     const status = document.getElementById("status");
@@ -3107,6 +3279,12 @@ app.get("/overlay/coin-match-preview", (req, res) => {
 
 app.post("/coin-match/duration", express.json(), (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
+    const coinMatch =
+        getClientCoinMatch(clientId);
+
     coinMatch.duration =
         Number(req.body.duration || 300);
 
@@ -3118,6 +3296,12 @@ app.post("/coin-match/duration", express.json(), (req, res) => {
 });
 
 app.post("/coin-match/test-gift", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const coinMatch =
+        getClientCoinMatch(clientId);
 
     const user = "TestUser";
     const coins = 100;
@@ -3137,6 +3321,12 @@ app.post("/coin-match/test-gift", (req, res) => {
 });
 
 app.get("/gift-battle/status", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const giftBattle =
+        getClientGiftBattle(clientId);
 
     let remaining = 0;
 
@@ -3178,6 +3368,12 @@ app.get("/gift-battle/status", (req, res) => {
 
 app.post("/gift-battle/start", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
+    const giftBattle =
+        getClientGiftBattle(clientId);
+
     giftBattle.active = true;
     giftBattle.winnersShown = false;
     giftBattle.winner = null;
@@ -3197,6 +3393,12 @@ app.post("/gift-battle/start", (req, res) => {
 
 app.post("/gift-battle/end", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
+    const giftBattle =
+        getClientGiftBattle(clientId);
+
     giftBattle.active = false;
     giftBattle.winnersShown = true;
 
@@ -3213,19 +3415,33 @@ app.post("/gift-battle/end", (req, res) => {
 });
 
 app.post("/gift-battle/reset", (req, res) => {
-    giftBattle = {
+
+    const clientId =
+        resolveClientId(req);
+
+    const duration =
+        getClientGiftBattle(clientId).duration || 300;
+
+    giftBattleByClient.set(clientId, {
         active: false,
         teamRed: 0,
         teamBlue: 0,
-        winnersShown: false
-    };
+        winnersShown: false,
+        winner: null,
+        duration,
+        endTime: null
+    });
 
-    res.json({ success: true, giftBattle });
+    res.json({ success: true, giftBattle: getClientGiftBattle(clientId) });
 });
 
 app.get("/gift-battle/settings", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
     res.json(
-        settings.giftBattle || {
+        getClientSettings(clientId).giftBattle || {
             redName: "Team 1",
             blueName: "Team 2",
             redColor: "#ff2a2a",
@@ -3238,7 +3454,14 @@ app.get("/gift-battle/settings", (req, res) => {
 });
 
 app.post("/gift-battle/settings", express.json(), (req, res) => {
-    settings.giftBattle = {
+
+    const clientId =
+        resolveClientId(req);
+
+    const clientSettings =
+        getClientSettings(clientId);
+
+    clientSettings.giftBattle = {
         redName: req.body.redName || "Team 1",
         blueName: req.body.blueName || "Team 2",
         redColor: req.body.redColor || "#ff2a2a",
@@ -3248,20 +3471,23 @@ app.post("/gift-battle/settings", express.json(), (req, res) => {
         blueGifts: req.body.blueGifts || ""
     };
 
-    giftBattle.duration = settings.giftBattle.duration;
+    getClientGiftBattle(clientId).duration = clientSettings.giftBattle.duration;
 
-    saveSettingsFile();
+    saveClientSettings(clientId, clientSettings);
 
     res.json({
         success: true,
-        settings: settings.giftBattle
+        settings: clientSettings.giftBattle
     });
 });
 
 app.get("/overlay/gift-battle", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
 const battleSettings =
-    settings.giftBattle || {};
+    getClientSettings(clientId).giftBattle || {};
 
 const redName =
     req.query.redName ||
@@ -3415,7 +3641,7 @@ body{
 async function load() {
 
     const response =
-        await fetch("/gift-battle/status");
+        await fetch("/gift-battle/status?client=${clientId}");
 
     const data =
         await response.json();
@@ -3492,6 +3718,12 @@ load();
 
 app.post("/gift-battle/test-red", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
+    const giftBattle =
+        getClientGiftBattle(clientId);
+
     giftBattle.teamRed += 100;
 
     res.json({
@@ -3502,6 +3734,12 @@ app.post("/gift-battle/test-red", (req, res) => {
 });
 
 app.post("/gift-battle/test-blue", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const giftBattle =
+        getClientGiftBattle(clientId);
 
     giftBattle.teamBlue += 100;
 
@@ -3514,6 +3752,12 @@ app.post("/gift-battle/test-blue", (req, res) => {
 
 app.post("/gift-battle/duration", express.json(), (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
+    const giftBattle =
+        getClientGiftBattle(clientId);
+
     giftBattle.duration =
         Number(req.body.duration || 300);
 
@@ -3525,19 +3769,24 @@ app.post("/gift-battle/duration", express.json(), (req, res) => {
 });
 
 app.get("/gift-battle/gift-teams", (req, res) => {
-    res.json(giftBattleGiftTeams);
+    res.json(getClientGiftBattleTeams(resolveClientId(req)));
 });
 
 app.post("/gift-battle/gift-teams", express.json(), (req, res) => {
 
-    giftBattleGiftTeams = {
+    const clientId =
+        resolveClientId(req);
+
+    const teams = {
         red: req.body.red || [],
         blue: req.body.blue || []
     };
 
+    giftBattleGiftTeamsByClient.set(clientId, teams);
+
     res.json({
         success: true,
-        giftBattleGiftTeams
+        giftBattleGiftTeams: teams
     });
 
 });
@@ -5760,8 +6009,10 @@ load();
 `);
 });
 
-let socialPanel = {
-   
+const socialPanelByClient = new Map();
+
+const socialPanelDefaultTemplate = {
+
     settings: {
         font: "Arial",
         fontSize: 45,
@@ -5775,19 +6026,40 @@ let socialPanel = {
     }
 };
 
+function getClientSocialPanel(clientId) {
+
+    if (!socialPanelByClient.has(clientId)) {
+        socialPanelByClient.set(
+            clientId,
+            JSON.parse(JSON.stringify(socialPanelDefaultTemplate))
+        );
+    }
+
+    return socialPanelByClient.get(clientId);
+}
+
 app.get("/social-panel/status", (req, res) => {
-    res.json(socialPanel);
+    res.json(getClientSocialPanel(resolveClientId(req)));
 });
 
 app.post("/social-panel/settings", express.json(), (req, res) => {
-    socialPanel.settings = req.body;
+
+    const clientId =
+        resolveClientId(req);
+
+    getClientSocialPanel(clientId).settings = req.body;
+
     res.json({
         success: true,
-        socialPanel
+        socialPanel: getClientSocialPanel(clientId)
     });
 });
 
 app.get("/overlay/social-panel", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
     res.send(`
 <!DOCTYPE html>
 <html>
@@ -5895,7 +6167,7 @@ const icons = {
 };
 
 async function loadSocial() {
-    const response = await fetch("/social-panel/status");
+    const response = await fetch("/social-panel/status?client=${clientId}");
     const data = await response.json();
 
     const ring = document.getElementById("socialRing");
@@ -6334,7 +6606,7 @@ updateLikesGoal();
 
 app.get("/likes-goal/status", (req, res) => {
     res.json({
-        likes: currentLikesGoalCount || 0
+        likes: getLikesGoalCount(resolveClientId(req))
     });
 });
 
@@ -6548,7 +6820,7 @@ updateFollowGoal();
 app.get("/follow-goal/status", (req, res) => {
 
     res.json({
-        follows: currentFollowGoalCount || 0
+        follows: getFollowGoalCount(resolveClientId(req))
     });
 
 });
