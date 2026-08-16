@@ -121,6 +121,74 @@ app.use((req, res, next) => {
     next();
 });
 
+/*
+   ============================================================
+   SESSION PAR CLIENT
+   Chaque visiteur reçoit un identifiant stable stocké dans un
+   cookie. Utilisé pour isoler les réglages de chaque client.
+   ============================================================
+*/
+
+function cpParseCookies(req) {
+
+    const raw =
+        req.headers.cookie || "";
+
+    const cookies = {};
+
+    raw.split(";").forEach(pair => {
+
+        const idx =
+            pair.indexOf("=");
+
+        if (idx === -1) {
+            return;
+        }
+
+        const key =
+            pair.slice(0, idx).trim();
+
+        const value =
+            pair.slice(idx + 1).trim();
+
+        if (key) {
+            cookies[key] = decodeURIComponent(value);
+        }
+
+    });
+
+    return cookies;
+
+}
+
+app.use((req, res, next) => {
+
+    const cookies =
+        cpParseCookies(req);
+
+    let sessionId =
+        cookies.cp_session;
+
+    if (!sessionId) {
+
+        sessionId =
+            crypto.randomUUID();
+
+        res.setHeader(
+            "Set-Cookie",
+            "cp_session=" + sessionId +
+            "; Path=/; Max-Age=31536000; SameSite=Lax"
+        );
+
+    }
+
+    req.cpSessionId =
+        sessionId;
+
+    next();
+
+});
+
 
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -640,6 +708,77 @@ if (!settings.chatBot) {
     };
 }
 
+/*
+   ============================================================
+   RÉGLAGES PAR CLIENT (multi-utilisateur)
+
+   settingsByClient stocke les réglages de chaque session
+   séparément, dans des fichiers distincts (un par client) au
+   lieu d'un seul settings.json partagé.
+
+   IMPORTANT : à ce stade, seules les routes GET /settings et
+   POST /settings (le mécanisme générique utilisé par la
+   plupart des panneaux de personnalisation) lisent/écrivent
+   via ce système. Les nombreuses autres routes du fichier
+   (overlays, chatbot, roue, chrono...) utilisent encore la
+   variable globale "settings" ci-dessus, donc PAS ENCORE
+   isolées par client. C'est la prochaine étape.
+   ============================================================
+*/
+
+const CP_SETTINGS_DIR =
+    path.join(DATA_DIR, "client-settings");
+
+if (!fs.existsSync(CP_SETTINGS_DIR)) {
+    fs.mkdirSync(CP_SETTINGS_DIR, { recursive: true });
+}
+
+const settingsByClient = new Map();
+
+function cpSettingsFilePath(sessionId) {
+    return path.join(CP_SETTINGS_DIR, sessionId + ".json");
+}
+
+function getClientSettings(sessionId) {
+
+    if (settingsByClient.has(sessionId)) {
+        return settingsByClient.get(sessionId);
+    }
+
+    const filePath =
+        cpSettingsFilePath(sessionId);
+
+    let clientSettings =
+        JSON.parse(JSON.stringify(settings));
+
+    if (fs.existsSync(filePath)) {
+
+        try {
+            clientSettings =
+                JSON.parse(fs.readFileSync(filePath, "utf8"));
+        } catch (error) {
+            console.log("Réglages client illisibles pour", sessionId, "- valeurs par défaut utilisées");
+        }
+
+    }
+
+    settingsByClient.set(sessionId, clientSettings);
+
+    return clientSettings;
+
+}
+
+function saveClientSettings(sessionId, data) {
+
+    settingsByClient.set(sessionId, data);
+
+    fs.writeFileSync(
+        cpSettingsFilePath(sessionId),
+        JSON.stringify(data, null, 2)
+    );
+
+}
+
 const chatBotCooldowns = {};
 
 function handleChatBotCommand(data, clientId) {
@@ -711,12 +850,11 @@ function saveSettingsFile() {
 }
 
 app.get("/settings", (req, res) => {
-    res.json(settings);
+    res.json(getClientSettings(req.cpSessionId));
 });
 
 app.post("/settings", (req, res) => {
-    settings = req.body;
-    saveSettingsFile();
+    saveClientSettings(req.cpSessionId, req.body);
 
     res.json({
         success: true
