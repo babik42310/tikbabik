@@ -822,8 +822,8 @@ function handleChatBotCommand(data, clientId) {
     console.log("CHATBOT COMMANDE :", user, "->", word);
 
     if (word === "roue") {
-        if (!actionWheel.spinning) {
-            spinActionWheel();
+        if (!getClientActionWheel(clientId).spinning) {
+            spinActionWheel(clientId);
             emitToCreatorPilotClient(clientId, "chatBotTriggered", { command: word, user });
         }
         return;
@@ -835,7 +835,7 @@ function handleChatBotCommand(data, clientId) {
     }
 
     if (commandConfig.actionName) {
-        executeActionByName(commandConfig.actionName);
+        executeActionByName(commandConfig.actionName, clientId);
         emitToCreatorPilotClient(clientId, "chatBotTriggered", { command: word, user, actionName: commandConfig.actionName });
     }
 }
@@ -1353,14 +1353,17 @@ function sendKeyShortcut(shortcut) {
 
 }
 
-function executeActionByName(actionName) {
+function executeActionByName(actionName, clientId) {
 
     console.log("================================");
 console.log("ACTION REÇUE :", actionName);
 console.log("================================");
 
+    const clientSettings =
+        clientId ? getClientSettings(clientId) : settings;
+
     const action =
-        (settings.actions || [])
+        (clientSettings.actions || [])
             .find(a => a.name === actionName);
 
     if (!action) {
@@ -1384,9 +1387,15 @@ if (action.keyShortcut) {
 }
 
     if (action.type === "Son" && action.sound) {
-        io.emit("play-action-sound", {
-            sound: action.sound
-        });
+        if (clientId) {
+            emitToCreatorPilotClient(clientId, "play-action-sound", {
+                sound: action.sound
+            });
+        } else {
+            io.emit("play-action-sound", {
+                sound: action.sound
+            });
+        }
     }
 
     if (action.type === "Commande") {
@@ -1398,7 +1407,10 @@ if (action.keyShortcut) {
     }
 }
 
-function spinActionWheel() {
+function spinActionWheel(clientId) {
+
+    const actionWheel =
+        getClientActionWheel(clientId);
 
     actionWheel.spinning = true;
     actionWheel.winner = "";
@@ -1438,7 +1450,8 @@ function spinActionWheel() {
         false;
 
     executeActionByName(
-        winnerText
+        winnerText,
+        clientId
     );
 
 }, 5000);
@@ -1557,7 +1570,7 @@ if (matchingSoundAlert && matchingSoundAlert.sound) {
     giftName;
 
 const wheelToTrigger =
-    (actionWheel.settings.wheels || [])
+    (getClientActionWheel(clientId).settings.wheels || [])
         .find(w =>
             w.enabled &&
            w.trigger === wheelGiftName ||
@@ -1565,7 +1578,7 @@ w.trigger?.startsWith(wheelGiftName + " ")
         );
 
 if (wheelToTrigger) {
-    spinActionWheel();
+    spinActionWheel(clientId);
 }
 
        const giftCoinsForChrono =
@@ -4865,7 +4878,9 @@ function getClientChrono(clientId) {
     return chronoByClient.get(clientId);
 }
 
-let actionWheel = {
+const actionWheelByClient = new Map();
+
+const actionWheelDefaultTemplate = {
     spinning: false,
 
     settings: {
@@ -4889,8 +4904,24 @@ let actionWheel = {
     winner: ""
 };
 
-if (settings.actionWheel) {
-    actionWheel = settings.actionWheel;
+function getClientActionWheel(clientId) {
+
+    if (!actionWheelByClient.has(clientId)) {
+
+        let initial =
+            JSON.parse(JSON.stringify(actionWheelDefaultTemplate));
+
+        const clientSettings =
+            getClientSettings(clientId);
+
+        if (clientSettings.actionWheel) {
+            initial = clientSettings.actionWheel;
+        }
+
+        actionWheelByClient.set(clientId, initial);
+    }
+
+    return actionWheelByClient.get(clientId);
 }
 
 function getChronoRemaining(clientId) {
@@ -4969,11 +5000,15 @@ app.get("/chrono/status", (req, res) => {
 
 app.get("/action-wheel/status", (req, res) => {
 
-    res.json(actionWheel);
+    res.json(getClientActionWheel(resolveClientId(req)));
 
 });
 
 app.get("/overlay/action-wheel", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
     res.send(`
 <!DOCTYPE html>
 <html>
@@ -5100,7 +5135,7 @@ body{
 let wasSpinning = false;
 
 async function load(){
-    const response = await fetch("/action-wheel/status");
+    const response = await fetch("/action-wheel/status?client=${clientId}");
     const data = await response.json();
     const settings = data.settings || {};
 
@@ -5235,12 +5270,21 @@ app.post(
     express.json(),
     (req, res) => {
 
+        const clientId =
+            resolveClientId(req);
+
+        const actionWheel =
+            getClientActionWheel(clientId);
+
         actionWheel.settings = req.body;
 
-        settings.actionWheel =
+        const clientSettings =
+            getClientSettings(clientId);
+
+        clientSettings.actionWheel =
             actionWheel;
 
-        saveSettingsFile();
+        saveClientSettings(clientId, clientSettings);
 
         res.json({
             success: true
@@ -5250,6 +5294,12 @@ app.post(
 );
 
 app.post("/action-wheel/spin", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const actionWheel =
+        getClientActionWheel(clientId);
 
     actionWheel.spinning = true;
     actionWheel.winner = "";
@@ -5299,7 +5349,7 @@ actionWheel.winner =
         actionWheel.spinning =
             false;
 
-            executeActionByName(winnerText);
+            executeActionByName(winnerText, clientId);
 
     }, 5000);
 
