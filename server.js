@@ -643,7 +643,7 @@ app.get("/stats", (req, res) => {
 });
 
 app.get("/live-stats", (req, res) => {
-    res.json(liveSessionStats);
+    res.json(getLiveSessionStats(resolveClientId(req)));
 });
 
 app.post("/stats", (req, res) => {
@@ -1201,7 +1201,7 @@ app.post("/connect-tiktok", async (req, res) => {
             username
         );
 
-        liveSessionStats = {
+        liveSessionStatsByClient.set(clientId, {
             connected: true,
             username: username,
             startTime: Date.now(),
@@ -1209,7 +1209,7 @@ app.post("/connect-tiktok", async (req, res) => {
             followers: 0,
             gifts: 0,
             diamonds: 0
-        };
+        });
 
         emitLiveStats(clientId);
 
@@ -1467,18 +1467,27 @@ function spinActionWheel() {
 
 const recentGifts = {};
 
-let liveSessionStats = {
-    connected: false,
-    username: "",
-    startTime: null,
-    likes: 0,
-    followers: 0,
-    gifts: 0,
-    diamonds: 0
-};
+const liveSessionStatsByClient = new Map();
+
+function getLiveSessionStats(clientId) {
+
+    if (!liveSessionStatsByClient.has(clientId)) {
+        liveSessionStatsByClient.set(clientId, {
+            connected: false,
+            username: "",
+            startTime: null,
+            likes: 0,
+            followers: 0,
+            gifts: 0,
+            diamonds: 0
+        });
+    }
+
+    return liveSessionStatsByClient.get(clientId);
+}
 
 function emitLiveStats(clientId) {
-    emitToCreatorPilotClient(clientId, "liveStats", liveSessionStats);
+    emitToCreatorPilotClient(clientId, "liveStats", getLiveSessionStats(clientId));
 }
 
 function bindTikTokEvents(tiktokConnection, clientId) {
@@ -1491,7 +1500,7 @@ function bindTikTokEvents(tiktokConnection, clientId) {
 
     tiktokConnection.on("disconnected", () => {
         console.log("TikTok LIVE déconnecté (stream terminé ou coupure)");
-        liveSessionStats.connected = false;
+        getLiveSessionStats(clientId).connected = false;
         emitLiveStats(clientId);
     });
 
@@ -1512,7 +1521,7 @@ function bindTikTokEvents(tiktokConnection, clientId) {
             isTopGifter: data.topGifterRank !== null && data.topGifterRank !== undefined
         });
 
-        trackPresence(data.nickname, data.profilePictureUrl || data.profilePicture || "");
+        trackPresence(clientId, data.nickname, data.profilePictureUrl || data.profilePicture || "");
 
         handleChatBotCommand(data, clientId);
 
@@ -1643,24 +1652,30 @@ if (giftBattle.active) {
             data.avatar ||
             "";
 
-        if (!topDonors[user]) {
-            topDonors[user] = {
+        const clientTopDonors =
+            getClientRankings(clientId).topDonors;
+
+        if (!clientTopDonors[user]) {
+            clientTopDonors[user] = {
                 diamonds: 0,
                 avatar: donorAvatar
             };
         }
 
-        topDonors[user].diamonds +=
+        clientTopDonors[user].diamonds +=
             Number(data.diamondCount || 0);
 
         if (donorAvatar) {
-            topDonors[user].avatar = donorAvatar;
+            clientTopDonors[user].avatar = donorAvatar;
         }
 
-        trackPresence(user, donorAvatar);
+        trackPresence(clientId, user, donorAvatar);
 
-        liveSessionStats.gifts += 1;
-        liveSessionStats.diamonds += Number(data.diamondCount || 0);
+        const clientLiveStats =
+            getLiveSessionStats(clientId);
+
+        clientLiveStats.gifts += 1;
+        clientLiveStats.diamonds += Number(data.diamondCount || 0);
         emitLiveStats(clientId);
 
 emitToCreatorPilotClient(clientId, "gift", {
@@ -1680,7 +1695,7 @@ emitToCreatorPilotClient(clientId, "gift", {
         currentLikesGoalCount =
     Number(data.totalLikeCount || data.likeCount || 0);
 
-        liveSessionStats.likes =
+        getLiveSessionStats(clientId).likes =
     Number(data.totalLikeCount || currentLikesGoalCount || 0);
 
         emitLiveStats(clientId);
@@ -1691,8 +1706,11 @@ emitToCreatorPilotClient(clientId, "gift", {
 const likes =
     Number(data.likeCount || 0);
 
-if (!topLikes[user]) {
-    topLikes[user] = {
+const clientTopLikes =
+    getClientRankings(clientId).topLikes;
+
+if (!clientTopLikes[user]) {
+    clientTopLikes[user] = {
         likes: 0,
         avatar:
             data.profilePictureUrl ||
@@ -1701,9 +1719,9 @@ if (!topLikes[user]) {
     };
 }
 
-topLikes[user].likes += likes;
+clientTopLikes[user].likes += likes;
 
-trackPresence(user, data.profilePictureUrl || data.profilePicture || "");
+trackPresence(clientId, user, data.profilePictureUrl || data.profilePicture || "");
 
 applyChronoTime(
     likes * Number(chrono.settings.perLike || 0)
@@ -1749,7 +1767,7 @@ tiktokConnection.on("social", data => {
         user: data.nickname
     });
 
-    liveSessionStats.followers += 1;
+    getLiveSessionStats(clientId).followers += 1;
     emitLiveStats(clientId);
 
 });
@@ -2363,47 +2381,89 @@ console.log(
 
 });
 
-let topLikes = {};
-let topDonors = {};
-let topPresence = {};
+/*
+   ============================================================
+   IDENTIFICATION DU CLIENT POUR LES ROUTES PUBLIQUES (OVERLAYS)
 
-try {
+   Un overlay OBS (Browser Source) est un navigateur séparé du
+   tableau de bord : il ne partage pas forcément le cookie de
+   session. On accepte donc aussi un paramètre ?client=... dans
+   l'URL, utilisé par les boutons "Copier URL" du tableau de
+   bord pour que chaque overlay reste lié au bon client même
+   ouvert ailleurs.
+   ============================================================
+*/
+function resolveClientId(req) {
+    return req.query.client || req.cpSessionId;
+}
 
-    const savedRankings =
-        JSON.parse(fs.readFileSync(RANKINGS_FILE));
+const rankingsByClient = new Map();
 
-    topLikes = savedRankings.topLikes || {};
-    topDonors = savedRankings.topDonors || {};
-    topPresence = savedRankings.topPresence || {};
+function cpRankingsFilePath(clientId) {
+    return path.join(CP_SETTINGS_DIR, clientId + "-rankings.json");
+}
 
-    console.log("Classements (Top J'aime / Donateurs / Présence) chargés");
+function getClientRankings(clientId) {
 
-} catch (error) {
+    if (rankingsByClient.has(clientId)) {
+        return rankingsByClient.get(clientId);
+    }
 
-    console.log("rankings.json introuvable, classements vides");
+    let data = {
+        topLikes: {},
+        topDonors: {},
+        topPresence: {}
+    };
+
+    const filePath =
+        cpRankingsFilePath(clientId);
+
+    if (fs.existsSync(filePath)) {
+
+        try {
+            data = JSON.parse(fs.readFileSync(filePath, "utf8"));
+        } catch (error) {
+            console.log("Classements illisibles pour", clientId, "- valeurs par défaut utilisées");
+        }
+
+    }
+
+    rankingsByClient.set(clientId, data);
+
+    return data;
 
 }
 
-function saveRankingsFile() {
+function saveClientRankings(clientId) {
+
+    const data =
+        rankingsByClient.get(clientId);
+
+    if (!data) {
+        return;
+    }
 
     fs.writeFileSync(
-        RANKINGS_FILE,
-        JSON.stringify(
-            { topLikes, topDonors, topPresence },
-            null,
-            2
-        )
+        cpRankingsFilePath(clientId),
+        JSON.stringify(data, null, 2)
     );
 
 }
 
-setInterval(saveRankingsFile, 15000);
+setInterval(() => {
+    rankingsByClient.forEach((data, clientId) => {
+        saveClientRankings(clientId);
+    });
+}, 15000);
 
-function trackPresence(user, avatar) {
+function trackPresence(clientId, user, avatar) {
 
-    if (!user) {
+    if (!user || !clientId) {
         return;
     }
+
+    const topPresence =
+        getClientRankings(clientId).topPresence;
 
     if (!topPresence[user]) {
         topPresence[user] = {
@@ -2424,10 +2484,12 @@ setInterval(() => {
 
     const now = Date.now();
 
-    Object.keys(topPresence).forEach(user => {
-        if (now - topPresence[user].lastSeen <= 15000) {
-            topPresence[user].seconds += 5;
-        }
+    rankingsByClient.forEach(data => {
+        Object.keys(data.topPresence).forEach(user => {
+            if (now - data.topPresence[user].lastSeen <= 15000) {
+                data.topPresence[user].seconds += 5;
+            }
+        });
     });
 
 }, 5000);
@@ -3484,8 +3546,11 @@ app.post("/gift-battle/gift-teams", express.json(), (req, res) => {
 
 app.get("/top-likes/status", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
     const ranking =
-        Object.entries(topLikes)
+        Object.entries(getClientRankings(clientId).topLikes)
             .sort((a, b) => b[1].likes - a[1].likes)
             .slice(0, 10);
 
@@ -3496,8 +3561,12 @@ app.get("/top-likes/status", (req, res) => {
 });
 
 app.get("/top-likes/settings", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
     res.json(
-        settings.topLikes || {
+        getClientSettings(clientId).topLikes || {
             titleFont: "Orbitron",
             nameFont: "Rajdhani",
             fontSize: 24,
@@ -3522,7 +3591,14 @@ app.get("/top-likes/settings", (req, res) => {
 });
 
 app.post("/top-likes/settings", express.json(), (req, res) => {
-    settings.topLikes = {
+
+    const clientId =
+        resolveClientId(req);
+
+    const clientSettings =
+        getClientSettings(clientId);
+
+    clientSettings.topLikes = {
         titleFont: req.body.titleFont || "Orbitron",
         nameFont: req.body.nameFont || "Rajdhani",
         fontSize: Number(req.body.fontSize || 24),
@@ -3544,18 +3620,21 @@ app.post("/top-likes/settings", express.json(), (req, res) => {
         showHeart: req.body.showHeart !== false
     };
 
-    saveSettingsFile();
+    saveClientSettings(clientId, clientSettings);
 
     res.json({
         success: true,
-        settings: settings.topLikes
+        settings: clientSettings.topLikes
     });
 });
 
 app.get("/overlay/top-likes", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
     const topLikesSettings =
-        settings.topLikes || {};
+        getClientSettings(clientId).topLikes || {};
 
     const titleFont =
         req.query.titleFont ||
@@ -3790,7 +3869,7 @@ body{
 
 <script>
 async function load() {
-    const response = await fetch("/top-likes/status");
+    const response = await fetch("/top-likes/status?client=${clientId}");
     const data = await response.json();
 
     const ranking = document.getElementById("ranking");
@@ -3858,28 +3937,37 @@ load();
 
 app.post("/top-likes/test", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
+    const clientTopLikes =
+        getClientRankings(clientId).topLikes;
+
     const user = "TestUser";
 
-    if (!topLikes[user]) {
-        topLikes[user] = {
+    if (!clientTopLikes[user]) {
+        clientTopLikes[user] = {
             likes: 0,
             avatar: "https://placehold.co/80x80"
         };
     }
 
-    topLikes[user].likes += 100;
+    clientTopLikes[user].likes += 100;
 
     res.json({
         success: true,
-        topLikes
+        topLikes: clientTopLikes
     });
 
 });
 
 app.post("/top-likes/reset", (req, res) => {
 
-    topLikes = {};
-    saveRankingsFile();
+    const clientId =
+        resolveClientId(req);
+
+    getClientRankings(clientId).topLikes = {};
+    saveClientRankings(clientId);
 
     res.json({ success: true });
 
@@ -3889,8 +3977,11 @@ app.post("/top-likes/reset", (req, res) => {
 
 app.get("/top-donors/status", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
     const ranking =
-        Object.entries(topDonors)
+        Object.entries(getClientRankings(clientId).topDonors)
             .sort((a, b) => b[1].diamonds - a[1].diamonds)
             .slice(0, 10);
 
@@ -3899,8 +3990,12 @@ app.get("/top-donors/status", (req, res) => {
 });
 
 app.get("/top-donors/settings", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
     res.json(
-        settings.topDonors || {
+        getClientSettings(clientId).topDonors || {
             titleFont: "Orbitron",
             nameFont: "Rajdhani",
             fontSize: 24,
@@ -3925,7 +4020,14 @@ app.get("/top-donors/settings", (req, res) => {
 });
 
 app.post("/top-donors/settings", express.json(), (req, res) => {
-    settings.topDonors = {
+
+    const clientId =
+        resolveClientId(req);
+
+    const clientSettings =
+        getClientSettings(clientId);
+
+    clientSettings.topDonors = {
         titleFont: req.body.titleFont || "Orbitron",
         nameFont: req.body.nameFont || "Rajdhani",
         fontSize: Number(req.body.fontSize || 24),
@@ -3947,18 +4049,21 @@ app.post("/top-donors/settings", express.json(), (req, res) => {
         showCoin: req.body.showCoin !== false
     };
 
-    saveSettingsFile();
+    saveClientSettings(clientId, clientSettings);
 
     res.json({
         success: true,
-        settings: settings.topDonors
+        settings: clientSettings.topDonors
     });
 });
 
 app.get("/overlay/top-donors", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
     const topDonorsSettings =
-        settings.topDonors || {};
+        getClientSettings(clientId).topDonors || {};
 
     const titleFont =
         req.query.titleFont ||
@@ -4193,7 +4298,7 @@ body{
 
 <script>
 async function load() {
-    const response = await fetch("/top-donors/status");
+    const response = await fetch("/top-donors/status?client=${clientId}");
     const data = await response.json();
 
     const ranking = document.getElementById("ranking");
@@ -4259,28 +4364,37 @@ load();
 
 app.post("/top-donors/test", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
+    const clientTopDonors =
+        getClientRankings(clientId).topDonors;
+
     const user = "TestUser";
 
-    if (!topDonors[user]) {
-        topDonors[user] = {
+    if (!clientTopDonors[user]) {
+        clientTopDonors[user] = {
             diamonds: 0,
             avatar: "https://placehold.co/80x80"
         };
     }
 
-    topDonors[user].diamonds += 100;
+    clientTopDonors[user].diamonds += 100;
 
     res.json({
         success: true,
-        topDonors
+        topDonors: clientTopDonors
     });
 
 });
 
 app.post("/top-donors/reset", (req, res) => {
 
-    topDonors = {};
-    saveRankingsFile();
+    const clientId =
+        resolveClientId(req);
+
+    getClientRankings(clientId).topDonors = {};
+    saveClientRankings(clientId);
 
     res.json({ success: true });
 
@@ -4296,8 +4410,11 @@ function formatPresenceTime(totalSeconds) {
 
 app.get("/top-presence/status", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
     const ranking =
-        Object.entries(topPresence)
+        Object.entries(getClientRankings(clientId).topPresence)
             .sort((a, b) => b[1].seconds - a[1].seconds)
             .slice(0, 10)
             .map(([user, data]) => [
@@ -4310,8 +4427,12 @@ app.get("/top-presence/status", (req, res) => {
 });
 
 app.get("/top-presence/settings", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
     res.json(
-        settings.topPresence || {
+        getClientSettings(clientId).topPresence || {
             titleFont: "Orbitron",
             nameFont: "Rajdhani",
             fontSize: 24,
@@ -4336,7 +4457,14 @@ app.get("/top-presence/settings", (req, res) => {
 });
 
 app.post("/top-presence/settings", express.json(), (req, res) => {
-    settings.topPresence = {
+
+    const clientId =
+        resolveClientId(req);
+
+    const clientSettings =
+        getClientSettings(clientId);
+
+    clientSettings.topPresence = {
         titleFont: req.body.titleFont || "Orbitron",
         nameFont: req.body.nameFont || "Rajdhani",
         fontSize: Number(req.body.fontSize || 24),
@@ -4358,18 +4486,21 @@ app.post("/top-presence/settings", express.json(), (req, res) => {
         showClock: req.body.showClock !== false
     };
 
-    saveSettingsFile();
+    saveClientSettings(clientId, clientSettings);
 
     res.json({
         success: true,
-        settings: settings.topPresence
+        settings: clientSettings.topPresence
     });
 });
 
 app.get("/overlay/top-presence", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
     const topPresenceSettings =
-        settings.topPresence || {};
+        getClientSettings(clientId).topPresence || {};
 
     const titleFont =
         req.query.titleFont ||
@@ -4604,7 +4735,7 @@ body{
 
 <script>
 async function load() {
-    const response = await fetch("/top-presence/status");
+    const response = await fetch("/top-presence/status?client=${clientId}");
     const data = await response.json();
 
     const ranking = document.getElementById("ranking");
@@ -4670,29 +4801,38 @@ load();
 
 app.post("/top-presence/test", (req, res) => {
 
+    const clientId =
+        resolveClientId(req);
+
+    const clientTopPresence =
+        getClientRankings(clientId).topPresence;
+
     const user = "TestUser";
 
-    if (!topPresence[user]) {
-        topPresence[user] = {
+    if (!clientTopPresence[user]) {
+        clientTopPresence[user] = {
             seconds: 0,
             avatar: "https://placehold.co/80x80",
             lastSeen: Date.now()
         };
     }
 
-    topPresence[user].seconds += 60;
+    clientTopPresence[user].seconds += 60;
 
     res.json({
         success: true,
-        topPresence
+        topPresence: clientTopPresence
     });
 
 });
 
 app.post("/top-presence/reset", (req, res) => {
 
-    topPresence = {};
-    saveRankingsFile();
+    const clientId =
+        resolveClientId(req);
+
+    getClientRankings(clientId).topPresence = {};
+    saveClientRankings(clientId);
 
     res.json({ success: true });
 
@@ -6306,7 +6446,7 @@ app.get("/follow-goal/status", (req, res) => {
 app.get("/diamonds-goal/status", (req, res) => {
 
     res.json({
-        diamonds: liveSessionStats.diamonds || 0
+        diamonds: getLiveSessionStats(resolveClientId(req)).diamonds || 0
     });
 
 });
