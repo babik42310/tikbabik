@@ -6716,6 +6716,6 @@ server.listen(CP_PORT, CP_HOST, () => {
         "CreatorPilot lancé sur " + CP_HOST + ":" + CP_PORT +
         (CP_HOST === "127.0.0.1"
             ? " (accessible uniquement depuis cet ordinateur)"
-            : " (hébergement distant détecté, protégé par mot de passe)")
+            : " (hébergement distant détecté)")
     );
 });
