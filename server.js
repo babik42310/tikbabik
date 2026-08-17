@@ -192,6 +192,10 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, "public")));
 
+app.get("/download", (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "download.html"));
+});
+
 
 app.get("/sitemap.xml", (req, res) => {
     res.type("application/xml");

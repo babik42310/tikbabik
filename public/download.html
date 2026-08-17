@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreatorPilot — Télécharger</title>
+<meta name="description" content="Le centre de contrôle pour ton LIVE TikTok : alertes, overlays, mini-jeux, chatbot et assistant IA.">
+<link rel="icon" href="/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
+
+@keyframes drift {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-16px, 12px); }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #05060f;
+    color: #f5f7ff;
+    font-family: 'Rajdhani', sans-serif;
+    overflow-x: hidden;
+}
+
+.glow {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+        radial-gradient(500px 400px at 15% 10%, rgba(34,211,238,0.14), transparent 60%),
+        radial-gradient(600px 500px at 85% 30%, rgba(168,85,247,0.12), transparent 60%),
+        radial-gradient(500px 400px at 50% 90%, rgba(236,72,153,0.10), transparent 60%);
+    animation: drift 14s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 60px 24px 40px;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 70px;
+}
+
+.brandMark {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    background: linear-gradient(90deg, #22d3ee, #a855f7, #ec4899);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 1px;
+}
+
+.eyebrow {
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #22d3ee;
+    font-weight: 600;
+    margin-bottom: 18px;
+}
+
+h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    font-size: clamp(34px, 6vw, 62px);
+    line-height: 1.04;
+    letter-spacing: -0.5px;
+    margin: 0 0 20px;
+}
+
+h1 em {
+    font-style: normal;
+    background: linear-gradient(90deg, #22d3ee, #a855f7, #ec4899);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.lede {
+    font-size: 19px;
+    color: #a8b1c9;
+    max-width: 520px;
+    line-height: 1.5;
+    margin-bottom: 46px;
+}
+
+.ctaZone {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    flex-wrap: wrap;
+    margin-bottom: 90px;
+}
+
+.ring {
+    display: inline-block;
+    padding: 3px;
+    border-radius: 16px;
+    background: conic-gradient(from var(--angle), #22d3ee, #a855f7, #ec4899, #22d3ee);
+    animation: spin 5s linear infinite;
+}
+
+.downloadBtn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #05060f;
+    color: #f5f7ff;
+    border: none;
+    border-radius: 14px;
+    padding: 18px 30px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.downloadBtn .arrow {
+    font-size: 20px;
+}
+
+.downloadBtn small {
+    display: block;
+    font-weight: 500;
+    font-size: 12px;
+    color: #8b93b8;
+    margin-top: 2px;
+}
+
+.versionNote {
+    font-size: 13px;
+    color: #6b7590;
+}
+
+.versionNote a {
+    color: #22d3ee;
+    text-decoration: none;
+}
+
+.features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 60px;
+}
+
+.feature {
+    background: #0a0d16;
+    padding: 26px 22px;
+}
+
+.feature .icon {
+    font-size: 22px;
+    margin-bottom: 12px;
+    display: block;
+}
+
+.feature h3 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    color: #f5f7ff;
+}
+
+.feature p {
+    font-size: 14px;
+    color: #8b93b8;
+    line-height: 1.5;
+    margin: 0;
+}
+
+footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding-top: 26px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 13px;
+    color: #6b7590;
+}
+
+footer a {
+    color: #8b93b8;
+    text-decoration: none;
+}
+
+footer a:hover {
+    color: #22d3ee;
+}
+
+@media (max-width: 560px) {
+    .ctaZone { flex-direction: column; align-items: flex-start; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="glow"></div>
+
+<div class="wrap">
+
+    <header>
+        <span class="brandMark">CreatorPilot</span>
+    </header>
+
+    <div class="eyebrow">Outil TikTok LIVE — Windows</div>
+
+    <h1>Pilote ton <em>LIVE</em>,<br>pas ton chaos.</h1>
+
+    <p class="lede">
+        Alertes, overlays animés, mini-jeux, chatbot et assistant IA — tout
+        ce qu'il faut pour contrôler et faire exploser ton audience, dans
+        une seule appli.
+    </p>
+
+    <div class="ctaZone">
+        <div class="ring">
+            <a href="#" id="downloadButton" class="downloadBtn">
+                <span class="arrow">⬇</span>
+                <span>
+                    Télécharger pour Windows
+                    <small id="downloadVersion">Récupération de la dernière version…</small>
+                </span>
+            </a>
+        </div>
+        <span class="versionNote">
+            Gratuit · installeur .exe ·
+            <a href="https://github.com/babik42310/tikbabik/releases" target="_blank">voir toutes les versions</a>
+        </span>
+    </div>
+
+    <div class="features">
+        <div class="feature">
+            <span class="icon">🔔</span>
+            <h3>Alertes & sons</h3>
+            <p>Un son différent pour chaque cadeau TikTok, choisi dans ta bibliothèque ou importé en un lien.</p>
+        </div>
+        <div class="feature">
+            <span class="icon">🖼️</span>
+            <h3>Overlays animés</h3>
+            <p>Classements, objectifs, tirelire, bannière — personnalisables et prêts pour OBS ou TikTok LIVE Studio.</p>
+        </div>
+        <div class="feature">
+            <span class="icon">🎮</span>
+            <h3>Mini-jeux en direct</h3>
+            <p>Coin Match, Gift Battle, Roue des actions — tes viewers participent à travers leurs cadeaux.</p>
+        </div>
+        <div class="feature">
+            <span class="icon">🤖</span>
+            <h3>ChatBot & IA</h3>
+            <p>Commandes de chat automatiques et assistant IA qui analyse ton LIVE en temps réel.</p>
+        </div>
+    </div>
+
+    <footer>
+        <span>© CreatorPilot — tikbabik.shop</span>
+        <a href="/">Ouvrir le tableau de bord</a>
+    </footer>
+
+</div>
+
+<script>
+(async function () {
+
+    const button = document.getElementById("downloadButton");
+    const versionLabel = document.getElementById("downloadVersion");
+
+    try {
+
+        const response = await fetch(
+            "https://api.github.com/repos/babik42310/tikbabik/releases/latest"
+        );
+
+        if (!response.ok) {
+            throw new Error("Impossible de récupérer la dernière version");
+        }
+
+        const release = await response.json();
+
+        const exeAsset =
+            (release.assets || []).find(asset =>
+                asset.name.toLowerCase().endsWith(".exe")
+            );
+
+        if (exeAsset) {
+            button.href = exeAsset.browser_download_url;
+            versionLabel.textContent =
+                "Version " + (release.tag_name || "") + " · Windows";
+        } else {
+            button.href =
+                "https://github.com/babik42310/tikbabik/releases/latest";
+            versionLabel.textContent = "Voir la dernière version sur GitHub";
+        }
+
+    } catch (error) {
+
+        button.href =
+            "https://github.com/babik42310/tikbabik/releases/latest";
+        versionLabel.textContent = "Voir la dernière version sur GitHub";
+
+    }
+
+})();
+</script>
+
+</body>
+</html>
