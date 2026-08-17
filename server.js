@@ -919,6 +919,353 @@ const chatBotCooldowns = {};
 
 /*
    ============================================================
+   TIRELIRE ANIMÉE (coin jar)
+   Se remplit à chaque cadeau, joue une animation de célébration
+   et se vide automatiquement une fois pleine.
+   ============================================================
+*/
+
+const coinJarByClient = new Map();
+
+function getClientCoinJar(clientId) {
+
+    if (!coinJarByClient.has(clientId)) {
+        coinJarByClient.set(clientId, {
+            current: 0,
+            celebrating: false
+        });
+    }
+
+    return coinJarByClient.get(clientId);
+}
+
+function addToCoinJar(clientId, diamonds) {
+
+    const jarSettings =
+        getClientSettings(clientId).coinJar;
+
+    if (!jarSettings || !jarSettings.enabled) {
+        return;
+    }
+
+    const target =
+        Number(jarSettings.target || 1000);
+
+    const jar =
+        getClientCoinJar(clientId);
+
+    if (jar.celebrating) {
+        return;
+    }
+
+    jar.current += diamonds;
+
+    if (jar.current >= target) {
+
+        jar.current = target;
+        jar.celebrating = true;
+
+        emitToCreatorPilotClient(clientId, "coinJarUpdated", jar);
+
+        setTimeout(() => {
+            jar.current = 0;
+            jar.celebrating = false;
+            emitToCreatorPilotClient(clientId, "coinJarUpdated", jar);
+        }, 4000);
+
+        return;
+    }
+
+    emitToCreatorPilotClient(clientId, "coinJarUpdated", jar);
+
+}
+
+app.get("/coin-jar/status", (req, res) => {
+    res.json(getClientCoinJar(resolveClientId(req)));
+});
+
+app.get("/coin-jar/settings", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    res.json(
+        getClientSettings(clientId).coinJar || {
+            enabled: true,
+            target: 1000,
+            jarColor: "#22d3ee",
+            coinColor: "#ffd700",
+            ringColor1: "#22d3ee",
+            ringColor2: "#a855f7",
+            ringColor3: "#ec4899",
+            ringSpeed: 6,
+            celebrationText: "Tirelire pleine !"
+        }
+    );
+
+});
+
+app.post("/coin-jar/settings", express.json(), (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const clientSettings =
+        getClientSettings(clientId);
+
+    clientSettings.coinJar = {
+        enabled: req.body.enabled !== false,
+        target: Number(req.body.target || 1000),
+        jarColor: req.body.jarColor || "#22d3ee",
+        coinColor: req.body.coinColor || "#ffd700",
+        ringColor1: req.body.ringColor1 || "#22d3ee",
+        ringColor2: req.body.ringColor2 || "#a855f7",
+        ringColor3: req.body.ringColor3 || "#ec4899",
+        ringSpeed: Number(req.body.ringSpeed || 6),
+        celebrationText: req.body.celebrationText || "Tirelire pleine !"
+    };
+
+    saveClientSettings(clientId, clientSettings);
+
+    res.json({
+        success: true,
+        settings: clientSettings.coinJar
+    });
+
+});
+
+app.post("/coin-jar/reset", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    coinJarByClient.set(clientId, {
+        current: 0,
+        celebrating: false
+    });
+
+    emitToCreatorPilotClient(clientId, "coinJarUpdated", getClientCoinJar(clientId));
+
+    res.json({ success: true });
+
+});
+
+app.get("/overlay/coin-jar", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const jarSettings =
+        getClientSettings(clientId).coinJar || {};
+
+    const target =
+        jarSettings.target || 1000;
+
+    const jarColor =
+        jarSettings.jarColor || "#22d3ee";
+
+    const coinColor =
+        jarSettings.coinColor || "#ffd700";
+
+    const ringColor1 =
+        jarSettings.ringColor1 || "#22d3ee";
+
+    const ringColor2 =
+        jarSettings.ringColor2 || "#a855f7";
+
+    const ringColor3 =
+        jarSettings.ringColor3 || "#ec4899";
+
+    const ringSpeed =
+        jarSettings.ringSpeed || 6;
+
+    const celebrationText =
+        jarSettings.celebrationText || "Tirelire pleine !";
+
+    res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+<style>
+@property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes spin {
+    to { --angle: 360deg; }
+}
+
+@keyframes coinFloat {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-140px) scale(0.4); opacity: 0; }
+}
+
+@keyframes jarPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes celebrationText {
+    0% { transform: scale(0) rotate(-8deg); opacity: 0; }
+    30% { transform: scale(1.2) rotate(3deg); opacity: 1; }
+    50% { transform: scale(1) rotate(0deg); }
+    100% { transform: scale(1) rotate(0deg); opacity: 0; }
+}
+
+body{
+    margin:0;
+    background:transparent;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    height:100vh;
+    font-family:'Rajdhani', sans-serif;
+}
+
+#ring{
+    position:relative;
+    width:220px;
+    height:280px;
+    padding:3px;
+    border-radius:110px 110px 24px 24px;
+    background:conic-gradient(from var(--angle), ${ringColor1}, ${ringColor2}, ${ringColor3}, ${ringColor1});
+    animation:spin ${ringSpeed}s linear infinite;
+}
+
+#jarBox{
+    width:100%;
+    height:100%;
+    border-radius:108px 108px 22px 22px;
+    background:#05060f;
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+}
+
+#fill{
+    width:100%;
+    height:0%;
+    background:linear-gradient(180deg, ${coinColor}cc, ${jarColor});
+    box-shadow:0 0 25px ${coinColor}aa;
+    transition:height 0.6s ease;
+    border-radius:0 0 22px 22px;
+}
+
+#label{
+    position:absolute;
+    top:14px;
+    left:0;
+    right:0;
+    text-align:center;
+    font-family:'Orbitron', sans-serif;
+    font-size:16px;
+    font-weight:800;
+    color:#f5f7ff;
+    text-shadow:0 0 10px ${coinColor}aa;
+    z-index:5;
+}
+
+#celebration{
+    position:absolute;
+    top:40%;
+    left:50%;
+    transform:translate(-50%, -50%) scale(0);
+    font-family:'Orbitron', sans-serif;
+    font-size:22px;
+    font-weight:800;
+    color:${coinColor};
+    text-shadow:0 0 20px ${coinColor};
+    text-align:center;
+    white-space:nowrap;
+    z-index:10;
+}
+
+#celebration.active{
+    animation:celebrationText 4s ease forwards;
+}
+
+.floatingCoin{
+    position:absolute;
+    bottom:20px;
+    font-size:22px;
+    animation:coinFloat 1.2s ease-out forwards;
+    z-index:8;
+}
+
+#ring.pulsing{
+    animation:spin ${ringSpeed}s linear infinite, jarPulse 0.6s ease infinite;
+}
+</style>
+</head>
+<body>
+
+<div id="ring">
+<div id="jarBox">
+    <div id="label">0 / ${target}</div>
+    <div id="fill"></div>
+    <div id="celebration">🎉 ${celebrationText} 🎉</div>
+</div>
+</div>
+
+<script>
+let lastCurrent = 0;
+
+async function updateCoinJar(){
+
+    const response = await fetch("/coin-jar/status?client=${clientId}");
+    const data = await response.json();
+
+    const percent = Math.min(100, Math.round((data.current / ${target}) * 100));
+
+    document.getElementById("fill").style.height = percent + "%";
+    document.getElementById("label").textContent = data.current + " / ${target}";
+
+    const ring = document.getElementById("ring");
+    const celebration = document.getElementById("celebration");
+
+    if (data.celebrating) {
+        ring.classList.add("pulsing");
+        celebration.classList.add("active");
+    } else {
+        ring.classList.remove("pulsing");
+        celebration.classList.remove("active");
+    }
+
+    if (data.current > lastCurrent && !data.celebrating) {
+
+        const coin = document.createElement("div");
+        coin.className = "floatingCoin";
+        coin.textContent = "🪙";
+        coin.style.left = (40 + Math.random() * 20) + "%";
+        document.getElementById("jarBox").appendChild(coin);
+
+        setTimeout(() => coin.remove(), 1200);
+
+    }
+
+    lastCurrent = data.current;
+
+}
+
+setInterval(updateCoinJar, 1000);
+updateCoinJar();
+</script>
+
+</body>
+</html>
+`);
+});
+
+/*
+   ============================================================
    FILE D'ATTENTE MUSICALE (demandes via cadeau + message chat)
    ============================================================
 */
@@ -1788,7 +2135,7 @@ function bindTikTokEvents(tiktokConnection, clientId) {
         recentGifts[giftKey] = now;
 
         const matchingSoundAlert =
-    (settings.soundAlerts || [])
+    (getClientSettings(clientId).soundAlerts || [])
         .find(alert =>
             alert.enabled &&
             alert.trigger === "gift" &&
@@ -1930,6 +2277,8 @@ if (clientGiftBattle.active) {
             getClientSettings(clientId).diamondsGoal
         );
 
+        addToCoinJar(clientId, Number(data.diamondCount || 0));
+
 emitToCreatorPilotClient(clientId, "gift", {
             user: user,
             gift: giftName,
@@ -2007,10 +2356,10 @@ tiktokConnection.on("social", data => {
 
     applyChronoTime(clientId, getClientChrono(clientId).settings.perFollow);
 
-    console.log("TOUTES ALERTES SON :", settings.soundAlerts);
+    console.log("TOUTES ALERTES SON :", getClientSettings(clientId).soundAlerts);
 
     const matchingSoundAlert =
-        (settings.soundAlerts || [])
+        (getClientSettings(clientId).soundAlerts || [])
             .find(alert =>
                 alert.enabled &&
                 alert.trigger === "follow"
