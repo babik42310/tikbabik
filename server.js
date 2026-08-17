@@ -631,14 +631,8 @@ app.post("/upload-sound-from-url", express.json(), async (req, res) => {
             });
         }
 
-        const browserHeaders = {
-            "User-Agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            "Accept": "*/*"
-        };
-
-        let response =
-            await fetch(soundUrl, { headers: browserHeaders });
+        const response =
+            await fetch(soundUrl);
 
         if (!response.ok) {
             return res.status(400).json({
@@ -647,69 +641,10 @@ app.post("/upload-sound-from-url", express.json(), async (req, res) => {
             });
         }
 
-        let contentType =
+        const contentType =
             response.headers.get("content-type") || "";
 
-        const looksLikeAudioUrl =
-            /\.(mp3|wav|ogg)(\?|$)/i.test(soundUrl);
-
-        /*
-           Si le lien pointe vers une page (ex: la fiche d'un son
-           sur MyInstants) plutôt qu'un fichier audio direct, on
-           cherche automatiquement le vrai lien MP3 caché dedans.
-        */
-        if (
-            contentType.includes("html") ||
-            (!contentType.includes("audio") && !looksLikeAudioUrl)
-        ) {
-
-            const html =
-                await response.text();
-
-            const audioMatch =
-                html.match(/og:audio"?\s+content="([^"]+)"/) ||
-                html.match(/href="([^"]*\/media\/sounds\/[^"]+\.(?:mp3|wav|ogg))"/) ||
-                html.match(/["']([^"']*\/media\/sounds\/[^"']+\.(?:mp3|wav|ogg))["']/);
-
-            if (!audioMatch) {
-                return res.status(400).json({
-                    success: false,
-                    error: "Aucun fichier audio trouvé sur cette page. Essaie de coller directement le lien du bouton \"Télécharger MP3\"."
-                });
-            }
-
-            let audioUrl =
-                audioMatch[1];
-
-            if (audioUrl.startsWith("/")) {
-                const origin =
-                    new URL(soundUrl).origin;
-
-                audioUrl =
-                    origin + audioUrl;
-            }
-
-            response =
-                await fetch(audioUrl, { headers: browserHeaders });
-
-            if (!response.ok) {
-                return res.status(400).json({
-                    success: false,
-                    error: "Le fichier audio trouvé n'a pas pu être téléchargé"
-                });
-            }
-
-            contentType =
-                response.headers.get("content-type") || "";
-
-        }
-
-        const finalLooksLikeAudio =
-            contentType.includes("audio") ||
-            looksLikeAudioUrl ||
-            /\.(mp3|wav|ogg)(\?|$)/i.test(response.url || "");
-
-        if (!finalLooksLikeAudio) {
+        if (!contentType.includes("audio")) {
             return res.status(400).json({
                 success: false,
                 error: "Ce lien ne pointe pas vers un fichier audio"
@@ -721,11 +656,8 @@ app.post("/upload-sound-from-url", express.json(), async (req, res) => {
 
         let extension = "mp3";
 
-        const sourceForExtension =
-            response.url || soundUrl;
-
-        if (contentType.includes("wav") || /\.wav(\?|$)/i.test(sourceForExtension)) extension = "wav";
-        if (contentType.includes("ogg") || /\.ogg(\?|$)/i.test(sourceForExtension)) extension = "ogg";
+        if (contentType.includes("wav")) extension = "wav";
+        if (contentType.includes("ogg")) extension = "ogg";
 
         const safeName =
             "web-" + Date.now() + "." + extension;
@@ -7546,9 +7478,6 @@ app.post("/api/live-assistant/reset", async (req, res) => {
 
 
 
-const CP_PORT =
-    process.env.PORT || 3000;
-
-server.listen(CP_PORT, () => {
-    console.log("CreatorPilot lancé sur le port " + CP_PORT);
+server.listen(3000, () => {
+    console.log("CreatorPilot lancé");
 });
