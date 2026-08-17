@@ -104,6 +104,27 @@ function getCreatorPilotClientId() {
 const CREATORPILOT_CLIENT_ID =
     getCreatorPilotClientId();
 
+/*
+   Met à jour tous les champs affichant une URL d'overlay pour
+   qu'ils contiennent déjà l'identifiant du client, que
+   l'utilisateur clique sur "Copier URL" ou sélectionne le
+   texte du champ directement.
+*/
+window.addEventListener("DOMContentLoaded", () => {
+
+    document.querySelectorAll(".overlayUrlInput").forEach(input => {
+
+        if (!input.value.includes("client=")) {
+            input.value +=
+                (input.value.includes("?") ? "&" : "?") +
+                "client=" +
+                CREATORPILOT_CLIENT_ID;
+        }
+
+    });
+
+});
+
 socket.emit(
     "register-client",
     {
@@ -4872,6 +4893,124 @@ socket.on("goalReached", data => {
     announceGoalMessage(data.message);
 
 });
+
+/* ==================== TIRELIRE ANIMÉE ==================== */
+
+socket.on("coinJarUpdated", () => {
+
+    const frame =
+        document.querySelector(".coinJarFrame");
+
+    // L'overlay se met à jour tout seul (polling), rien à faire ici
+    // sauf si on veut réagir dans le tableau de bord plus tard.
+
+});
+
+const customizeCoinJar =
+    document.getElementById("customizeCoinJar");
+
+const coinJarCustomize =
+    document.getElementById("coinJarCustomize");
+
+if (customizeCoinJar && coinJarCustomize) {
+
+    customizeCoinJar.onclick = async () => {
+
+        const isOpening =
+            coinJarCustomize.style.display === "none";
+
+        coinJarCustomize.style.display =
+            isOpening ? "block" : "none";
+
+        if (isOpening) {
+
+            try {
+
+                const response =
+                    await fetch("/coin-jar/settings");
+
+                const s =
+                    await response.json();
+
+                document.getElementById("coinJarEnabled").checked = s.enabled !== false;
+                document.getElementById("coinJarTarget").value = s.target || 1000;
+                document.getElementById("coinJarCelebrationText").value = s.celebrationText || "Tirelire pleine !";
+                document.getElementById("coinJarColor").value = s.jarColor || "#22d3ee";
+                document.getElementById("coinJarCoinColor").value = s.coinColor || "#ffd700";
+                document.getElementById("coinJarRingColor1").value = s.ringColor1 || "#22d3ee";
+                document.getElementById("coinJarRingColor2").value = s.ringColor2 || "#a855f7";
+                document.getElementById("coinJarRingColor3").value = s.ringColor3 || "#ec4899";
+                document.getElementById("coinJarRingSpeed").value = s.ringSpeed || 6;
+
+            } catch (error) {}
+
+        }
+
+    };
+
+}
+
+const saveCoinJar =
+    document.getElementById("saveCoinJar");
+
+if (saveCoinJar) {
+
+    saveCoinJar.onclick = async () => {
+
+        const settings = {
+            enabled: document.getElementById("coinJarEnabled").checked,
+            target: Number(document.getElementById("coinJarTarget").value || 1000),
+            celebrationText: document.getElementById("coinJarCelebrationText").value || "Tirelire pleine !",
+            jarColor: document.getElementById("coinJarColor").value,
+            coinColor: document.getElementById("coinJarCoinColor").value,
+            ringColor1: document.getElementById("coinJarRingColor1").value,
+            ringColor2: document.getElementById("coinJarRingColor2").value,
+            ringColor3: document.getElementById("coinJarRingColor3").value,
+            ringSpeed: Number(document.getElementById("coinJarRingSpeed").value || 6)
+        };
+
+        await fetch("/coin-jar/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(settings)
+        });
+
+        const frame =
+            document.querySelector(".coinJarFrame");
+
+        if (frame) {
+            frame.src = "/overlay/coin-jar?t=" + Date.now();
+        }
+
+        alert("Tirelire sauvegardée !");
+
+    };
+
+}
+
+const resetCoinJar =
+    document.getElementById("resetCoinJar");
+
+if (resetCoinJar) {
+
+    resetCoinJar.onclick = async () => {
+
+        if (!confirm("Vider la tirelire ?")) {
+            return;
+        }
+
+        await fetch("/coin-jar/reset", { method: "POST" });
+
+        const frame =
+            document.querySelector(".coinJarFrame");
+
+        if (frame) {
+            frame.src = "/overlay/coin-jar?t=" + Date.now();
+        }
+
+    };
+
+}
 
 /* Bascule des onglets internes (Objectif / Annonce vocale) */
 document.querySelectorAll(".goalSubTabBtn").forEach(btn => {
