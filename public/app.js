@@ -1,5 +1,61 @@
 const socket = io();
 
+/*
+   Notification non-bloquante (remplace les popups alert() qui
+   peuvent geler l'app dans Electron si elles ne s'affichent pas
+   correctement à l'écran).
+*/
+function showToast(message) {
+
+    let container =
+        document.getElementById("cpToastContainer");
+
+    if (!container) {
+
+        container =
+            document.createElement("div");
+
+        container.id = "cpToastContainer";
+
+        container.style.cssText =
+            "position:fixed;top:20px;right:20px;z-index:999999;" +
+            "display:flex;flex-direction:column;gap:8px;";
+
+        document.body.appendChild(container);
+
+    }
+
+    const toast =
+        document.createElement("div");
+
+    toast.textContent = message;
+
+    toast.style.cssText =
+        "background:linear-gradient(90deg,#22d3ee,#a855f7);" +
+        "color:#05060f;font-weight:700;padding:12px 18px;" +
+        "border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.4);" +
+        "font-family:sans-serif;font-size:14px;" +
+        "animation:cpToastIn 0.25s ease;max-width:320px;";
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.transition = "opacity 0.3s ease";
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 300);
+    }, 2500);
+
+}
+
+const cpToastStyle =
+    document.createElement("style");
+
+cpToastStyle.textContent =
+    "@keyframes cpToastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}";
+
+document.head.appendChild(cpToastStyle);
+
+
 function openGiftDropdown(giftSelected, giftOptions) {
 
     const isOpen =
@@ -463,7 +519,7 @@ if (saveChronoCustomize) {
         document.querySelector(".chronoFrame").src =
             "/overlay/chrono?t=" + Date.now();
 
-        alert("Chrono sauvegardé !");
+        showToast("Chrono sauvegardé !");
     };
 }
 
@@ -884,7 +940,7 @@ if (saveWheelSettings) {
         document.querySelector(".wheelFrame").src =
             "/overlay/action-wheel?t=" + Date.now();
 
-        alert("Roue sauvegardée !");
+        showToast("Roue sauvegardée !");
     };
 }
 
@@ -1125,7 +1181,7 @@ if (saveSocialSettings) {
        // refreshSocialPreview désactivé pour éviter erreur preview
         
 
-        alert("Panneau sociaux sauvegardé !");
+        showToast("Panneau sociaux sauvegardé !");
     };
 }
 
@@ -1449,7 +1505,7 @@ if (saveTopLikesSettings) {
     body: JSON.stringify(settings)
 });
 
-        alert("Réglages Top J'aime sauvegardés !");
+        showToast("Réglages Top J'aime sauvegardés !");
     };
 }
 
@@ -1630,7 +1686,7 @@ if (saveTopDonorsSettings) {
             body: JSON.stringify(settings)
         });
 
-        alert("Réglages Top Donateurs sauvegardés !");
+        showToast("Réglages Top Donateurs sauvegardés !");
     };
 }
 
@@ -1877,7 +1933,7 @@ if (saveTopPresenceSettings) {
             body: JSON.stringify(settings)
         });
 
-        alert("Réglages Top Présence LIVE sauvegardés !");
+        showToast("Réglages Top Présence LIVE sauvegardés !");
     };
 }
 
@@ -2136,7 +2192,7 @@ fetch("/coin-match/settings", {
     body: JSON.stringify(settings)
 });
 
-    alert("Style Coin Match sauvegardé !");
+    showToast("Style Coin Match sauvegardé !");
 };
 const savedCoinStyle =
     JSON.parse(localStorage.getItem("coinMatchStyle"));
@@ -2275,7 +2331,7 @@ if (chronoSaveGiftSettings) {
             })
         });
 
-        alert("Paramètres auto cadeaux sauvegardés !");
+        showToast("Paramètres auto cadeaux sauvegardés !");
     };
 }
 
@@ -3452,7 +3508,7 @@ specialUsers:
         })
         .then(response => response.json())
         .then(() => {
-            alert("Paramètres TTS sauvegardés !");
+            showToast("Paramètres TTS sauvegardés !");
         });
 
     };
@@ -4283,7 +4339,7 @@ fetch("/gift-battle/settings", {
         JSON.stringify(settings)
     );
 
-    alert("Gift Battle sauvegardé !");
+    showToast("Gift Battle sauvegardé !");
 };
 
 const savedGiftBattleStyle =
@@ -5000,7 +5056,7 @@ if (saveCoinJar) {
             frame.src = "/overlay/coin-jar?t=" + Date.now();
         }
 
-        alert("Tirelire sauvegardée !");
+        showToast("Tirelire sauvegardée !");
 
     };
 
@@ -5866,7 +5922,7 @@ fetch("/settings", {
 })
 .then(response => response.json())
 .then(() => {
-    alert("Paramètres sauvegardés !");
+    showToast("Paramètres sauvegardés !");
 });
 
 };
@@ -6437,7 +6493,7 @@ function saveAppSettings(message = "Paramètres sauvegardés !") {
     })
     .catch(error => {
         console.log("Erreur sauvegarde :", error);
-        alert("Erreur pendant la sauvegarde");
+        showToast("Erreur pendant la sauvegarde");
     });
 }
 
@@ -6970,7 +7026,7 @@ if (saveWebcamSimple) {
         .then(response => response.json())
         .then(() => {
 
-            alert("Cadre webcam sauvegardé !");
+            showToast("Cadre webcam sauvegardé !");
 
         });
 
@@ -7074,7 +7130,7 @@ if (saveWebcamCustom) {
         })
         .then(response => response.json())
         .then(() => {
-            alert("Cadre personnalisé sauvegardé !");
+            showToast("Cadre personnalisé sauvegardé !");
         });
 
     };
@@ -7339,7 +7395,7 @@ barColor:
                 frame.src = "/overlay/likes-goal?t=" + Date.now();
             }
 
-            alert("Objectif Likes sauvegardé !");
+            showToast("Objectif Likes sauvegardé !");
 
         });
 
@@ -7454,7 +7510,7 @@ if (saveDiamondsGoal) {
                 frame.src = "/overlay/diamonds-goal?t=" + Date.now();
             }
 
-            alert("Objectif Diamants sauvegardé !");
+            showToast("Objectif Diamants sauvegardé !");
 
         });
 
@@ -7650,7 +7706,7 @@ if (saveFollowGoal) {
                 frame.src = "/overlay/follow-goal?t=" + Date.now();
             }
 
-            alert("Objectif Abonnés sauvegardé !");
+            showToast("Objectif Abonnés sauvegardé !");
         });
 
     };
@@ -7747,7 +7803,7 @@ if (saveBanner) {
 
             refreshBannerPreview();
 
-            alert("Bannière sauvegardée !");
+            showToast("Bannière sauvegardée !");
 
         });
 
