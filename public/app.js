@@ -31,10 +31,56 @@ function copyToClipboard(text) {
     }
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        return navigator.clipboard.writeText(text);
+
+        return navigator.clipboard.writeText(text)
+            .catch(() => copyToClipboardLegacy(text));
+
     }
 
-    return Promise.reject(new Error("Aucune méthode de copie disponible"));
+    return copyToClipboardLegacy(text);
+
+}
+
+/*
+   Dernier recours : méthode historique (fonctionne même quand
+   l'API moderne du presse-papier est bloquée par le navigateur,
+   par manque de focus ou de permission).
+*/
+function copyToClipboardLegacy(text) {
+
+    return new Promise((resolve, reject) => {
+
+        try {
+
+            const textarea =
+                document.createElement("textarea");
+
+            textarea.value = text;
+            textarea.style.position = "fixed";
+            textarea.style.left = "-9999px";
+            textarea.style.top = "0";
+
+            document.body.appendChild(textarea);
+
+            textarea.focus();
+            textarea.select();
+
+            const success =
+                document.execCommand("copy");
+
+            document.body.removeChild(textarea);
+
+            if (success) {
+                resolve();
+            } else {
+                reject(new Error("execCommand a échoué"));
+            }
+
+        } catch (error) {
+            reject(error);
+        }
+
+    });
 
 }
 
