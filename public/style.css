@@ -994,12 +994,21 @@ h1 {
 }
 
 .overlayGameCard{
-    background: #47443daf;
-    border: 1px solid #07cdff;
-    border-radius: 10px;
+    background:
+        radial-gradient(circle at 0% 0%, rgba(0,242,234,0.08), transparent 30%),
+        rgba(18,24,35,0.96);
+    border: 1px solid rgba(0,242,234,0.28);
+    border-radius: 14px;
     padding: 18px;
     text-align: center;
     box-sizing: border-box;
+}
+
+.overlayGameCard h3{
+    background:linear-gradient(90deg,#22d3ee,#a855f7,#ec4899);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
 }
 
 .coinMatchPreview{
@@ -1956,14 +1965,20 @@ select:focus {
 }
 
 .webcamFrameCard{
-    border:1px solid #ff2d67;
-    border-radius:10px;
+    border:1px solid rgba(0,242,234,0.28);
+    border-radius:14px;
     padding:20px;
-    background:#202020;
+    background:
+        radial-gradient(circle at 0% 0%, rgba(0,242,234,0.08), transparent 30%),
+        rgba(18,24,35,0.96);
 }
 
 .webcamFrameCard h3{
-    color:#35cfff;
+    color:#00f2ea;
+    background:linear-gradient(90deg,#22d3ee,#a855f7,#ec4899);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
 }
 
 .webcamFrameCard input{
@@ -1973,10 +1988,12 @@ select:focus {
 .webcamPreview{
     margin-top:15px;
     height:220px;
-    border:1px solid #444;
+    border:1px solid rgba(255,255,255,0.09);
+    border-radius:12px;
     display:flex;
     align-items:center;
     justify-content:center;
+    background:#05060f;
 }
 
 .webcamFramesGrid{
@@ -1986,16 +2003,17 @@ select:focus {
 }
 
 .webcamFrameCard{
-    background:#202020;
-    border:1px solid #ff2d67;
-    border-radius:12px;
+    border:1px solid rgba(0,242,234,0.28);
+    border-radius:14px;
     padding:20px;
+    background:
+        radial-gradient(circle at 0% 0%, rgba(0,242,234,0.08), transparent 30%),
+        rgba(18,24,35,0.96);
      width:100%;
     box-sizing:border-box;
 }
 
 .webcamFrameCard h3{
-    color:#35cfff;
     margin-bottom:15px;
 }
 
@@ -2007,7 +2025,8 @@ select:focus {
 .webcamPreview{
     margin-top:15px;
     height:250px;
-    border:1px solid #444;
+    border:1px solid rgba(255,255,255,0.09);
+    border-radius:12px;
     border-radius:8px;
     display:flex;
     align-items:center;
