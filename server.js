@@ -1790,6 +1790,8 @@ app.post("/connect-tiktok", async (req, res) => {
             username
         );
 
+        reconnectAttemptsByClient.set(clientId, 0);
+
         liveSessionStatsByClient.set(clientId, {
             connected: true,
             username: username,
@@ -2073,6 +2075,81 @@ function emitLiveStats(clientId) {
     emitToCreatorPilotClient(clientId, "liveStats", getLiveSessionStats(clientId));
 }
 
+const reconnectAttemptsByClient = new Map();
+
+function attemptTikTokReconnect(clientId) {
+
+    const username =
+        tiktokUsernames.get(clientId);
+
+    if (!username) {
+        return;
+    }
+
+    const attempts =
+        (reconnectAttemptsByClient.get(clientId) || 0) + 1;
+
+    reconnectAttemptsByClient.set(clientId, attempts);
+
+    if (attempts > 10) {
+        console.log(
+            "Reconnexion TikTok abandonnée pour", clientId,
+            "après 10 tentatives — reconnexion manuelle nécessaire"
+        );
+        return;
+    }
+
+    const delay =
+        Math.min(60000, 5000 * attempts);
+
+    console.log(
+        "Nouvelle tentative de reconnexion TikTok dans",
+        Math.round(delay / 1000) + "s",
+        "(essai", attempts + "/10)"
+    );
+
+    setTimeout(async () => {
+
+        try {
+
+            const connection =
+                new WebcastPushConnection(username);
+
+            bindTikTokEvents(connection, clientId);
+
+            const state =
+                await connection.connect();
+
+            tiktokConnections.set(clientId, connection);
+
+            const stats =
+                getLiveSessionStats(clientId);
+
+            stats.connected = true;
+            emitLiveStats(clientId);
+
+            reconnectAttemptsByClient.set(clientId, 0);
+
+            console.log(
+                "Reconnexion TikTok réussie pour", clientId,
+                "Room ID :", state.roomId
+            );
+
+        } catch (error) {
+
+            console.log(
+                "Échec reconnexion TikTok pour", clientId, ":",
+                error.message
+            );
+
+            attemptTikTokReconnect(clientId);
+
+        }
+
+    }, delay);
+
+}
+
 function bindTikTokEvents(tiktokConnection, clientId) {
 
 
@@ -2085,6 +2162,7 @@ function bindTikTokEvents(tiktokConnection, clientId) {
         console.log("TikTok LIVE déconnecté (stream terminé ou coupure)");
         getLiveSessionStats(clientId).connected = false;
         emitLiveStats(clientId);
+        attemptTikTokReconnect(clientId);
     });
 
     tiktokConnection.on("chat", data => {
@@ -2112,7 +2190,7 @@ function bindTikTokEvents(tiktokConnection, clientId) {
 
     tiktokConnection.on("gift", data => {
 
-        console.log("GIFT REÇU :", data.nickname, data.giftName, data.diamondCount);
+        console.log("GIFT REÇU :", data.nickname, data.giftName, data.diamondCount, "repeatCount:", data.repeatCount, "repeatEnd:", data.repeatEnd, "giftType:", data.giftType);
 
         const giftName =
             data.giftName || data.gift?.name || "gift";
@@ -2120,19 +2198,27 @@ function bindTikTokEvents(tiktokConnection, clientId) {
         const user =
             data.nickname || data.uniqueId || "user";
 
-        const giftKey =
-            user + "-" + giftName;
+        /*
+           Gestion des combos TikTok (ex: 20 roses envoyées d'affilée) :
+           pour un cadeau "streakable" (giftType === 1), TikTok envoie
+           un événement à chaque incrément du combo, avec repeatEnd à
+           false jusqu'au dernier. On attend la fin du combo pour ne
+           compter qu'UNE fois le total réel (diamondCount * repeatCount),
+           au lieu de traiter chaque étape comme un cadeau séparé.
+        */
+        const isStreakable =
+            data.giftType === 1;
 
-        const now = Date.now();
+        const comboFinished =
+            data.repeatEnd !== false;
 
-        if (
-            recentGifts[giftKey] &&
-            now - recentGifts[giftKey] < 5000
-        ) {
+        if (isStreakable && !comboFinished) {
             return;
         }
 
-        recentGifts[giftKey] = now;
+        const totalDiamonds =
+            Number(data.diamondCount || 0) *
+            Number(data.repeatCount || 1);
 
         const matchingSoundAlert =
     (getClientSettings(clientId).soundAlerts || [])
@@ -2171,7 +2257,7 @@ if (wheelToTrigger) {
 }
 
        const giftCoinsForChrono =
-    Number(data.diamondCount || 0);
+    totalDiamonds;
 
 const clientChronoForGift =
     getClientChrono(clientId);
@@ -2196,7 +2282,7 @@ if (
         if (clientCoinMatch.active) {
 
     const coins =
-    Number(data.diamondCount || 0);
+    totalDiamonds;
 
 const avatar =
     data.profilePictureUrl ||
@@ -2224,7 +2310,7 @@ const clientGiftBattle =
 if (clientGiftBattle.active) {
 
     const coins =
-        Number(data.diamondCount || 0);
+        totalDiamonds;
 
     if (coins > 0) {
 
@@ -2255,7 +2341,7 @@ if (clientGiftBattle.active) {
         }
 
         clientTopDonors[user].diamonds +=
-            Number(data.diamondCount || 0);
+            totalDiamonds;
 
         if (donorAvatar) {
             clientTopDonors[user].avatar = donorAvatar;
@@ -2267,7 +2353,7 @@ if (clientGiftBattle.active) {
             getLiveSessionStats(clientId);
 
         clientLiveStats.gifts += 1;
-        clientLiveStats.diamonds += Number(data.diamondCount || 0);
+        clientLiveStats.diamonds += totalDiamonds;
         emitLiveStats(clientId);
 
         checkGoalAnnouncement(
@@ -2277,13 +2363,13 @@ if (clientGiftBattle.active) {
             getClientSettings(clientId).diamondsGoal
         );
 
-        addToCoinJar(clientId, Number(data.diamondCount || 0));
+        addToCoinJar(clientId, totalDiamonds);
 
 emitToCreatorPilotClient(clientId, "gift", {
             user: user,
             gift: giftName,
             giftId: data.giftId,
-            diamonds: data.diamondCount,
+            diamonds: totalDiamonds,
             giftImage: data.giftPictureUrl
         });
 
