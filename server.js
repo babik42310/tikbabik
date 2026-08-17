@@ -7546,6 +7546,9 @@ app.post("/api/live-assistant/reset", async (req, res) => {
 
 
 
-server.listen(3000, () => {
-    console.log("CreatorPilot lancé");
+const CP_PORT =
+    process.env.PORT || 3000;
+
+server.listen(CP_PORT, () => {
+    console.log("CreatorPilot lancé sur le port " + CP_PORT);
 });
