@@ -4836,6 +4836,24 @@ function renderLiveStats() {
 
     }
 
+    const heroVisual =
+        document.getElementById("cpHeroVisual");
+
+    const liveChatFeed =
+        document.getElementById("cpLiveChatFeed");
+
+    if (heroVisual && liveChatFeed) {
+
+        if (s.connected) {
+            heroVisual.style.display = "none";
+            liveChatFeed.style.display = "flex";
+        } else {
+            heroVisual.style.display = "";
+            liveChatFeed.style.display = "none";
+        }
+
+    }
+
 }
 
 fetch("/live-stats")
@@ -5069,6 +5087,25 @@ socket.on("chat", data => {
     div.className = "message";
     div.innerHTML = `<strong>${user}</strong> : ${message}`;
     messages.prepend(div);
+
+    const liveChatMessages =
+        document.getElementById("cpLiveChatMessages");
+
+    if (liveChatMessages) {
+
+        const feedMsg =
+            document.createElement("div");
+
+        feedMsg.className = "cpLiveChatMsg";
+        feedMsg.innerHTML = `<b>${user}</b>${message}`;
+
+        liveChatMessages.appendChild(feedMsg);
+
+        while (liveChatMessages.children.length > 8) {
+            liveChatMessages.removeChild(liveChatMessages.firstChild);
+        }
+
+    }
 
     playTtsMessage(message, data);
 });
