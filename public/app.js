@@ -2585,6 +2585,12 @@ function addSoundAlertRow(data = {}) {
     data-filename="${data.sound || ""}">
     ${data.sound || ""}
 </div>
+
+<div style="margin-top:6px;display:flex;gap:6px;align-items:center;">
+    <a href="https://www.myinstants.com/fr/search/?name=tiktok" target="_blank" style="font-size:12px;">🔗 MyInstants</a>
+    <input type="text" class="soundUrlInput" placeholder="Coller un lien de son..." style="font-size:11px;padding:4px;width:110px;">
+    <button type="button" class="soundUrlAddButton" style="font-size:11px;padding:4px 6px;">Ajouter</button>
+</div>
         </td>
 
         <td>
@@ -2634,6 +2640,65 @@ const soundInput =
 
 const soundFileName =
     row.querySelector(".soundFileName");
+
+const soundUrlInput =
+    row.querySelector(".soundUrlInput");
+
+const soundUrlAddButton =
+    row.querySelector(".soundUrlAddButton");
+
+if (soundUrlAddButton) {
+
+    soundUrlAddButton.onclick = async () => {
+
+        const url =
+            soundUrlInput.value.trim();
+
+        if (!url) {
+            alert("Colle d'abord un lien de son.");
+            return;
+        }
+
+        soundUrlAddButton.textContent = "...";
+        soundUrlAddButton.disabled = true;
+
+        try {
+
+            const response =
+                await fetch("/upload-sound-from-url", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ url })
+                });
+
+            const result =
+                await response.json();
+
+            if (!result.success) {
+                alert("Échec : " + (result.error || "erreur inconnue"));
+                return;
+            }
+
+            soundFileName.innerText =
+                result.filename;
+
+            soundFileName.dataset.filename =
+                result.filename;
+
+            soundUrlInput.value = "";
+
+            alert("Son ajouté : " + result.filename);
+
+        } catch (error) {
+            alert("Impossible de télécharger ce lien.");
+        } finally {
+            soundUrlAddButton.textContent = "Ajouter";
+            soundUrlAddButton.disabled = false;
+        }
+
+    };
+
+}
 
     const keyButton =
     row.querySelector(".selectKeyButton");

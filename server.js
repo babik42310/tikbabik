@@ -617,6 +617,74 @@ app.post("/upload", upload.single("file"), (req, res) => {
 
 });
 
+app.post("/upload-sound-from-url", express.json(), async (req, res) => {
+
+    try {
+
+        const soundUrl =
+            req.body.url;
+
+        if (!soundUrl || !/^https?:\/\//i.test(soundUrl)) {
+            return res.status(400).json({
+                success: false,
+                error: "Lien invalide"
+            });
+        }
+
+        const response =
+            await fetch(soundUrl);
+
+        if (!response.ok) {
+            return res.status(400).json({
+                success: false,
+                error: "Impossible de télécharger ce lien (code " + response.status + ")"
+            });
+        }
+
+        const contentType =
+            response.headers.get("content-type") || "";
+
+        if (!contentType.includes("audio")) {
+            return res.status(400).json({
+                success: false,
+                error: "Ce lien ne pointe pas vers un fichier audio"
+            });
+        }
+
+        const buffer =
+            Buffer.from(await response.arrayBuffer());
+
+        let extension = "mp3";
+
+        if (contentType.includes("wav")) extension = "wav";
+        if (contentType.includes("ogg")) extension = "ogg";
+
+        const safeName =
+            "web-" + Date.now() + "." + extension;
+
+        fs.writeFileSync(
+            path.join(soundsDir, safeName),
+            buffer
+        );
+
+        res.json({
+            success: true,
+            filename: safeName
+        });
+
+    } catch (error) {
+
+        console.log("ERREUR TÉLÉCHARGEMENT SON :", error);
+
+        res.status(500).json({
+            success: false,
+            error: "Échec du téléchargement : " + error.message
+        });
+
+    }
+
+});
+
 /* STATS */
 
 let stats = {
@@ -780,6 +848,112 @@ function saveClientSettings(sessionId, data) {
 }
 
 const chatBotCooldowns = {};
+
+/*
+   ============================================================
+   FILE D'ATTENTE MUSICALE (demandes via cadeau + message chat)
+   ============================================================
+*/
+
+const musicQueueByClient = new Map();
+const musicWaitingByClient = new Map();
+
+function getClientMusicQueue(clientId) {
+    if (!musicQueueByClient.has(clientId)) {
+        musicQueueByClient.set(clientId, []);
+    }
+    return musicQueueByClient.get(clientId);
+}
+
+function getClientMusicWaiting(clientId) {
+    if (!musicWaitingByClient.has(clientId)) {
+        musicWaitingByClient.set(clientId, new Map());
+    }
+    return musicWaitingByClient.get(clientId);
+}
+
+function handleMusicGift(clientId, data, diamondCount) {
+
+    const musicSettings =
+        getClientSettings(clientId).musicQueue;
+
+    if (!musicSettings || !musicSettings.enabled) {
+        return;
+    }
+
+    const minDiamonds =
+        Number(musicSettings.minDiamonds || 1);
+
+    if (diamondCount < minDiamonds) {
+        return;
+    }
+
+    const user =
+        data.nickname || "Utilisateur";
+
+    const waiting =
+        getClientMusicWaiting(clientId);
+
+    waiting.set(user, {
+        avatar: data.profilePictureUrl || data.profilePicture || "",
+        expiresAt: Date.now() + (Number(musicSettings.windowSeconds || 30) * 1000)
+    });
+
+}
+
+function handleMusicChatMessage(clientId, data) {
+
+    const musicSettings =
+        getClientSettings(clientId).musicQueue;
+
+    if (!musicSettings || !musicSettings.enabled) {
+        return;
+    }
+
+    const user =
+        data.nickname || "Utilisateur";
+
+    const waiting =
+        getClientMusicWaiting(clientId);
+
+    const entry =
+        waiting.get(user);
+
+    if (!entry) {
+        return;
+    }
+
+    if (Date.now() > entry.expiresAt) {
+        waiting.delete(user);
+        return;
+    }
+
+    const song =
+        String(data.comment || "").trim().slice(0, 120);
+
+    if (!song) {
+        return;
+    }
+
+    waiting.delete(user);
+
+    const queue =
+        getClientMusicQueue(clientId);
+
+    queue.push({
+        user,
+        song,
+        avatar: entry.avatar,
+        addedAt: Date.now()
+    });
+
+    if (queue.length > 50) {
+        queue.shift();
+    }
+
+    emitToCreatorPilotClient(clientId, "musicQueueUpdated", queue);
+
+}
 
 function handleChatBotCommand(data, clientId) {
 
