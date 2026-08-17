@@ -479,7 +479,9 @@ const wheelCopyUrl =
 if (wheelCopyUrl) {
     wheelCopyUrl.onclick = async () => {
         const url =
-            window.location.origin + "/overlay/action-wheel";
+            window.location.origin +
+            "/overlay/action-wheel?client=" +
+            getCreatorPilotClientId();
 
         try {
     await navigator.clipboard.writeText(url);
@@ -1293,7 +1295,9 @@ if (chronoStart) {
 if (chronoCopyUrl) {
     chronoCopyUrl.onclick = async () => {
         const url =
-            window.location.origin + "/overlay/chrono";
+            window.location.origin +
+            "/overlay/chrono?client=" +
+            getCreatorPilotClientId();
 
         try {
     await navigator.clipboard.writeText(url);
@@ -1726,7 +1730,8 @@ if (topDonorsCopyUrl) {
 
         const url =
             window.location.origin +
-            "/overlay/top-donors";
+            "/overlay/top-donors?client=" +
+            getCreatorPilotClientId();
 
         try {
             await navigator.clipboard.writeText(url);
@@ -1972,7 +1977,8 @@ if (topPresenceCopyUrl) {
 
         const url =
             window.location.origin +
-            "/overlay/top-presence";
+            "/overlay/top-presence?client=" +
+            getCreatorPilotClientId();
 
         try {
             await navigator.clipboard.writeText(url);
@@ -2885,7 +2891,8 @@ if (coinMatchCopyUrl) {
 
         const url =
             window.location.origin +
-            "/overlay/coin-match";
+            "/overlay/coin-match?client=" +
+            getCreatorPilotClientId();
 
         try {
             await navigator.clipboard.writeText(url);
@@ -3456,7 +3463,8 @@ topLikesCopyUrl.onclick = async () => {
 
     const url =
         window.location.origin +
-        "/overlay/top-likes";
+        "/overlay/top-likes?client=" +
+        getCreatorPilotClientId();
 
     try {
     await navigator.clipboard.writeText(url);
@@ -4048,7 +4056,8 @@ giftBattleCopyUrl.onclick = async () => {
 
     const url =
         window.location.origin +
-        "/overlay/gift-battle";
+        "/overlay/gift-battle?client=" +
+        getCreatorPilotClientId();
 
     try {
     await navigator.clipboard.writeText(url);
@@ -4760,13 +4769,42 @@ setInterval(renderLiveStats, 1000);
 
 /* ==================== ANNONCE VOCALE D'OBJECTIF ATTEINT ==================== */
 
+function announceGoalMessage(text) {
+
+    if (!text) {
+        return;
+    }
+
+    const tts =
+        appSettings.ttsChat || {};
+
+    const speech =
+        new SpeechSynthesisUtterance(text);
+
+    speech.lang =
+        tts.language === "English (US)"
+            ? "en-US"
+            : "fr-FR";
+
+    speech.volume =
+        Number(tts.volume || 100) / 100;
+
+    speech.rate =
+        Number(tts.speed || 50) / 50;
+
+    ttsQueue.push({ speech });
+
+    processTtsQueue();
+
+}
+
 socket.on("goalReached", data => {
 
     if (!data || !data.message) {
         return;
     }
 
-    playTtsMessage(data.message, { nickname: "CreatorPilot" });
+    announceGoalMessage(data.message);
 
 });
 
@@ -6504,6 +6542,13 @@ document.querySelectorAll(".copyOverlayUrl").forEach(button => {
 
         let url =
             input.value;
+
+        if (!url.includes("client=")) {
+            url +=
+                (url.includes("?") ? "&" : "?") +
+                "client=" +
+                getCreatorPilotClientId();
+        }
 
         if (url.startsWith("/")) {
             url =
