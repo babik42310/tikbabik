@@ -5,6 +5,39 @@ const socket = io();
    peuvent geler l'app dans Electron si elles ne s'affichent pas
    correctement à l'écran).
 */
+/*
+   Copie dans le presse-papier robuste pour Electron : utilise le
+   module natif d'Electron en priorité (ne dépend pas du focus de
+   la fenêtre, contrairement à navigator.clipboard), avec repli
+   sur l'API web si l'app tourne dans un vrai navigateur.
+*/
+function copyToClipboard(text) {
+
+    try {
+
+        if (typeof require === "function") {
+
+            const electron = require("electron");
+
+            if (electron && electron.clipboard) {
+                electron.clipboard.writeText(text);
+                return Promise.resolve();
+            }
+
+        }
+
+    } catch (error) {
+        // Pas dans Electron (ou module indisponible) : on continue vers le repli web.
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+    }
+
+    return Promise.reject(new Error("Aucune méthode de copie disponible"));
+
+}
+
 function showToast(message) {
 
     let container =
@@ -561,7 +594,7 @@ if (wheelCopyUrl) {
             getCreatorPilotClientId();
 
         try {
-    await navigator.clipboard.writeText(url);
+    await copyToClipboard(url);
     alert("URL copiée : " + url);
 } catch (error) {
     alert("Impossible de copier automatiquement.\n\nURL : " + url);
@@ -1345,7 +1378,7 @@ if (socialCopyUrlButton) {
             window.location.origin + "/overlay/social-panel";
 
         try {
-    await navigator.clipboard.writeText(url);
+    await copyToClipboard(url);
     alert("URL copiée : " + url);
 } catch (error) {
     alert("Impossible de copier automatiquement.\n\nURL : " + url);
@@ -1377,7 +1410,7 @@ if (chronoCopyUrl) {
             getCreatorPilotClientId();
 
         try {
-    await navigator.clipboard.writeText(url);
+    await copyToClipboard(url);
     alert("URL Chrono copiée : " + url);
 } catch (error) {
     alert("Impossible de copier automatiquement.\n\nURL : " + url);
@@ -1811,7 +1844,7 @@ if (topDonorsCopyUrl) {
             getCreatorPilotClientId();
 
         try {
-            await navigator.clipboard.writeText(url);
+            await copyToClipboard(url);
             alert("URL copiée : " + url);
         } catch (error) {
             alert("Impossible de copier automatiquement.\n\nURL : " + url);
@@ -2058,7 +2091,7 @@ if (topPresenceCopyUrl) {
             getCreatorPilotClientId();
 
         try {
-            await navigator.clipboard.writeText(url);
+            await copyToClipboard(url);
             alert("URL copiée : " + url);
         } catch (error) {
             alert("Impossible de copier automatiquement.\n\nURL : " + url);
@@ -3037,7 +3070,7 @@ if (coinMatchCopyUrl) {
             getCreatorPilotClientId();
 
         try {
-            await navigator.clipboard.writeText(url);
+            await copyToClipboard(url);
             alert("URL copiée : " + url);
         } catch (error) {
     alert("Impossible de copier automatiquement.\n\nURL : " + url);
@@ -3609,7 +3642,7 @@ topLikesCopyUrl.onclick = async () => {
         getCreatorPilotClientId();
 
     try {
-    await navigator.clipboard.writeText(url);
+    await copyToClipboard(url);
     alert("URL copiée : " + url);
 } catch (error) {
     alert("Impossible de copier automatiquement.\n\nURL : " + url);
@@ -4202,7 +4235,7 @@ giftBattleCopyUrl.onclick = async () => {
         getCreatorPilotClientId();
 
     try {
-    await navigator.clipboard.writeText(url);
+    await copyToClipboard(url);
     alert("URL copiée : " + url);
 } catch (error) {
     alert("Impossible de copier automatiquement.\n\nURL : " + url);
@@ -6852,7 +6885,7 @@ document.querySelectorAll(".copyOverlayUrl").forEach(button => {
                 window.location.origin + url;
         }
 
-        navigator.clipboard.writeText(url)
+        copyToClipboard(url)
     .then(() => {
         alert("URL copiée : " + url);
     })
@@ -7862,7 +7895,7 @@ if (url.startsWith("/")) {
     url = window.location.origin + url;
 }
 
-navigator.clipboard.writeText(url)
+copyToClipboard(url)
     .then(() => {
         alert("URL copiée : " + url);
     })
