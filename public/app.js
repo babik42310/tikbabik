@@ -2941,7 +2941,13 @@ const audio =
             row.querySelector(".soundVolumeSlider")?.value || 100
         ) / 100;
 
-    audio.play();
+    audio.play()
+        .then(() => {
+            console.log("✅ Lecture du son réussie :", sound);
+        })
+        .catch(error => {
+            console.log("❌ ERREUR LECTURE SON :", sound, "→", error.name, "-", error.message);
+        });
 
 };
 
