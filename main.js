@@ -15,7 +15,7 @@ function createWindow() {
         }
     });
 
-win.loadURL("http://localhost:3000");
+win.loadURL("https://www.tikbabik.shop");
 
 autoUpdater.checkForUpdatesAndNotify();
 
@@ -25,14 +25,7 @@ app.whenReady().then(() => {
 
     process.env.ELECTRON_APP = "true";
 
-    if (!process.env.SERVER_ALREADY_STARTED) {
-    process.env.SERVER_ALREADY_STARTED = "true";
-    require("./server.js");
-}
-
-    setTimeout(() => {
-        createWindow();
-    }, 2000);
+    createWindow();
 
 });
 autoUpdater.on("checking-for-update", () => {
