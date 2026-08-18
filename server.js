@@ -1774,7 +1774,12 @@ app.post("/connect-tiktok", async (req, res) => {
         }
 
         const connection =
-            new WebcastPushConnection(username);
+            new WebcastPushConnection(
+                username,
+                process.env.EULER_API_KEY
+                    ? { signApiKey: process.env.EULER_API_KEY }
+                    : {}
+            );
 
         bindTikTokEvents(
             connection,
@@ -1793,6 +1798,8 @@ app.post("/connect-tiktok", async (req, res) => {
             clientId,
             username
         );
+
+        lastActiveClientId = clientId;
 
         reconnectAttemptsByClient.set(clientId, 0);
 
@@ -2117,7 +2124,12 @@ function attemptTikTokReconnect(clientId) {
         try {
 
             const connection =
-                new WebcastPushConnection(username);
+                new WebcastPushConnection(
+                    username,
+                    process.env.EULER_API_KEY
+                        ? { signApiKey: process.env.EULER_API_KEY }
+                        : {}
+                );
 
             bindTikTokEvents(connection, clientId);
 
@@ -3104,10 +3116,36 @@ console.log(
    l'URL, utilisé par les boutons "Copier URL" du tableau de
    bord pour que chaque overlay reste lié au bon client même
    ouvert ailleurs.
+
+   En local (PC du créateur, pas d'hébergement distant), il n'y a
+   qu'un seul utilisateur réel : si aucun identifiant n'est fourni
+   du tout (ni cookie, ni ?client=), on retombe sur le dernier
+   client qui s'est connecté à TikTok. Ça permet de coller des
+   liens courts (sans ?client=...) dans des logiciels comme TikTok
+   LIVE Studio, dont le champ URL refuse parfois les adresses avec
+   un point d'interrogation. Cette astuce ne s'applique jamais sur
+   un hébergement distant (Railway...), où plusieurs vrais clients
+   différents pourraient se marcher dessus.
    ============================================================
 */
+
+let lastActiveClientId = null;
+
 function resolveClientId(req) {
-    return req.query.client || req.cpSessionId;
+
+    if (req.query.client) {
+        return req.query.client;
+    }
+
+    if (req.cpSessionId) {
+        return req.cpSessionId;
+    }
+
+    if (!process.env.PORT && lastActiveClientId) {
+        return lastActiveClientId;
+    }
+
+    return req.cpSessionId;
 }
 
 const rankingsByClient = new Map();
