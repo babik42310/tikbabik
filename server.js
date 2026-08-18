@@ -2102,21 +2102,21 @@ function attemptTikTokReconnect(clientId) {
 
     reconnectAttemptsByClient.set(clientId, attempts);
 
-    if (attempts > 10) {
+    if (attempts > 5) {
         console.log(
             "Reconnexion TikTok abandonnée pour", clientId,
-            "après 10 tentatives — reconnexion manuelle nécessaire"
+            "après 5 tentatives — reconnexion manuelle nécessaire"
         );
         return;
     }
 
     const delay =
-        Math.min(60000, 5000 * attempts);
+        Math.min(180000, 15000 * attempts);
 
     console.log(
         "Nouvelle tentative de reconnexion TikTok dans",
         Math.round(delay / 1000) + "s",
-        "(essai", attempts + "/10)"
+        "(essai", attempts + "/5)"
     );
 
     setTimeout(async () => {
