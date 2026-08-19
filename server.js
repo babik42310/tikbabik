@@ -12,7 +12,9 @@ const path = require("path");
 const DATA_DIR =
     process.env.APPDATA
         ? path.join(process.env.APPDATA, "CreatorPilot")
-        : __dirname;
+        : process.env.RAILWAY_VOLUME_MOUNT_PATH
+            ? process.env.RAILWAY_VOLUME_MOUNT_PATH
+            : __dirname;
 
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
