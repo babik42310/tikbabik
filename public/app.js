@@ -6893,6 +6893,8 @@ featureRequestButton.onclick = () => {
 
 signOutButton.onclick = () => {
 
+    fetch("/logout", { method: "POST" }).catch(() => {});
+
     localStorage.removeItem("tikbabikUser");
 
     appSettings.pro = false;
