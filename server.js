@@ -1673,15 +1673,85 @@ app.get("/mobile", (req, res) => {
     );
 });
 
+/*
+   ============================================================
+   LIMITEUR DE DÉBIT — protège les routes qui coûtent de l'argent
+   ou consomment un quota partagé (OpenAI, connexion TikTok/Euler
+   Stream) contre les appels automatisés ou abusifs.
+   ============================================================
+*/
+
+const rateLimitHitsByKey = new Map();
+
+function isRateLimited(key, maxRequests, windowMs) {
+
+    const now = Date.now();
+
+    const hits =
+        (rateLimitHitsByKey.get(key) || [])
+            .filter(timestamp => now - timestamp < windowMs);
+
+    if (hits.length >= maxRequests) {
+        rateLimitHitsByKey.set(key, hits);
+        return true;
+    }
+
+    hits.push(now);
+    rateLimitHitsByKey.set(key, hits);
+
+    return false;
+
+}
+
+setInterval(() => {
+
+    const now = Date.now();
+
+    rateLimitHitsByKey.forEach((hits, key) => {
+
+        const stillValid =
+            hits.filter(timestamp => now - timestamp < 600000);
+
+        if (stillValid.length === 0) {
+            rateLimitHitsByKey.delete(key);
+        } else {
+            rateLimitHitsByKey.set(key, stillValid);
+        }
+
+    });
+
+}, 300000);
+
 app.post("/tts/openai", async (req, res) => {
 
     try {
 
+        const clientId =
+            req.cpSessionId || req.ip;
+
+        if (isRateLimited("tts:" + clientId, 20, 60000)) {
+            return res.status(429).json({
+                error: "Trop de demandes de synthèse vocale, réessaie dans une minute."
+            });
+        }
+
+        if (isRateLimited("tts:ip:" + req.ip, 40, 60000)) {
+            return res.status(429).json({
+                error: "Trop de demandes de synthèse vocale depuis cette adresse."
+            });
+        }
+
         const text =
-            req.body.text || "";
+            (req.body.text || "").slice(0, 500);
 
         const voice =
             req.body.voice || "alloy";
+
+        if (!text.trim()) {
+            return res.status(400).json({
+                error: "Texte manquant"
+            });
+        }
 
         if (!process.env.OPENAI_API_KEY) {
             return res.status(500).json({
@@ -1795,6 +1865,20 @@ app.post("/connect-tiktok", async (req, res) => {
     const clientId =
         String(req.body.clientId || "")
             .trim();
+
+    if (isRateLimited("connect:" + (clientId || req.ip), 6, 60000)) {
+        return res.status(429).json({
+            success: false,
+            error: "Trop de tentatives de connexion TikTok, réessaie dans une minute."
+        });
+    }
+
+    if (isRateLimited("connect:ip:" + req.ip, 15, 60000)) {
+        return res.status(429).json({
+            success: false,
+            error: "Trop de tentatives de connexion TikTok depuis cette adresse."
+        });
+    }
 
     try {
 
