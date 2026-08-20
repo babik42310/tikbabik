@@ -25,6 +25,8 @@ const RESET_TOKENS_FILE =
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 const STATS_FILE = path.join(DATA_DIR, "stats.json");
 const RANKINGS_FILE = path.join(DATA_DIR, "rankings.json");
+const LEGACY_SETTINGS_CLAIM_FILE = path.join(DATA_DIR, ".creatorpilot-legacy-settings-claimed");
+const LEGACY_STATS_CLAIM_FILE = path.join(DATA_DIR, ".creatorpilot-legacy-stats-claimed");
 const Stripe = require("stripe");
 const { Pool } = require("pg");
 
@@ -37,6 +39,26 @@ const pool = new Pool({
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000
 });
+
+/* ============================================================
+   IDENTITÉ PERSISTANTE PAR COMPTE
+   ============================================================ */
+const clientOwnerKeyByClientId = new Map();
+const userIdByOwnerKey = new Map();
+const loadedPersistentOwnerKeys = new Set();
+
+function userOwnerKey(userId) {
+    return "user:" + String(userId);
+}
+
+function canonicalClientKey(clientId) {
+    const raw = String(clientId || "").trim();
+    return clientOwnerKeyByClientId.get(raw) || raw;
+}
+
+function userIdFromOwnerKey(ownerKey) {
+    return userIdByOwnerKey.get(ownerKey) || null;
+}
 
 async function initDatabase() {
     await pool.query(`
@@ -90,6 +112,41 @@ async function initDatabase() {
             created_at TIMESTAMP DEFAULT NOW()
         )
     `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS creatorpilot_user_state (
+            user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            settings JSONB NOT NULL DEFAULT '{}'::jsonb,
+            stats JSONB NOT NULL DEFAULT '{"topGifters":{},"giftHistory":[]}'::jsonb,
+            rankings JSONB NOT NULL DEFAULT '{"topLikes":{},"topDonors":{},"topPresence":{}}'::jsonb,
+            live_stats JSONB NOT NULL DEFAULT '{"connected":false,"username":"","startTime":null,"likes":0,"followers":0,"gifts":0,"diamonds":0}'::jsonb,
+            points_state JSONB NOT NULL DEFAULT '{"users":{},"transactions":[]}'::jsonb,
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS creatorpilot_client_bindings (
+            client_id TEXT PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    `);
+
+    const bindings = await pool.query(
+        "SELECT client_id, user_id FROM creatorpilot_client_bindings"
+    );
+
+    bindings.rows.forEach(row => {
+        const ownerKey = userOwnerKey(row.user_id);
+        clientOwnerKeyByClientId.set(row.client_id, ownerKey);
+        userIdByOwnerKey.set(ownerKey, String(row.user_id));
+    });
+
+    const uniqueUserIds = [...new Set(bindings.rows.map(row => String(row.user_id)))];
+    for (const userId of uniqueUserIds) {
+        await ensurePersistentUserStateLoaded(userId);
+    }
 
     console.log("Base PostgreSQL prête");
 }
@@ -564,6 +621,25 @@ app.post(
 );
 app.use(express.json());
 
+/* Relie les requêtes authentifiées au user_id permanent. */
+app.use(async (req, res, next) => {
+    try {
+        const session = await getAuthSession(req);
+        if (session) {
+            req.authUser = session;
+            req.cpOwnerKey = userOwnerKey(session.userId);
+            await attachClientToUserAfterLogin(req, session.userId);
+        } else {
+            req.cpOwnerKey = req.cpSessionId;
+        }
+        next();
+    } catch (error) {
+        console.log("Erreur résolution propriétaire CreatorPilot :", error.message);
+        req.cpOwnerKey = req.cpSessionId;
+        next();
+    }
+});
+
 /* UPLOAD MEDIAS */
 const soundsDir =
     path.join(DATA_DIR, "sounds");
@@ -1013,27 +1089,85 @@ app.post("/upload-sound-from-url", express.json(), async (req, res) => {
 
 /* STATS */
 
-let stats = {
+let legacyStats = {
     topGifters: {},
     giftHistory: []
 };
 
 try {
-
-    stats = JSON.parse(
-        fs.readFileSync(STATS_FILE)
-    );
-
-    console.log("Statistiques chargées");
-
+    legacyStats = JSON.parse(fs.readFileSync(STATS_FILE));
+    console.log("Statistiques legacy chargées");
 } catch (error) {
-
     console.log("stats.json introuvable, statistiques vides");
+}
 
+const statsByClient = new Map();
+
+function cpStatsFilePath(clientId) {
+    return path.join(CP_SETTINGS_DIR, clientId + "-stats.json");
+}
+
+function claimLegacyStatsOnce() {
+    if (!fs.existsSync(STATS_FILE)) return null;
+
+    try {
+        fs.writeFileSync(LEGACY_STATS_CLAIM_FILE, new Date().toISOString(), { flag: "wx" });
+        return JSON.parse(JSON.stringify(legacyStats));
+    } catch (error) {
+        if (error.code !== "EEXIST") {
+            console.log("Erreur marqueur migration stats :", error.message);
+        }
+        return null;
+    }
+}
+
+function getClientStats(clientId) {
+    const ownerKey = canonicalClientKey(clientId);
+
+    if (statsByClient.has(ownerKey)) {
+        return statsByClient.get(ownerKey);
+    }
+
+    let data = { topGifters: {}, giftHistory: [] };
+
+    if (!userIdFromOwnerKey(ownerKey)) {
+        const filePath = cpStatsFilePath(ownerKey);
+        if (fs.existsSync(filePath)) {
+            try {
+                data = JSON.parse(fs.readFileSync(filePath, "utf8"));
+            } catch (error) {
+                console.log("Stats client illisibles pour", ownerKey, "- valeurs par défaut utilisées");
+            }
+        } else {
+            const legacy = claimLegacyStatsOnce();
+            if (legacy) {
+                data = legacy;
+                try {
+                    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+                } catch {}
+            }
+        }
+    }
+
+    statsByClient.set(ownerKey, data);
+    return data;
+}
+
+function saveClientStats(clientId, data) {
+    const ownerKey = canonicalClientKey(clientId);
+    statsByClient.set(ownerKey, data);
+
+    const userId = userIdFromOwnerKey(ownerKey);
+    if (userId) {
+        persistUserStateSection(userId, "stats", data);
+        return;
+    }
+
+    fs.writeFileSync(cpStatsFilePath(ownerKey), JSON.stringify(data, null, 2));
 }
 
 app.get("/stats", (req, res) => {
-    res.json(stats);
+    res.json(getClientStats(req.cpOwnerKey || resolveClientId(req)));
 });
 
 app.get("/live-stats", (req, res) => {
@@ -1041,18 +1175,8 @@ app.get("/live-stats", (req, res) => {
 });
 
 app.post("/stats", (req, res) => {
-
-    stats = req.body;
-
-    fs.writeFileSync(
-       STATS_FILE,
-        JSON.stringify(stats, null, 2)
-    );
-
-    res.json({
-        success: true
-    });
-
+    saveClientStats(req.cpOwnerKey || resolveClientId(req), req.body);
+    res.json({ success: true });
 });
 
 let settings = {
@@ -1133,44 +1257,89 @@ function cpSettingsFilePath(sessionId) {
     return path.join(CP_SETTINGS_DIR, sessionId + ".json");
 }
 
+function createFreshClientSettings() {
+    return {
+        voiceEnabled: true,
+        pro: false,
+        actions: [],
+        actionEvents: [],
+        soundAlerts: [],
+        soundsEnabled: true,
+        chatBot: {
+            enabled: true,
+            prefix: "!",
+            cooldownSeconds: 8,
+            commands: {
+                points: { enabled: true },
+                objectif: { enabled: true },
+                roue: { enabled: true }
+            }
+        }
+    };
+}
+
+function claimLegacySettingsOnce() {
+    if (!fs.existsSync(SETTINGS_FILE)) return null;
+
+    try {
+        fs.writeFileSync(LEGACY_SETTINGS_CLAIM_FILE, new Date().toISOString(), { flag: "wx" });
+        return JSON.parse(JSON.stringify(settings));
+    } catch (error) {
+        if (error.code !== "EEXIST") {
+            console.log("Erreur marqueur migration settings :", error.message);
+        }
+        return null;
+    }
+}
+
 function getClientSettings(sessionId) {
 
-    if (settingsByClient.has(sessionId)) {
-        return settingsByClient.get(sessionId);
+    const ownerKey = canonicalClientKey(sessionId);
+
+    if (settingsByClient.has(ownerKey)) {
+        return settingsByClient.get(ownerKey);
     }
 
-    const filePath =
-        cpSettingsFilePath(sessionId);
+    let clientSettings = createFreshClientSettings();
 
-    let clientSettings =
-        JSON.parse(JSON.stringify(settings));
-
-    if (fs.existsSync(filePath)) {
-
-        try {
-            clientSettings =
-                JSON.parse(fs.readFileSync(filePath, "utf8"));
-        } catch (error) {
-            console.log("Réglages client illisibles pour", sessionId, "- valeurs par défaut utilisées");
+    if (!userIdFromOwnerKey(ownerKey)) {
+        const filePath = cpSettingsFilePath(ownerKey);
+        if (fs.existsSync(filePath)) {
+            try {
+                clientSettings = JSON.parse(fs.readFileSync(filePath, "utf8"));
+            } catch (error) {
+                console.log("Réglages client illisibles pour", ownerKey, "- valeurs par défaut utilisées");
+            }
+        } else {
+            const legacy = claimLegacySettingsOnce();
+            if (legacy) {
+                clientSettings = legacy;
+                try {
+                    fs.writeFileSync(filePath, JSON.stringify(clientSettings, null, 2));
+                } catch {}
+            }
         }
-
     }
 
-    settingsByClient.set(sessionId, clientSettings);
-
+    settingsByClient.set(ownerKey, clientSettings);
     return clientSettings;
-
 }
 
 function saveClientSettings(sessionId, data) {
 
-    settingsByClient.set(sessionId, data);
+    const ownerKey = canonicalClientKey(sessionId);
+    settingsByClient.set(ownerKey, data);
+
+    const userId = userIdFromOwnerKey(ownerKey);
+    if (userId) {
+        persistUserStateSection(userId, "settings", data);
+        return;
+    }
 
     fs.writeFileSync(
-        cpSettingsFilePath(sessionId),
+        cpSettingsFilePath(ownerKey),
         JSON.stringify(data, null, 2)
     );
-
 }
 
 const chatBotCooldowns = {};
@@ -1630,7 +1799,7 @@ function handleMusicChatMessage(clientId, data) {
 
 function handleChatBotCommand(data, clientId) {
 
-    const cb = settings.chatBot;
+    const cb = getClientSettings(clientId).chatBot;
 
     if (!cb || !cb.enabled) {
         return;
@@ -1697,11 +1866,11 @@ function saveSettingsFile() {
 }
 
 app.get("/settings", (req, res) => {
-    res.json(getClientSettings(req.cpSessionId));
+    res.json(getClientSettings(req.cpOwnerKey || req.cpSessionId));
 });
 
 app.post("/settings", (req, res) => {
-    saveClientSettings(req.cpSessionId, req.body);
+    saveClientSettings(req.cpOwnerKey || req.cpSessionId, req.body);
 
     res.json({
         success: true
@@ -1709,151 +1878,98 @@ app.post("/settings", (req, res) => {
 });
 
 app.get("/api/mobile/status", (req, res) => {
+    const clientId = req.cpOwnerKey || resolveClientId(req);
+    const clientSettings = getClientSettings(clientId);
+
     res.json({
         success: true,
         app: "CreatorPilot",
-        version: "1.0.4",
-        tiktokUsername: settings.tiktokUsername || "",
-        pro: settings.pro === true,
-        ttsEnabled: settings.ttsChat?.enabled === true,
-        soundsEnabled: settings.soundsEnabled !== false,
-        soundAlerts: settings.soundAlerts?.length || 0
+        version: "2.0.7",
+        tiktokUsername: clientSettings.tiktokUsername || "",
+        pro: clientSettings.pro === true,
+        ttsEnabled: clientSettings.ttsChat?.enabled === true,
+        soundsEnabled: clientSettings.soundsEnabled !== false,
+        soundAlerts: clientSettings.soundAlerts?.length || 0
     });
 });
 
 app.post("/api/mobile/sounds/toggle", (req, res) => {
+    const clientId = req.cpOwnerKey || resolveClientId(req);
+    const clientSettings = getClientSettings(clientId);
 
-    settings.soundsEnabled =
-        settings.soundsEnabled === false;
+    clientSettings.soundsEnabled = clientSettings.soundsEnabled === false;
+    saveClientSettings(clientId, clientSettings);
 
-    saveSettingsFile();
-
-    res.json({
-        success: true,
-        soundsEnabled: settings.soundsEnabled
-    });
-
+    res.json({ success: true, soundsEnabled: clientSettings.soundsEnabled });
 });
 
 app.post("/api/mobile/alerts/add", upload.single("sound"), (req, res) => {
+    const clientId = req.cpOwnerKey || resolveClientId(req);
+    const clientSettings = getClientSettings(clientId);
 
-    settings.soundAlerts =
-        settings.soundAlerts || [];
+    clientSettings.soundAlerts = clientSettings.soundAlerts || [];
 
-    const trigger =
-        req.body.trigger || "gift";
+    const trigger = req.body.trigger || "gift";
+    const volume = Number(req.body.volume || 100);
+    const filename = req.file ? req.file.filename : "";
 
-    const volume =
-        Number(req.body.volume || 100);
+    const existingAlert = clientSettings.soundAlerts.find(alert => alert.trigger === trigger);
 
-    const filename =
-        req.file ? req.file.filename : "";
-
-    const existingAlert =
-    settings.soundAlerts.find(alert =>
-        alert.trigger === trigger
-    );
-
-if (existingAlert) {
-
-    existingAlert.enabled = true;
-    existingAlert.volume = volume;
-
-    if (filename) {
-        existingAlert.sound = filename;
+    if (existingAlert) {
+        existingAlert.enabled = true;
+        existingAlert.volume = volume;
+        if (filename) existingAlert.sound = filename;
+    } else {
+        clientSettings.soundAlerts.push({ enabled: true, trigger, sound: filename, volume });
     }
 
-} else {
-
-    settings.soundAlerts.push({
-        enabled: true,
-        trigger,
-        sound: filename,
-        volume
-    });
-
-}
-
-    saveSettingsFile();
-
-    res.json({
-        success: true,
-        soundAlerts: settings.soundAlerts
-    });
-
+    saveClientSettings(clientId, clientSettings);
+    res.json({ success: true, soundAlerts: clientSettings.soundAlerts });
 });
 
 app.post("/api/mobile/alerts/delete", (req, res) => {
+    const clientId = req.cpOwnerKey || resolveClientId(req);
+    const clientSettings = getClientSettings(clientId);
+    const trigger = req.body.trigger;
 
-    const trigger =
-        req.body.trigger;
+    clientSettings.soundAlerts = (clientSettings.soundAlerts || [])
+        .filter(alert => alert.trigger !== trigger);
 
-    settings.soundAlerts =
-        settings.soundAlerts || [];
-
-    settings.soundAlerts =
-        settings.soundAlerts.filter(alert =>
-            alert.trigger !== trigger
-        );
-
-    saveSettingsFile();
-
-    res.json({
-        success: true,
-        soundAlerts: settings.soundAlerts
-    });
-
+    saveClientSettings(clientId, clientSettings);
+    res.json({ success: true, soundAlerts: clientSettings.soundAlerts });
 });
 
 app.get("/api/mobile/alerts", (req, res) => {
-
-    const defaultTriggers = [
-        "gift",
-        "follow",
-        "subscribe",
-        "like",
-        "share"
-    ];
-
+    const clientId = req.cpOwnerKey || resolveClientId(req);
+    const clientSettings = getClientSettings(clientId);
+    const defaultTriggers = ["gift", "follow", "subscribe", "like", "share"];
     const uniqueAlerts = {};
 
-    (settings.soundAlerts || []).forEach(alert => {
+    (clientSettings.soundAlerts || []).forEach(alert => {
         uniqueAlerts[alert.trigger] = alert;
     });
 
     defaultTriggers.forEach(trigger => {
         if (!uniqueAlerts[trigger]) {
-            uniqueAlerts[trigger] = {
-                enabled: true,
-                trigger,
-                sound: "",
-                volume: 100
-            };
+            uniqueAlerts[trigger] = { enabled: true, trigger, sound: "", volume: 100 };
         }
     });
 
-    settings.soundAlerts =
-        defaultTriggers.map(trigger => uniqueAlerts[trigger]);
+    clientSettings.soundAlerts = defaultTriggers.map(trigger => uniqueAlerts[trigger]);
+    saveClientSettings(clientId, clientSettings);
 
-    saveSettingsFile();
-
-    res.json({
-        success: true,
-        alerts: settings.soundAlerts
-    });
-
+    res.json({ success: true, alerts: clientSettings.soundAlerts });
 });
 
 app.post("/api/mobile/tts/toggle", (req, res) => {
-    settings.ttsChat = settings.ttsChat || {};
-    settings.ttsChat.enabled = !settings.ttsChat.enabled;
+    const clientId = req.cpOwnerKey || resolveClientId(req);
+    const clientSettings = getClientSettings(clientId);
 
-    saveSettingsFile();
+    clientSettings.ttsChat = clientSettings.ttsChat || {};
+    clientSettings.ttsChat.enabled = !clientSettings.ttsChat.enabled;
+    saveClientSettings(clientId, clientSettings);
 
-    res.json({
-        success: true,
-        ttsEnabled: settings.ttsChat.enabled
-    });
+    res.json({ success: true, ttsEnabled: clientSettings.ttsChat.enabled });
 });
 
 app.get("/mobile", (req, res) => {
@@ -2091,6 +2207,11 @@ app.post("/connect-tiktok", async (req, res) => {
             });
         }
 
+        if (req.authUser?.userId) {
+            await bindClientToUser(clientId, req.authUser.userId);
+            await ensurePersistentUserStateLoaded(req.authUser.userId);
+        }
+
         const previousConnection =
             getTikTokConnection(clientId);
 
@@ -2141,16 +2262,12 @@ app.post("/connect-tiktok", async (req, res) => {
 
         reconnectAttemptsByClient.set(clientId, 0);
 
-        liveSessionStatsByClient.set(clientId, {
-            connected: true,
-            username: username,
-            startTime: Date.now(),
-            likes: 0,
-            followers: 0,
-            gifts: 0,
-            diamonds: 0
-        });
+        const persistedLiveStats = getLiveSessionStats(clientId);
+        persistedLiveStats.connected = true;
+        persistedLiveStats.username = username;
+        persistedLiveStats.startTime = Date.now();
 
+        // Les compteurs restent enregistrés jusqu'à un reset explicite.
         emitLiveStats(clientId);
 
         console.log(
@@ -2406,8 +2523,10 @@ const liveSessionStatsByClient = new Map();
 
 function getLiveSessionStats(clientId) {
 
-    if (!liveSessionStatsByClient.has(clientId)) {
-        liveSessionStatsByClient.set(clientId, {
+    const ownerKey = canonicalClientKey(clientId);
+
+    if (!liveSessionStatsByClient.has(ownerKey)) {
+        liveSessionStatsByClient.set(ownerKey, {
             connected: false,
             username: "",
             startTime: null,
@@ -2418,11 +2537,27 @@ function getLiveSessionStats(clientId) {
         });
     }
 
-    return liveSessionStatsByClient.get(clientId);
+    return liveSessionStatsByClient.get(ownerKey);
+}
+
+const liveStatsPersistTimers = new Map();
+
+function scheduleLiveStatsPersistence(clientId) {
+    const ownerKey = canonicalClientKey(clientId);
+    const userId = userIdFromOwnerKey(ownerKey);
+    if (!userId) return;
+
+    clearTimeout(liveStatsPersistTimers.get(ownerKey));
+    liveStatsPersistTimers.set(ownerKey, setTimeout(() => {
+        persistUserStateSection(userId, "live_stats", getLiveSessionStats(ownerKey));
+        liveStatsPersistTimers.delete(ownerKey);
+    }, 1500));
 }
 
 function emitLiveStats(clientId) {
-    emitToCreatorPilotClient(clientId, "liveStats", getLiveSessionStats(clientId));
+    const data = getLiveSessionStats(clientId);
+    emitToCreatorPilotClient(clientId, "liveStats", data);
+    scheduleLiveStatsPersistence(clientId);
 }
 
 const reconnectAttemptsByClient = new Map();
@@ -3470,6 +3605,7 @@ app.post("/register", express.json(), async (req, res) => {
             inserted.rows[0];
 
         await createAuthSession(res, dbUser.id, dbUser.email);
+        await attachClientToUserAfterLogin(req, dbUser.id);
 
         res.json({
             success: true,
@@ -3546,6 +3682,7 @@ app.post("/login", express.json(), async (req, res) => {
             await getUserProStatus(email);
 
         await createAuthSession(res, dbUser.id, dbUser.email);
+        await attachClientToUserAfterLogin(req, dbUser.id);
 
         res.json({
             success: true,
@@ -3566,6 +3703,8 @@ app.post("/login", express.json(), async (req, res) => {
 
 app.post("/logout", async (req, res) => {
     await destroyAuthSession(req, res);
+    await unbindClientFromUser(req.cpSessionId);
+    req.cpOwnerKey = req.cpSessionId;
     res.json({ success: true });
 });
 
@@ -3845,6 +3984,191 @@ function resolveClientId(req) {
     return req.cpSessionId;
 }
 
+/* ============================================================
+   PERSISTANCE POSTGRESQL PAR UTILISATEUR
+   ============================================================ */
+
+async function bindClientToUser(clientId, userId) {
+    if (!clientId || !userId) return;
+
+    const ownerKey = userOwnerKey(userId);
+    const current = clientOwnerKeyByClientId.get(clientId);
+
+    clientOwnerKeyByClientId.set(clientId, ownerKey);
+    userIdByOwnerKey.set(ownerKey, String(userId));
+
+    if (current === ownerKey) return;
+
+    await pool.query(
+        `INSERT INTO creatorpilot_client_bindings (client_id, user_id, updated_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (client_id) DO UPDATE SET user_id = EXCLUDED.user_id, updated_at = NOW()`,
+        [clientId, userId]
+    );
+}
+
+async function unbindClientFromUser(clientId) {
+    if (!clientId) return;
+    clientOwnerKeyByClientId.delete(clientId);
+    try {
+        await pool.query(
+            "DELETE FROM creatorpilot_client_bindings WHERE client_id = $1",
+            [clientId]
+        );
+    } catch (error) {
+        console.log("Erreur suppression binding client :", error.message);
+    }
+}
+
+async function persistUserStateSection(userId, section, value) {
+    const allowed = new Set(["settings", "stats", "rankings", "live_stats", "points_state"]);
+    if (!allowed.has(section) || !userId) return;
+
+    try {
+        await pool.query(
+            `INSERT INTO creatorpilot_user_state (user_id, ${section}, updated_at)
+             VALUES ($1, $2::jsonb, NOW())
+             ON CONFLICT (user_id) DO UPDATE SET ${section} = EXCLUDED.${section}, updated_at = NOW()`,
+            [userId, JSON.stringify(value || {})]
+        );
+    } catch (error) {
+        console.log("Erreur sauvegarde état utilisateur", section, ":", error.message);
+    }
+}
+
+async function ensurePersistentUserStateLoaded(userId) {
+    if (!userId) return;
+
+    const ownerKey = userOwnerKey(userId);
+    userIdByOwnerKey.set(ownerKey, String(userId));
+
+    if (loadedPersistentOwnerKeys.has(ownerKey)) return;
+
+    const result = await pool.query(
+        `SELECT settings, stats, rankings, live_stats, points_state
+         FROM creatorpilot_user_state
+         WHERE user_id = $1`,
+        [userId]
+    );
+
+    const row = result.rows[0];
+    if (row) {
+        settingsByClient.set(ownerKey, {
+            ...createFreshClientSettings(),
+            ...(row.settings || {})
+        });
+        statsByClient.set(ownerKey, row.stats || { topGifters: {}, giftHistory: [] });
+        rankingsByClient.set(ownerKey, row.rankings || { topLikes: {}, topDonors: {}, topPresence: {} });
+        liveSessionStatsByClient.set(ownerKey, {
+            connected: false,
+            username: "",
+            startTime: null,
+            likes: 0,
+            followers: 0,
+            gifts: 0,
+            diamonds: 0,
+            ...(row.live_stats || {}),
+            connected: false
+        });
+        pointsStateByClient.set(ownerKey, row.points_state || { users: {}, transactions: [] });
+    }
+
+    loadedPersistentOwnerKeys.add(ownerKey);
+}
+
+async function attachClientToUserAfterLogin(req, userId) {
+    const clientId = req.cpSessionId;
+    const ownerKey = userOwnerKey(userId);
+    const previousOwnerKey = clientOwnerKeyByClientId.get(clientId) || null;
+    const alreadyBound = previousOwnerKey === ownerKey;
+
+    if (alreadyBound && loadedPersistentOwnerKeys.has(ownerKey)) {
+        return;
+    }
+
+    const existing = await pool.query(
+        "SELECT user_id FROM creatorpilot_user_state WHERE user_id = $1",
+        [userId]
+    );
+
+    let migrated = false;
+
+    if (existing.rows.length === 0) {
+        // On ne migre les données locales que si ce clientId n'était
+        // pas déjà rattaché à un AUTRE compte. Cela évite qu'un compte
+        // B récupère les personnalisations privées du compte A sur le
+        // même ordinateur.
+        const canMigrateLocalData = !previousOwnerKey || previousOwnerKey === ownerKey;
+
+        const anonymousSettings = canMigrateLocalData
+            ? getClientSettings(clientId)
+            : { voiceEnabled: true, actions: [], actionEvents: [], soundAlerts: [] };
+
+        const anonymousStats = canMigrateLocalData
+            ? getClientStats(clientId)
+            : { topGifters: {}, giftHistory: [] };
+
+        const anonymousRankings = canMigrateLocalData
+            ? getClientRankings(clientId)
+            : { topLikes: {}, topDonors: {}, topPresence: {} };
+
+        const anonymousLiveStats = canMigrateLocalData
+            ? getLiveSessionStats(clientId)
+            : { connected: false, username: "", startTime: null, likes: 0, followers: 0, gifts: 0, diamonds: 0 };
+
+        await pool.query(
+            `INSERT INTO creatorpilot_user_state
+                (user_id, settings, stats, rankings, live_stats, points_state, updated_at)
+             VALUES ($1, $2::jsonb, $3::jsonb, $4::jsonb, $5::jsonb, $6::jsonb, NOW())
+             ON CONFLICT (user_id) DO NOTHING`,
+            [
+                userId,
+                JSON.stringify(anonymousSettings),
+                JSON.stringify(anonymousStats),
+                JSON.stringify(anonymousRankings),
+                JSON.stringify(anonymousLiveStats),
+                JSON.stringify({ users: {}, transactions: [] })
+            ]
+        );
+        migrated = true;
+    }
+
+    await bindClientToUser(clientId, userId);
+    if (migrated) loadedPersistentOwnerKeys.delete(ownerKey);
+    await ensurePersistentUserStateLoaded(userId);
+}
+
+const pointsStateByClient = new Map();
+
+function getClientPointsState(clientId) {
+    const ownerKey = canonicalClientKey(clientId);
+    if (!pointsStateByClient.has(ownerKey)) {
+        pointsStateByClient.set(ownerKey, { users: {}, transactions: [] });
+    }
+    return pointsStateByClient.get(ownerKey);
+}
+
+function saveClientPointsState(clientId, data) {
+    const ownerKey = canonicalClientKey(clientId);
+    const safeData = {
+        users: data?.users && typeof data.users === "object" ? data.users : {},
+        transactions: Array.isArray(data?.transactions) ? data.transactions.slice(-1000) : []
+    };
+    pointsStateByClient.set(ownerKey, safeData);
+    const userId = userIdFromOwnerKey(ownerKey);
+    if (userId) persistUserStateSection(userId, "points_state", safeData);
+    return safeData;
+}
+
+app.get("/points/state", (req, res) => {
+    res.json(getClientPointsState(req.cpOwnerKey || resolveClientId(req)));
+});
+
+app.post("/points/state", (req, res) => {
+    const data = saveClientPointsState(req.cpOwnerKey || resolveClientId(req), req.body);
+    res.json({ success: true, ...data });
+});
+
 const rankingsByClient = new Map();
 
 function cpRankingsFilePath(clientId) {
@@ -3853,8 +4177,10 @@ function cpRankingsFilePath(clientId) {
 
 function getClientRankings(clientId) {
 
-    if (rankingsByClient.has(clientId)) {
-        return rankingsByClient.get(clientId);
+    const ownerKey = canonicalClientKey(clientId);
+
+    if (rankingsByClient.has(ownerKey)) {
+        return rankingsByClient.get(ownerKey);
     }
 
     let data = {
@@ -3864,19 +4190,19 @@ function getClientRankings(clientId) {
     };
 
     const filePath =
-        cpRankingsFilePath(clientId);
+        cpRankingsFilePath(ownerKey);
 
-    if (fs.existsSync(filePath)) {
+    if (!userIdFromOwnerKey(ownerKey) && fs.existsSync(filePath)) {
 
         try {
             data = JSON.parse(fs.readFileSync(filePath, "utf8"));
         } catch (error) {
-            console.log("Classements illisibles pour", clientId, "- valeurs par défaut utilisées");
+            console.log("Classements illisibles pour", ownerKey, "- valeurs par défaut utilisées");
         }
 
     }
 
-    rankingsByClient.set(clientId, data);
+    rankingsByClient.set(ownerKey, data);
 
     return data;
 
@@ -3884,18 +4210,21 @@ function getClientRankings(clientId) {
 
 function saveClientRankings(clientId) {
 
-    const data =
-        rankingsByClient.get(clientId);
+    const ownerKey = canonicalClientKey(clientId);
+    const data = rankingsByClient.get(ownerKey);
 
-    if (!data) {
+    if (!data) return;
+
+    const userId = userIdFromOwnerKey(ownerKey);
+    if (userId) {
+        persistUserStateSection(userId, "rankings", data);
         return;
     }
 
     fs.writeFileSync(
-        cpRankingsFilePath(clientId),
+        cpRankingsFilePath(ownerKey),
         JSON.stringify(data, null, 2)
     );
-
 }
 
 setInterval(() => {
@@ -6533,14 +6862,20 @@ const chronoDefaultTemplate = {
 
 function getClientChrono(clientId) {
 
-    if (!chronoByClient.has(clientId)) {
-        chronoByClient.set(
-            clientId,
-            JSON.parse(JSON.stringify(chronoDefaultTemplate))
-        );
+    const ownerKey = canonicalClientKey(clientId);
+
+    if (!chronoByClient.has(ownerKey)) {
+        const initial = JSON.parse(JSON.stringify(chronoDefaultTemplate));
+        const saved = getClientSettings(ownerKey).chronoSettings;
+        if (saved && typeof saved === "object") {
+            initial.settings = { ...initial.settings, ...saved };
+            initial.duration = Number(initial.settings.defaultMinutes || 5) * 60;
+            initial.remaining = initial.duration;
+        }
+        chronoByClient.set(ownerKey, initial);
     }
 
-    return chronoByClient.get(clientId);
+    return chronoByClient.get(ownerKey);
 }
 
 const actionWheelByClient = new Map();
@@ -6571,22 +6906,21 @@ const actionWheelDefaultTemplate = {
 
 function getClientActionWheel(clientId) {
 
-    if (!actionWheelByClient.has(clientId)) {
+    const ownerKey = canonicalClientKey(clientId);
 
-        let initial =
-            JSON.parse(JSON.stringify(actionWheelDefaultTemplate));
+    if (!actionWheelByClient.has(ownerKey)) {
 
-        const clientSettings =
-            getClientSettings(clientId);
+        let initial = JSON.parse(JSON.stringify(actionWheelDefaultTemplate));
+        const clientSettings = getClientSettings(ownerKey);
 
         if (clientSettings.actionWheel) {
             initial = clientSettings.actionWheel;
         }
 
-        actionWheelByClient.set(clientId, initial);
+        actionWheelByClient.set(ownerKey, initial);
     }
 
-    return actionWheelByClient.get(clientId);
+    return actionWheelByClient.get(ownerKey);
 }
 
 function getChronoRemaining(clientId) {
@@ -7229,6 +7563,10 @@ app.post("/chrono/settings", express.json(), (req, res) => {
         chrono.remaining = chrono.duration;
     }
 
+    const clientSettings = getClientSettings(clientId);
+    clientSettings.chronoSettings = chrono.settings;
+    saveClientSettings(clientId, clientSettings);
+
     res.json({
         success: true,
         chrono
@@ -7444,14 +7782,18 @@ const socialPanelDefaultTemplate = {
 
 function getClientSocialPanel(clientId) {
 
-    if (!socialPanelByClient.has(clientId)) {
-        socialPanelByClient.set(
-            clientId,
-            JSON.parse(JSON.stringify(socialPanelDefaultTemplate))
-        );
+    const ownerKey = canonicalClientKey(clientId);
+
+    if (!socialPanelByClient.has(ownerKey)) {
+        const initial = JSON.parse(JSON.stringify(socialPanelDefaultTemplate));
+        const saved = getClientSettings(ownerKey).socialPanel;
+        if (saved && typeof saved === "object") {
+            initial.settings = { ...initial.settings, ...saved };
+        }
+        socialPanelByClient.set(ownerKey, initial);
     }
 
-    return socialPanelByClient.get(clientId);
+    return socialPanelByClient.get(ownerKey);
 }
 
 app.get("/social-panel/status", (req, res) => {
@@ -7464,6 +7806,10 @@ app.post("/social-panel/settings", express.json(), (req, res) => {
         resolveClientId(req);
 
     getClientSocialPanel(clientId).settings = req.body;
+
+    const clientSettings = getClientSettings(clientId);
+    clientSettings.socialPanel = req.body;
+    saveClientSettings(clientId, clientSettings);
 
     res.json({
         success: true,

@@ -2481,6 +2481,85 @@ if (savedPointsUsers) {
         JSON.parse(savedPointsUsers);
 }
 
+let pointsPersistenceTimer = null;
+
+function getStoredAccountIdForPoints() {
+    try {
+        const user = JSON.parse(localStorage.getItem("tikbabikUser") || "null");
+        return user?.id || "anonymous";
+    } catch {
+        return "anonymous";
+    }
+}
+
+let pointsMemoryOwnerId =
+    localStorage.getItem("creatorpilot-points-owner") ||
+    getStoredAccountIdForPoints();
+
+function savePointsStatePersistent() {
+    const currentOwnerId = getStoredAccountIdForPoints();
+    pointsMemoryOwnerId = currentOwnerId;
+
+    localStorage.setItem("creatorpilot-points-owner", currentOwnerId);
+    localStorage.setItem("pointsTransactions", JSON.stringify(pointsTransactions));
+    localStorage.setItem("pointsUsers", JSON.stringify(pointsUsers));
+
+    clearTimeout(pointsPersistenceTimer);
+    pointsPersistenceTimer = setTimeout(() => {
+        fetch("/points/state", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                users: pointsUsers,
+                transactions: pointsTransactions
+            })
+        }).catch(() => {});
+    }, 400);
+}
+
+async function loadPointsStatePersistentForUser(user = null) {
+    const targetOwnerId = user?.id || "anonymous";
+    const previousOwnerId = pointsMemoryOwnerId || "anonymous";
+
+    try {
+        const response = await fetch("/points/state", { cache: "no-store" });
+        const serverPoints = await response.json();
+
+        const hasServerData =
+            Object.keys(serverPoints.users || {}).length > 0 ||
+            (serverPoints.transactions || []).length > 0;
+
+        if (hasServerData) {
+            pointsUsers = serverPoints.users || {};
+            pointsTransactions = serverPoints.transactions || [];
+        } else if (targetOwnerId !== previousOwnerId && targetOwnerId !== "anonymous") {
+            // Nouveau compte sur la même machine : surtout ne pas lui
+            // copier les points du compte précédent.
+            pointsUsers = {};
+            pointsTransactions = [];
+        } else if (targetOwnerId !== "anonymous" &&
+                   (Object.keys(pointsUsers).length > 0 || pointsTransactions.length > 0)) {
+            // Première migration de l'ancien stockage local vers le compte.
+            savePointsStatePersistent();
+        }
+
+        pointsMemoryOwnerId = targetOwnerId;
+        localStorage.setItem("creatorpilot-points-owner", targetOwnerId);
+        localStorage.setItem("pointsUsers", JSON.stringify(pointsUsers));
+        localStorage.setItem("pointsTransactions", JSON.stringify(pointsTransactions));
+
+        if (typeof refreshPointsUsersTable === "function") refreshPointsUsersTable();
+        if (typeof refreshPointsTransactionsTable === "function") refreshPointsTransactionsTable();
+
+    } catch {}
+}
+
+loadPointsStatePersistentForUser(
+    (() => {
+        try { return JSON.parse(localStorage.getItem("tikbabikUser") || "null"); }
+        catch { return null; }
+    })()
+);
 
 
 function loadAvailableTtsVoices() {
@@ -4152,6 +4231,8 @@ registerBtn.onclick = async () => {
             updateProLocks();
         }
 
+        await loadPointsStatePersistentForUser(data.user);
+
         alert("Compte créé avec succès !");
 
     } else {
@@ -4266,6 +4347,8 @@ loginBtn.onclick = async () => {
     if (typeof updateProLocks === "function") {
         updateProLocks();
     }
+
+    await loadPointsStatePersistentForUser(data.user);
 
     alert("Connexion réussie");
 
@@ -4632,8 +4715,7 @@ function spendTtsPoints(username, amount) {
         date: new Date().toLocaleString("fr-FR")
     });
 
-    localStorage.setItem("pointsTransactions", JSON.stringify(pointsTransactions));
-    localStorage.setItem("pointsUsers", JSON.stringify(pointsUsers));
+    savePointsStatePersistent();
 
     if (typeof refreshPointsTransactionsTable === "function") {
         refreshPointsTransactionsTable();
@@ -5405,18 +5487,8 @@ pointsUsers[username].lastGiftDate =
 });
 
 refreshPointsTransactionsTable();
-
-localStorage.setItem(
-    "pointsTransactions",
-    JSON.stringify(pointsTransactions)
-);
-
 refreshPointsUsersTable();
-
-localStorage.setItem(
-    "pointsUsers",
-    JSON.stringify(pointsUsers)
-);
+savePointsStatePersistent();
 
     if (!topGifters[data.user]) {
         topGifters[data.user] = 0;
@@ -6218,6 +6290,8 @@ if (!savedUserAtStart || !savedUserAtStart.email) {
                     "tikbabikUser",
                     JSON.stringify(meData.user)
                 );
+
+                loadPointsStatePersistentForUser(meData.user);
 
             } else {
                 appSettings.pro = false;
