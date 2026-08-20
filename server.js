@@ -6,6 +6,7 @@ const { WebcastPushConnection } = require("tiktok-live-connector");
 const fs = require("fs");
 const multer = require("multer");
 const crypto = require("crypto");
+const bcrypt = require("bcrypt");
 const path = require("path");
 const DATA_DIR =
     process.env.APPDATA
@@ -48,6 +49,37 @@ async function initDatabase() {
             updated_at TIMESTAMP DEFAULT NOW()
         )
     `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            email TEXT UNIQUE NOT NULL,
+            username TEXT,
+            password_hash TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW(),
+            last_login TIMESTAMP
+        )
+    `).catch(async error => {
+
+        // gen_random_uuid() nécessite l'extension pgcrypto — on
+        // l'active si besoin, puis on retente une seule fois.
+        if (error.message.includes("gen_random_uuid")) {
+            await pool.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto`);
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS users (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    email TEXT UNIQUE NOT NULL,
+                    username TEXT,
+                    password_hash TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    last_login TIMESTAMP
+                )
+            `);
+        } else {
+            throw error;
+        }
+
+    });
 
     console.log("Base PostgreSQL prête");
 }
@@ -3158,73 +3190,218 @@ function saveResetTokens(tokens) {
 
 }
 
-function hashPassword(password) {
+function hashPasswordLegacySha256(password) {
     return crypto
         .createHash("sha256")
         .update(password)
         .digest("hex");
 }
 
-app.post("/register", express.json(), (req, res) => {
-    const { email, password } = req.body;
+async function getUserProStatus(email) {
+
+    try {
+
+        const result =
+            await pool.query(
+                "SELECT pro FROM pro_users WHERE LOWER(email) = $1 LIMIT 1",
+                [email.toLowerCase()]
+            );
+
+        return result.rows[0]?.pro === true;
+
+    } catch (error) {
+        return false;
+    }
+
+}
+
+function formatUserResponse(dbUser, isPro) {
+    return {
+        id: dbUser.id,
+        email: dbUser.email,
+        plan: isPro ? "pro" : "free",
+        pro: isPro,
+        createdAt:
+            new Date(dbUser.created_at)
+                .toLocaleDateString("fr-FR")
+    };
+}
+
+/*
+   Migration transparente : un compte encore uniquement présent
+   dans l'ancien users.json (mot de passe en SHA-256) est basculé
+   vers PostgreSQL (mot de passe réhashé en bcrypt) dès sa
+   prochaine connexion réussie, sans action requise de sa part.
+*/
+async function migrateLegacyUserIfNeeded(email, password) {
+
+    const legacyUsers =
+        loadUsers();
+
+    const legacyUser =
+        legacyUsers.find(u => u.email === email);
+
+    if (!legacyUser) {
+        return null;
+    }
+
+    if (legacyUser.password !== hashPasswordLegacySha256(password)) {
+        return null;
+    }
+
+    const newHash =
+        await bcrypt.hash(password, 10);
+
+    const inserted =
+        await pool.query(
+            `
+            INSERT INTO users (email, password_hash, created_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (email) DO NOTHING
+            RETURNING id, email, created_at
+            `,
+            [email, newHash]
+        );
+
+    console.log("Compte migré depuis l'ancien système vers PostgreSQL :", email);
+
+    return inserted.rows[0] || null;
+
+}
+
+app.post("/register", express.json(), async (req, res) => {
+
+    const email =
+        (req.body.email || "").toLowerCase().trim();
+
+    const password =
+        req.body.password || "";
 
     if (!email || !password) {
         return res.status(400).json({ error: "Email et mot de passe obligatoires" });
     }
 
-    const users = loadUsers();
-
-    if (users.find(user => user.email === email)) {
-        return res.status(400).json({ error: "Compte déjà existant" });
+    if (password.length < 6) {
+        return res.status(400).json({ error: "Le mot de passe doit contenir au moins 6 caractères" });
     }
 
-    const user = {
-        id: crypto.randomUUID(),
-        email,
-        password: hashPassword(password),
-        plan: "free",
-        pro: false,
-        createdAt: new Date().toLocaleDateString("fr-FR")
-    };
+    try {
 
-    users.push(user);
-    saveUsers(users);
+        const existing =
+            await pool.query(
+                "SELECT id FROM users WHERE email = $1",
+                [email]
+            );
 
-    res.json({
-        success: true,
-        user: {
-            id: user.id,
-            email: user.email,
-            plan: user.plan,
-            pro: user.pro,
-            createdAt: user.createdAt
+        if (existing.rows.length > 0) {
+            return res.status(400).json({ error: "Compte déjà existant" });
         }
-    });
+
+        const passwordHash =
+            await bcrypt.hash(password, 10);
+
+        const inserted =
+            await pool.query(
+                `
+                INSERT INTO users (email, password_hash, created_at)
+                VALUES ($1, $2, NOW())
+                RETURNING id, email, created_at
+                `,
+                [email, passwordHash]
+            );
+
+        const dbUser =
+            inserted.rows[0];
+
+        res.json({
+            success: true,
+            user: formatUserResponse(dbUser, false)
+        });
+
+    } catch (error) {
+
+        console.log("ERREUR REGISTER :", error.message);
+
+        res.status(500).json({
+            error: "Erreur lors de la création du compte"
+        });
+
+    }
+
 });
 
-app.post("/login", express.json(), (req, res) => {
-    const { email, password } = req.body;
+app.post("/login", express.json(), async (req, res) => {
 
-    const users = loadUsers();
+    const email =
+        (req.body.email || "").toLowerCase().trim();
 
-    const user = users.find(
-        u => u.email === email && u.password === hashPassword(password)
-    );
+    const password =
+        req.body.password || "";
 
-    if (!user) {
-        return res.status(401).json({ error: "Identifiants incorrects" });
+    if (!email || !password) {
+        return res.status(400).json({ error: "Identifiants incorrects" });
     }
 
-    res.json({
-        success: true,
-        user: {
-            id: user.id,
-            email: user.email,
-            plan: user.plan,
-            pro: user.pro,
-            createdAt: user.createdAt
+    try {
+
+        let result =
+            await pool.query(
+                "SELECT id, email, password_hash, created_at FROM users WHERE email = $1",
+                [email]
+            );
+
+        let dbUser =
+            result.rows[0];
+
+        if (!dbUser) {
+
+            const migrated =
+                await migrateLegacyUserIfNeeded(email, password);
+
+            if (migrated) {
+                dbUser = { ...migrated, password_hash: null };
+            }
+
         }
-    });
+
+        if (!dbUser) {
+            return res.status(401).json({ error: "Identifiants incorrects" });
+        }
+
+        if (dbUser.password_hash) {
+
+            const passwordMatches =
+                await bcrypt.compare(password, dbUser.password_hash);
+
+            if (!passwordMatches) {
+                return res.status(401).json({ error: "Identifiants incorrects" });
+            }
+
+        }
+
+        await pool.query(
+            "UPDATE users SET last_login = NOW() WHERE id = $1",
+            [dbUser.id]
+        );
+
+        const isPro =
+            await getUserProStatus(email);
+
+        res.json({
+            success: true,
+            user: formatUserResponse(dbUser, isPro)
+        });
+
+    } catch (error) {
+
+        console.log("ERREUR LOGIN :", error.message);
+
+        res.status(500).json({
+            error: "Erreur lors de la connexion"
+        });
+
+    }
+
 });
 
 app.post("/forgot-password", express.json(), async (req, res) => {
@@ -3242,18 +3419,71 @@ app.post("/forgot-password", express.json(), async (req, res) => {
     const resetToken =
         crypto.randomBytes(32).toString("hex");
 
-        const tokens =
-    loadResetTokens();
+    const tokens =
+        loadResetTokens();
 
-tokens.push({
+    tokens.push({
 
-    token: resetToken,
+        token: resetToken,
 
-    email: email,
+        email: email,
 
-    expires:
-        Date.now() +
-        (60 * 60 * 1000)
+        expires:
+            Date.now() +
+            (60 * 60 * 1000)
+
+    });
+
+    saveResetTokens(tokens);
+
+    const resetLink =
+        (process.env.APP_URL || "https://www.tikbabik.shop") +
+        "/reset-password?token=" +
+        resetToken;
+
+    console.log("RESET PASSWORD :", email, resetLink);
+
+    try {
+
+        const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+                "api-key": process.env.BREVO_API_KEY,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                sender: {
+                    name: "CreatorPilot",
+                    email: "noreply@tikbabik.shop"
+                },
+                to: [
+                    {
+                        email: email
+                    }
+                ],
+                subject: "Réinitialisation de votre mot de passe CreatorPilot",
+                htmlContent:
+                    "<h2>Réinitialisation du mot de passe</h2>" +
+                    "<p>Cliquez sur le lien ci-dessous pour changer votre mot de passe :</p>" +
+                    "<p><a href='" + resetLink + "'>Changer mon mot de passe</a></p>" +
+                    "<p>Si vous n'avez pas demandé cette action, ignorez cet email.</p>"
+            })
+        });
+
+        const brevoText =
+            await brevoResponse.text();
+
+        console.log("BREVO STATUS :", brevoResponse.status);
+        console.log("BREVO RESPONSE :", brevoText);
+
+    } catch (error) {
+        console.log("ERREUR ENVOI EMAIL RESET :", error.message);
+    }
+
+    res.json({
+        success: true,
+        message: "Si un compte existe, un lien de réinitialisation a été envoyé."
+    });
 
 });
 
@@ -3263,7 +3493,7 @@ app.get("/reset-password", (req, res) => {
     );
 });
 
-app.post("/reset-password", express.json(), (req, res) => {
+app.post("/reset-password", express.json(), async (req, res) => {
 
     const token =
         req.body.token || "";
@@ -3275,6 +3505,13 @@ app.post("/reset-password", express.json(), (req, res) => {
         return res.json({
             success: false,
             error: "Token ou mot de passe manquant"
+        });
+    }
+
+    if (password.length < 6) {
+        return res.json({
+            success: false,
+            error: "Le mot de passe doit contenir au moins 6 caractères"
         });
     }
 
@@ -3294,91 +3531,65 @@ app.post("/reset-password", express.json(), (req, res) => {
         });
     }
 
-    const users =
-        loadUsers();
+    try {
 
-    const user =
-        users.find(u =>
-            u.email.toLowerCase() === resetData.email.toLowerCase()
-        );
+        const email =
+            resetData.email.toLowerCase();
 
-    if (!user) {
-        return res.json({
-            success: false,
-            error: "Compte introuvable"
+        const existing =
+            await pool.query(
+                "SELECT id FROM users WHERE email = $1",
+                [email]
+            );
+
+        const newHash =
+            await bcrypt.hash(password, 10);
+
+        if (existing.rows.length > 0) {
+
+            await pool.query(
+                "UPDATE users SET password_hash = $1 WHERE email = $2",
+                [newHash, email]
+            );
+
+        } else {
+
+            // Compte encore uniquement dans l'ancien système : on le
+            // crée directement dans PostgreSQL avec le nouveau mot
+            // de passe (migration au passage).
+            await pool.query(
+                `
+                INSERT INTO users (email, password_hash, created_at)
+                VALUES ($1, $2, NOW())
+                ON CONFLICT (email) DO UPDATE SET password_hash = $2
+                `,
+                [email, newHash]
+            );
+
+        }
+
+        const remainingTokens =
+            tokens.filter(item =>
+                item.token !== token
+            );
+
+        saveResetTokens(remainingTokens);
+
+        res.json({
+            success: true,
+            message: "Mot de passe modifié avec succès"
         });
+
+    } catch (error) {
+
+        console.log("ERREUR RESET PASSWORD :", error.message);
+
+        res.status(500).json({
+            success: false,
+            error: "Erreur lors de la réinitialisation"
+        });
+
     }
-
-    user.password =
-        hashPassword(password);
-
-    saveUsers(users);
-
-    const remainingTokens =
-        tokens.filter(item =>
-            item.token !== token
-        );
-
-    saveResetTokens(remainingTokens);
-
-    res.json({
-        success: true,
-        message: "Mot de passe modifié avec succès"
-    });
-
-});
-
-saveResetTokens(tokens);
-
-    const resetLink =
-        (process.env.APP_URL || "https://www.tikbabik.shop") +
-        "/reset-password?token=" +
-        resetToken;
-
-    console.log("RESET PASSWORD :", email, resetLink);
-
-   const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        headers: {
-            "api-key": process.env.BREVO_API_KEY,
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            sender: {
-                name: "CreatorPilot",
-                email: "noreply@tikbabik.shop"
-            },
-            to: [
-                {
-                    email: email
-                }
-            ],
-            subject: "Réinitialisation de votre mot de passe CreatorPilot",
-            htmlContent:
-                "<h2>Réinitialisation du mot de passe</h2>" +
-                "<p>Cliquez sur le lien ci-dessous pour changer votre mot de passe :</p>" +
-                "<p><a href='" + resetLink + "'>Changer mon mot de passe</a></p>" +
-                "<p>Si vous n'avez pas demandé cette action, ignorez cet email.</p>"
-        })
-    });
-
-    const brevoText =
-    await brevoResponse.text();
-
-console.log(
-    "BREVO STATUS :",
-    brevoResponse.status
-);
-
-console.log(
-    "BREVO RESPONSE :",
-    brevoText
-);
-
-    res.json({
-        success: true,
-        message: "Si un compte existe, un lien de réinitialisation a été envoyé."
-    });
 
 });
 
