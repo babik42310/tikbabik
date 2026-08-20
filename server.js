@@ -260,13 +260,6 @@ function createAuthSession(res, userId, email) {
         "Max-Age=" + Math.floor(AUTH_SESSION_DURATION_MS / 1000)
     ];
 
-    if (process.env.PORT) {
-        // En production (Railway, servi en HTTPS) uniquement —
-        // en local (http://localhost), "Secure" empêcherait le
-        // cookie de fonctionner du tout.
-        cookieParts.push("Secure");
-    }
-
     res.setHeader("Set-Cookie", cookieParts.join("; "));
 
 }
