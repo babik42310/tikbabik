@@ -84,6 +84,28 @@ function copyToClipboardLegacy(text) {
 
 }
 
+document.addEventListener("DOMContentLoaded", () => {
+
+    const ttsVolumeSlider =
+        document.getElementById("ttsVolume");
+
+    const ttsVolumeLabel =
+        document.getElementById("ttsVolumeLabel");
+
+    if (ttsVolumeSlider && ttsVolumeLabel) {
+
+        const updateLabel = () => {
+            ttsVolumeLabel.textContent =
+                "(" + ttsVolumeSlider.value + "%)";
+        };
+
+        ttsVolumeSlider.addEventListener("input", updateLabel);
+        updateLabel();
+
+    }
+
+});
+
 function showToast(message) {
 
     let container =
@@ -4783,12 +4805,45 @@ if (
         const audio =
             new Audio(url);
 
-        audio.volume =
+        /*
+           Amplification réelle au-delà de 100% : un <audio> seul
+           plafonne à volume=1 (100%), donc pour aller plus fort on
+           route le son à travers le Web Audio API, qui permet un
+           vrai gain supérieur à 1 (jusqu'à x3 ici).
+        */
+        const requestedVolume =
             Number(tts.volume || 100) / 100;
+
+        try {
+
+            const audioContext =
+                window.__cpTtsAudioContext ||
+                (window.__cpTtsAudioContext = new (window.AudioContext || window.webkitAudioContext)());
+
+            const source =
+                audioContext.createMediaElementSource(audio);
+
+            const gainNode =
+                audioContext.createGain();
+
+            gainNode.gain.value =
+                requestedVolume;
+
+            source.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+        } catch (error) {
+
+            console.log("Amplification Web Audio indisponible, volume standard utilisé :", error);
+
+            audio.volume =
+                Math.min(1, requestedVolume);
+
+        }
 
         audio.play()
             .then(() => {
-                console.log("TTS IA JOUÉ OK");
+                console.log("TTS IA JOUÉ OK (volume x" + requestedVolume.toFixed(2) + ")");
             })
             .catch(error => {
                 console.log("ERREUR PLAY TTS IA :", error);
@@ -4836,7 +4891,7 @@ if (
             : "fr-FR";
 
     speech.volume =
-        Number(tts.volume || 100) / 100;
+        Math.min(1, Number(tts.volume || 100) / 100);
 
     speech.rate =
         Number(tts.speed || 50) / 50;
@@ -5032,7 +5087,7 @@ function announceGoalMessage(text) {
             : "fr-FR";
 
     speech.volume =
-        Number(tts.volume || 100) / 100;
+        Math.min(1, Number(tts.volume || 100) / 100);
 
     speech.rate =
         Number(tts.speed || 50) / 50;
