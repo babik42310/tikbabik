@@ -4119,7 +4119,7 @@ registerBtn.onclick = async () => {
     const password =
         document.getElementById("registerPassword").value;
 
-    const response = await fetch("https://www.tikbabik.shop/register", {
+    const response = await fetch("/register", {
 
         method: "POST",
 
@@ -4137,6 +4137,20 @@ registerBtn.onclick = async () => {
     const data = await response.json();
 
     if (data.success) {
+
+        localStorage.setItem(
+            "tikbabikUser",
+            JSON.stringify(data.user)
+        );
+
+        appSettings.pro =
+            data.user.pro === true;
+
+        applyProDisplay();
+
+        if (typeof updateProLocks === "function") {
+            updateProLocks();
+        }
 
         alert("Compte créé avec succès !");
 
@@ -4174,7 +4188,7 @@ if (sendResetPasswordButton) {
             document.getElementById("forgotPasswordEmail").value;
 
         const response =
-            await fetch("https://www.tikbabik.shop/forgot-password", {
+            await fetch("/forgot-password", {
 
                 method: "POST",
 
@@ -4208,7 +4222,7 @@ loginBtn.onclick = async () => {
     const password =
         document.getElementById("loginPassword").value;
 
-    const response = await fetch("https://www.tikbabik.shop/login", {
+    const response = await fetch("/login", {
 
         method: "POST",
 
@@ -4232,6 +4246,9 @@ loginBtn.onclick = async () => {
         JSON.stringify(data.user)
     );
 
+    appSettings.pro =
+        data.user.pro === true;
+
     document.getElementById("accountUserId").textContent =
         data.user.id;
 
@@ -4243,6 +4260,12 @@ loginBtn.onclick = async () => {
 
     document.getElementById("accountDate").textContent =
         data.user.createdAt;
+
+    applyProDisplay();
+
+    if (typeof updateProLocks === "function") {
+        updateProLocks();
+    }
 
     alert("Connexion réussie");
 
@@ -4778,7 +4801,7 @@ if (
 
         console.log("OPENAI TTS ACTIF");
 
-    fetch("https://www.tikbabik.shop/tts/openai", {
+    fetch("/tts/openai", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -6176,6 +6199,39 @@ if (!savedUserAtStart || !savedUserAtStart.email) {
     appSettings.pro = false;
 }
 
+    /*
+       Vérité fiable côté serveur : plutôt que de se fier
+       uniquement à ce que localStorage prétend, on redemande au
+       serveur (session réelle) si ce client est vraiment PRO,
+       et on met à jour l'affichage en conséquence.
+    */
+    fetch("/me")
+        .then(response => response.json())
+        .then(meData => {
+
+            if (meData.loggedIn && meData.user) {
+
+                appSettings.pro =
+                    meData.user.pro === true;
+
+                localStorage.setItem(
+                    "tikbabikUser",
+                    JSON.stringify(meData.user)
+                );
+
+            } else {
+                appSettings.pro = false;
+            }
+
+            applyProDisplay();
+
+            if (typeof updateProLocks === "function") {
+                updateProLocks();
+            }
+
+        })
+        .catch(() => {});
+
     if (appSettings.banner) {
 
     document.getElementById("bannerText").value =
@@ -6925,7 +6981,7 @@ async function checkProFromDatabase(email) {
     try {
 
         const response =
-            await fetch("https://www.tikbabik.shop/check-pro", {
+            await fetch("/check-pro", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -7978,7 +8034,7 @@ if (accountUpgradeProButton) {
         event.preventDefault();
 
         const response =
-            await fetch("https://www.tikbabik.shop/create-checkout-session", {
+            await fetch("/create-checkout-session", {
                 method: "POST"
             });
 
@@ -8145,7 +8201,7 @@ if (activateFreeProCode) {
             "";
 
         const response =
-            await fetch("https://www.tikbabik.shop/activate-free-pro", {
+            await fetch("/activate-free-pro", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
