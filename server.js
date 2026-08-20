@@ -559,6 +559,19 @@ app.post("/check-pro", async (req, res) => {
 
 app.post("/grant-pro", async (req, res) => {
 
+    const providedSecret =
+        req.headers["x-admin-secret"] || "";
+
+    if (
+        !process.env.ADMIN_SECRET ||
+        providedSecret !== process.env.ADMIN_SECRET
+    ) {
+        return res.status(403).json({
+            success: false,
+            error: "Non autorisé"
+        });
+    }
+
     const email =
         (req.body.email || "")
             .toLowerCase()
