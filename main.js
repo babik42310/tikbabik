@@ -25,7 +25,7 @@ app.whenReady().then(() => {
 
     process.env.ELECTRON_APP = "true";
 
-    shell.openExternal("https://tikbabik.shop");
+    shell.openExternal("https://www.tikbabik.shop");
 
     autoUpdater.checkForUpdatesAndNotify();
 
