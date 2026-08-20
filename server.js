@@ -224,6 +224,132 @@ app.use((req, res, next) => {
 
 });
 
+/*
+   ============================================================
+   VRAIE SESSION SERVEUR (comptes / PRO)
+
+   Séparée du cookie cp_session ci-dessus (qui reste anonyme et
+   sert uniquement à isoler les réglages par appareil). Celle-ci
+   n'existe que lorsqu'un compte est réellement connecté, avec un
+   cookie httpOnly (illisible en JavaScript, donc protégé même en
+   cas de faille XSS ailleurs) et une vraie expiration côté
+   serveur.
+   ============================================================
+*/
+
+const authSessionsByToken = new Map();
+
+const AUTH_SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours
+
+function createAuthSession(res, userId, email) {
+
+    const token =
+        crypto.randomBytes(32).toString("hex");
+
+    authSessionsByToken.set(token, {
+        userId,
+        email,
+        expiresAt: Date.now() + AUTH_SESSION_DURATION_MS
+    });
+
+    const cookieParts = [
+        "cp_auth=" + token,
+        "Path=/",
+        "HttpOnly",
+        "SameSite=Lax",
+        "Max-Age=" + Math.floor(AUTH_SESSION_DURATION_MS / 1000)
+    ];
+
+    if (process.env.PORT) {
+        // En production (Railway, servi en HTTPS) uniquement —
+        // en local (http://localhost), "Secure" empêcherait le
+        // cookie de fonctionner du tout.
+        cookieParts.push("Secure");
+    }
+
+    res.setHeader("Set-Cookie", cookieParts.join("; "));
+
+}
+
+function destroyAuthSession(req, res) {
+
+    const cookies =
+        cpParseCookies(req);
+
+    if (cookies.cp_auth) {
+        authSessionsByToken.delete(cookies.cp_auth);
+    }
+
+    res.setHeader(
+        "Set-Cookie",
+        "cp_auth=; Path=/; HttpOnly; Max-Age=0"
+    );
+
+}
+
+function getAuthSession(req) {
+
+    const cookies =
+        cpParseCookies(req);
+
+    const token =
+        cookies.cp_auth;
+
+    if (!token) {
+        return null;
+    }
+
+    const session =
+        authSessionsByToken.get(token);
+
+    if (!session) {
+        return null;
+    }
+
+    if (session.expiresAt < Date.now()) {
+        authSessionsByToken.delete(token);
+        return null;
+    }
+
+    return session;
+
+}
+
+/*
+   À utiliser devant toute route qui doit exiger un compte
+   réellement connecté (pas juste "prétendu connecté" côté
+   navigateur). Exemple : app.get("/route", requireAuthSession, ...)
+*/
+function requireAuthSession(req, res, next) {
+
+    const session =
+        getAuthSession(req);
+
+    if (!session) {
+        return res.status(401).json({
+            success: false,
+            error: "Non connecté"
+        });
+    }
+
+    req.authUser = session;
+
+    next();
+
+}
+
+setInterval(() => {
+
+    const now = Date.now();
+
+    authSessionsByToken.forEach((session, token) => {
+        if (session.expiresAt < now) {
+            authSessionsByToken.delete(token);
+        }
+    });
+
+}, 3600000);
+
 
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -3313,6 +3439,8 @@ app.post("/register", express.json(), async (req, res) => {
         const dbUser =
             inserted.rows[0];
 
+        createAuthSession(res, dbUser.id, dbUser.email);
+
         res.json({
             success: true,
             user: formatUserResponse(dbUser, false)
@@ -3387,6 +3515,8 @@ app.post("/login", express.json(), async (req, res) => {
         const isPro =
             await getUserProStatus(email);
 
+        createAuthSession(res, dbUser.id, dbUser.email);
+
         res.json({
             success: true,
             user: formatUserResponse(dbUser, isPro)
@@ -3399,6 +3529,56 @@ app.post("/login", express.json(), async (req, res) => {
         res.status(500).json({
             error: "Erreur lors de la connexion"
         });
+
+    }
+
+});
+
+app.post("/logout", (req, res) => {
+    destroyAuthSession(req, res);
+    res.json({ success: true });
+});
+
+app.get("/me", async (req, res) => {
+
+    const session =
+        getAuthSession(req);
+
+    if (!session) {
+        return res.json({
+            loggedIn: false
+        });
+    }
+
+    try {
+
+        const result =
+            await pool.query(
+                "SELECT id, email, created_at FROM users WHERE id = $1",
+                [session.userId]
+            );
+
+        const dbUser =
+            result.rows[0];
+
+        if (!dbUser) {
+            destroyAuthSession(req, res);
+            return res.json({ loggedIn: false });
+        }
+
+        const isPro =
+            await getUserProStatus(dbUser.email);
+
+        res.json({
+            loggedIn: true,
+            user: formatUserResponse(dbUser, isPro)
+        });
+
+    } catch (error) {
+
+        console.log("ERREUR /me :", error.message);
+
+        res.json({ loggedIn: false });
 
     }
 
