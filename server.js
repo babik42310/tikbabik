@@ -6,8 +6,6 @@ const { WebcastPushConnection } = require("tiktok-live-connector");
 const fs = require("fs");
 const multer = require("multer");
 const crypto = require("crypto");
-const RESET_TOKENS_FILE =
-    "resetTokens.json";
 const path = require("path");
 const DATA_DIR =
     process.env.APPDATA
@@ -19,6 +17,9 @@ const DATA_DIR =
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
+
+const RESET_TOKENS_FILE =
+    path.join(DATA_DIR, "resetTokens.json");
 
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 const STATS_FILE = path.join(DATA_DIR, "stats.json");
@@ -3078,7 +3079,44 @@ app.post("/paddle-webhook", express.json(), (req, res) => {
 
 });
 
-const USERS_FILE = "users.json";
+const USERS_FILE = path.join(DATA_DIR, "users.json");
+
+/*
+   Migration ponctuelle : si un ancien users.json/resetTokens.json
+   existait à côté du code (emplacement non persistant, utilisé
+   avant qu'un vrai disque permanent soit configuré), on les copie
+   une seule fois vers l'emplacement persistant, pour ne pas perdre
+   les comptes déjà créés.
+*/
+function migrateLegacyDataFile(oldRelativeName, newAbsolutePath) {
+
+    try {
+
+        const oldPath =
+            path.join(__dirname, oldRelativeName);
+
+        if (
+            fs.existsSync(oldPath) &&
+            !fs.existsSync(newAbsolutePath)
+        ) {
+            fs.copyFileSync(oldPath, newAbsolutePath);
+            console.log(
+                "Migration : " + oldRelativeName +
+                " copié vers l'emplacement persistant."
+            );
+        }
+
+    } catch (error) {
+        console.log(
+            "Migration de " + oldRelativeName + " impossible :",
+            error.message
+        );
+    }
+
+}
+
+migrateLegacyDataFile("users.json", USERS_FILE);
+migrateLegacyDataFile("resetTokens.json", RESET_TOKENS_FILE);
 
 function loadUsers() {
     if (!fs.existsSync(USERS_FILE)) {
