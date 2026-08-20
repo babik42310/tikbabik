@@ -1854,6 +1854,7 @@ app.post("/connect-tiktok", async (req, res) => {
 
         tiktokConnections.delete(clientId);
         tiktokUsernames.delete(clientId);
+        lastEventAtByClient.delete(clientId);
 
         return res.json({
             success: false,
@@ -2168,6 +2169,76 @@ function attemptTikTokReconnect(clientId) {
 
 }
 
+/*
+   ============================================================
+   CHIEN DE GARDE — détecte les connexions TikTok "zombies"
+
+   Certaines connexions TikTok restent marquées "connectées" côté
+   serveur alors que TikTok a arrêté d'envoyer quoi que ce soit
+   (aucun cadeau, chat, like, ni même mise à jour du nombre de
+   viewers) — sans jamais déclencher l'événement "disconnected".
+   L'app semblait alors "plantée" et nécessitait un relancement
+   manuel. Cette vérification périodique force une reconnexion
+   dès qu'un silence anormal est détecté.
+   ============================================================
+*/
+
+const STALE_CONNECTION_TIMEOUT_MS = 90000; // 90 secondes sans aucun signal
+
+setInterval(() => {
+
+    const now = Date.now();
+
+    tiktokConnections.forEach((connection, clientId) => {
+
+        const lastEventAt =
+            lastEventAtByClient.get(clientId);
+
+        if (!lastEventAt) {
+            return;
+        }
+
+        const stats =
+            getLiveSessionStats(clientId);
+
+        if (!stats.connected) {
+            return;
+        }
+
+        if (now - lastEventAt > STALE_CONNECTION_TIMEOUT_MS) {
+
+            console.log(
+                "⚠️  Connexion TikTok silencieuse depuis plus de",
+                Math.round(STALE_CONNECTION_TIMEOUT_MS / 1000) + "s",
+                "pour", clientId, "— reconnexion forcée"
+            );
+
+            try {
+                connection.disconnect();
+            } catch (error) {
+                // La connexion était déjà morte de toute façon, sans importance.
+            }
+
+            tiktokConnections.delete(clientId);
+            lastEventAtByClient.delete(clientId);
+
+            stats.connected = false;
+            emitLiveStats(clientId);
+
+            attemptTikTokReconnect(clientId);
+
+        }
+
+    });
+
+}, 30000);
+
+const lastEventAtByClient = new Map();
+
+function markClientActivity(clientId) {
+    lastEventAtByClient.set(clientId, Date.now());
+}
+
 function bindTikTokEvents(tiktokConnection, clientId) {
 
 
@@ -2176,6 +2247,8 @@ function bindTikTokEvents(tiktokConnection, clientId) {
     }
     tiktokConnection.removeAllListeners();
 
+    markClientActivity(clientId);
+
     tiktokConnection.on("disconnected", () => {
         console.log("TikTok LIVE déconnecté (stream terminé ou coupure)");
         getLiveSessionStats(clientId).connected = false;
@@ -2183,9 +2256,19 @@ function bindTikTokEvents(tiktokConnection, clientId) {
         attemptTikTokReconnect(clientId);
     });
 
+    tiktokConnection.on("roomUser", data => {
+        // Signal de présence fréquent envoyé par TikTok (mise à jour
+        // du nombre de viewers) — sert de "battement de cœur" pour
+        // détecter une connexion silencieusement morte, même quand
+        // il n'y a ni chat ni cadeau pendant un moment.
+        markClientActivity(clientId);
+    });
+
     tiktokConnection.on("chat", data => {
 
         console.log("CHAT REÇU :", data.nickname, data.comment);
+
+        markClientActivity(clientId);
 
         applyChronoTime(clientId, getClientChrono(clientId).settings.perChat);
 
@@ -2209,6 +2292,8 @@ function bindTikTokEvents(tiktokConnection, clientId) {
     tiktokConnection.on("gift", data => {
 
         console.log("GIFT REÇU :", data.nickname, data.giftName, data.diamondCount, "repeatCount:", data.repeatCount, "repeatEnd:", data.repeatEnd, "giftType:", data.giftType);
+
+        markClientActivity(clientId);
 
         const giftName =
             data.giftName || data.gift?.name || "gift";
@@ -2397,6 +2482,8 @@ emitToCreatorPilotClient(clientId, "gift", {
 
         console.log("LIKE REÇU :", data.nickname, data.likeCount, data.totalLikeCount);
 
+        markClientActivity(clientId);
+
         const newLikesCount =
             Number(data.totalLikeCount || data.likeCount || 0);
 
@@ -2457,6 +2544,8 @@ tiktokConnection.on("social", data => {
  tiktokConnection.on("follow", data => {
 
     console.log("FOLLOW REÇU :", data.nickname);
+
+    markClientActivity(clientId);
 
     applyChronoTime(clientId, getClientChrono(clientId).settings.perFollow);
 
