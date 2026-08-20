@@ -7021,11 +7021,21 @@ featureRequestButton.onclick = () => {
     window.open("/feature-request", "_blank");
 };
 
-signOutButton.onclick = () => {
+signOutButton.onclick = async () => {
 
-    fetch("/logout", { method: "POST" }).catch(() => {});
+    try {
+        await fetch("/logout", { method: "POST" });
+    } catch (error) {
+        console.log("Déconnexion serveur impossible :", error);
+    }
 
     localStorage.removeItem("tikbabikUser");
+
+    // Effacement immédiat de toutes les statistiques visibles du compte
+    // avant même le rechargement de la page.
+    topGifters = {};
+    giftHistory = [];
+    refreshStatsDisplay();
 
     appSettings.pro = false;
 

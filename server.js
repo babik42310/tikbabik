@@ -1138,14 +1138,6 @@ function getClientStats(clientId) {
             } catch (error) {
                 console.log("Stats client illisibles pour", ownerKey, "- valeurs par défaut utilisées");
             }
-        } else {
-            const legacy = claimLegacyStatsOnce();
-            if (legacy) {
-                data = legacy;
-                try {
-                    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-                } catch {}
-            }
         }
     }
 
@@ -1166,16 +1158,51 @@ function saveClientStats(clientId, data) {
     fs.writeFileSync(cpStatsFilePath(ownerKey), JSON.stringify(data, null, 2));
 }
 
-app.get("/stats", (req, res) => {
-    res.json(getClientStats(req.cpOwnerKey || resolveClientId(req)));
+function emptyPrivateStats() {
+    return { topGifters: {}, giftHistory: [] };
+}
+
+function emptyLiveStats() {
+    return {
+        connected: false,
+        username: "",
+        startTime: null,
+        likes: 0,
+        followers: 0,
+        gifts: 0,
+        diamonds: 0
+    };
+}
+
+app.get("/stats", async (req, res) => {
+    // Les statistiques du tableau de bord sont strictement privées.
+    // Aucun compte connecté = aucune statistique affichée.
+    if (!req.authUser?.userId) {
+        return res.json(emptyPrivateStats());
+    }
+
+    await ensurePersistentUserStateLoaded(req.authUser.userId);
+    res.json(getClientStats(userOwnerKey(req.authUser.userId)));
 });
 
 app.get("/live-stats", (req, res) => {
-    res.json(getLiveSessionStats(resolveClientId(req)));
+    // Les overlays OBS utilisent ?client=... et restent fonctionnels.
+    // Le tableau de bord sans compte, lui, ne reçoit aucune stat privée.
+    if (!req.query.client && !req.authUser?.userId) {
+        return res.json(emptyLiveStats());
+    }
+
+    res.json(getLiveSessionStats(req.cpOwnerKey || resolveClientId(req)));
 });
 
-app.post("/stats", (req, res) => {
-    saveClientStats(req.cpOwnerKey || resolveClientId(req), req.body);
+app.post("/stats", async (req, res) => {
+    // On n'enregistre jamais de statistiques privées sans compte.
+    if (!req.authUser?.userId) {
+        return res.json({ success: false, ignored: true, reason: "account_required" });
+    }
+
+    await ensurePersistentUserStateLoaded(req.authUser.userId);
+    saveClientStats(userOwnerKey(req.authUser.userId), req.body);
     res.json({ success: true });
 });
 
@@ -1309,14 +1336,6 @@ function getClientSettings(sessionId) {
                 clientSettings = JSON.parse(fs.readFileSync(filePath, "utf8"));
             } catch (error) {
                 console.log("Réglages client illisibles pour", ownerKey, "- valeurs par défaut utilisées");
-            }
-        } else {
-            const legacy = claimLegacySettingsOnce();
-            if (legacy) {
-                clientSettings = legacy;
-                try {
-                    fs.writeFileSync(filePath, JSON.stringify(clientSettings, null, 2));
-                } catch {}
             }
         }
     }
@@ -3701,9 +3720,44 @@ app.post("/login", express.json(), async (req, res) => {
 
 });
 
+function clearAnonymousClientPrivateData(clientId, removeFiles = true) {
+    const rawClientId = String(clientId || "").trim();
+    if (!rawClientId) return;
+
+    // IMPORTANT : on cible volontairement la clé brute de l'appareil,
+    // jamais la clé user:<uuid>, afin de ne pas supprimer les données
+    // persistantes du compte qui vient de se déconnecter.
+    settingsByClient.delete(rawClientId);
+    statsByClient.delete(rawClientId);
+    rankingsByClient.delete(rawClientId);
+    liveSessionStatsByClient.delete(rawClientId);
+    pointsStateByClient.delete(rawClientId);
+
+    if (removeFiles) {
+        const filesToRemove = [
+            cpSettingsFilePath(rawClientId),
+            cpStatsFilePath(rawClientId),
+            cpRankingsFilePath(rawClientId)
+        ];
+
+        filesToRemove.forEach(filePath => {
+            try {
+                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            } catch (error) {
+                console.log("Nettoyage données anonymes impossible :", error.message);
+            }
+        });
+    }
+}
+
 app.post("/logout", async (req, res) => {
     await destroyAuthSession(req, res);
     await unbindClientFromUser(req.cpSessionId);
+
+    // Après déconnexion, cet appareil redevient un visiteur vierge.
+    // Les données du compte restent dans PostgreSQL sous son user_id.
+    clearAnonymousClientPrivateData(req.cpSessionId, true);
+
     req.cpOwnerKey = req.cpSessionId;
     res.json({ success: true });
 });
@@ -4100,13 +4154,25 @@ async function attachClientToUserAfterLogin(req, userId) {
         // même ordinateur.
         const canMigrateLocalData = !previousOwnerKey || previousOwnerKey === ownerKey;
 
-        const anonymousSettings = canMigrateLocalData
+        let anonymousSettings = canMigrateLocalData
             ? getClientSettings(clientId)
-            : { voiceEnabled: true, actions: [], actionEvents: [], soundAlerts: [] };
+            : createFreshClientSettings();
 
-        const anonymousStats = canMigrateLocalData
+        let anonymousStats = canMigrateLocalData
             ? getClientStats(clientId)
-            : { topGifters: {}, giftHistory: [] };
+            : emptyPrivateStats();
+
+        // Les anciens fichiers globaux ne sont repris QUE lors de la
+        // première migration d'un compte, jamais par un visiteur anonyme.
+        if (canMigrateLocalData && !fs.existsSync(cpSettingsFilePath(clientId))) {
+            const legacySettings = claimLegacySettingsOnce();
+            if (legacySettings) anonymousSettings = legacySettings;
+        }
+
+        if (canMigrateLocalData && !fs.existsSync(cpStatsFilePath(clientId))) {
+            const legacyStatsForAccount = claimLegacyStatsOnce();
+            if (legacyStatsForAccount) anonymousStats = legacyStatsForAccount;
+        }
 
         const anonymousRankings = canMigrateLocalData
             ? getClientRankings(clientId)
@@ -4131,6 +4197,10 @@ async function attachClientToUserAfterLogin(req, userId) {
             ]
         );
         migrated = true;
+
+        // Les données viennent d'être transférées dans PostgreSQL : on
+        // retire leur ancienne copie anonyme pour éviter toute fuite après logout.
+        clearAnonymousClientPrivateData(clientId, true);
     }
 
     await bindClientToUser(clientId, userId);
