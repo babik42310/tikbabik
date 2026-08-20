@@ -81,6 +81,16 @@ async function initDatabase() {
 
     });
 
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS auth_sessions (
+            token TEXT PRIMARY KEY,
+            user_id UUID NOT NULL,
+            email TEXT NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    `);
+
     console.log("Base PostgreSQL prête");
 }
 
@@ -237,20 +247,23 @@ app.use((req, res, next) => {
    ============================================================
 */
 
-const authSessionsByToken = new Map();
-
 const AUTH_SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours
 
-function createAuthSession(res, userId, email) {
+async function createAuthSession(res, userId, email) {
 
     const token =
         crypto.randomBytes(32).toString("hex");
 
-    authSessionsByToken.set(token, {
-        userId,
-        email,
-        expiresAt: Date.now() + AUTH_SESSION_DURATION_MS
-    });
+    const expiresAt =
+        new Date(Date.now() + AUTH_SESSION_DURATION_MS);
+
+    await pool.query(
+        `
+        INSERT INTO auth_sessions (token, user_id, email, expires_at)
+        VALUES ($1, $2, $3, $4)
+        `,
+        [token, userId, email, expiresAt]
+    );
 
     const cookieParts = [
         "cp_auth=" + token,
@@ -264,13 +277,22 @@ function createAuthSession(res, userId, email) {
 
 }
 
-function destroyAuthSession(req, res) {
+async function destroyAuthSession(req, res) {
 
     const cookies =
         cpParseCookies(req);
 
     if (cookies.cp_auth) {
-        authSessionsByToken.delete(cookies.cp_auth);
+
+        try {
+            await pool.query(
+                "DELETE FROM auth_sessions WHERE token = $1",
+                [cookies.cp_auth]
+            );
+        } catch (error) {
+            console.log("Erreur suppression session :", error.message);
+        }
+
     }
 
     res.setHeader(
@@ -280,7 +302,7 @@ function destroyAuthSession(req, res) {
 
 }
 
-function getAuthSession(req) {
+async function getAuthSession(req) {
 
     const cookies =
         cpParseCookies(req);
@@ -292,19 +314,37 @@ function getAuthSession(req) {
         return null;
     }
 
-    const session =
-        authSessionsByToken.get(token);
+    try {
 
-    if (!session) {
+        const result =
+            await pool.query(
+                "SELECT user_id, email, expires_at FROM auth_sessions WHERE token = $1",
+                [token]
+            );
+
+        const session =
+            result.rows[0];
+
+        if (!session) {
+            return null;
+        }
+
+        if (new Date(session.expires_at).getTime() < Date.now()) {
+            pool.query("DELETE FROM auth_sessions WHERE token = $1", [token]).catch(() => {});
+            return null;
+        }
+
+        return {
+            userId: session.user_id,
+            email: session.email
+        };
+
+    } catch (error) {
+
+        console.log("Erreur lecture session :", error.message);
         return null;
-    }
 
-    if (session.expiresAt < Date.now()) {
-        authSessionsByToken.delete(token);
-        return null;
     }
-
-    return session;
 
 }
 
@@ -313,10 +353,10 @@ function getAuthSession(req) {
    réellement connecté (pas juste "prétendu connecté" côté
    navigateur). Exemple : app.get("/route", requireAuthSession, ...)
 */
-function requireAuthSession(req, res, next) {
+async function requireAuthSession(req, res, next) {
 
     const session =
-        getAuthSession(req);
+        await getAuthSession(req);
 
     if (!session) {
         return res.status(401).json({
@@ -333,13 +373,10 @@ function requireAuthSession(req, res, next) {
 
 setInterval(() => {
 
-    const now = Date.now();
-
-    authSessionsByToken.forEach((session, token) => {
-        if (session.expiresAt < now) {
-            authSessionsByToken.delete(token);
-        }
-    });
+    pool.query("DELETE FROM auth_sessions WHERE expires_at < NOW()")
+        .catch(error => {
+            console.log("Erreur nettoyage sessions expirées :", error.message);
+        });
 
 }, 3600000);
 
@@ -3432,7 +3469,7 @@ app.post("/register", express.json(), async (req, res) => {
         const dbUser =
             inserted.rows[0];
 
-        createAuthSession(res, dbUser.id, dbUser.email);
+        await createAuthSession(res, dbUser.id, dbUser.email);
 
         res.json({
             success: true,
@@ -3508,7 +3545,7 @@ app.post("/login", express.json(), async (req, res) => {
         const isPro =
             await getUserProStatus(email);
 
-        createAuthSession(res, dbUser.id, dbUser.email);
+        await createAuthSession(res, dbUser.id, dbUser.email);
 
         res.json({
             success: true,
@@ -3527,15 +3564,15 @@ app.post("/login", express.json(), async (req, res) => {
 
 });
 
-app.post("/logout", (req, res) => {
-    destroyAuthSession(req, res);
+app.post("/logout", async (req, res) => {
+    await destroyAuthSession(req, res);
     res.json({ success: true });
 });
 
 app.get("/me", async (req, res) => {
 
     const session =
-        getAuthSession(req);
+        await getAuthSession(req);
 
     if (!session) {
         return res.json({
@@ -3555,7 +3592,7 @@ app.get("/me", async (req, res) => {
             result.rows[0];
 
         if (!dbUser) {
-            destroyAuthSession(req, res);
+            await destroyAuthSession(req, res);
             return res.json({ loggedIn: false });
         }
 
