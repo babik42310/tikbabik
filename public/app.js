@@ -2244,54 +2244,60 @@ function applyCoinMatchStyle() {
 
 
 
-saveCoinCustomize.onclick = () => {
+saveCoinCustomize.onclick = async () => {
 
-   const soundInput =
-    document.getElementById("coinVictorySound");
+    const soundInput =
+        document.getElementById("coinVictorySound");
 
-if (soundInput.files.length > 0) {
+    let victorySound =
+        localStorage.getItem("coinVictorySound") || "victory.mp3";
 
-    const formData = new FormData();
-    formData.append("file", soundInput.files[0]);
+    if (soundInput.files.length > 0) {
 
-    fetch("/upload", {
-        method: "POST",
-        body: formData
-    })
-    .then(response => response.json())
-    .then(result => {
-        localStorage.setItem(
-            "coinVictorySound",
-            result.filename
-        );
-    });
+        const formData = new FormData();
+        formData.append("file", soundInput.files[0]);
 
-}
+        const uploadResponse = await fetch("/upload", {
+            method: "POST",
+            body: formData
+        });
+
+        const uploadResult = await uploadResponse.json();
+
+        if (!uploadResult.success && !uploadResult.filename) {
+            showToast(uploadResult.error || "Erreur pendant l'upload du son");
+            return;
+        }
+
+        victorySound = uploadResult.filename;
+        localStorage.setItem("coinVictorySound", victorySound);
+    }
 
     const settings = applyCoinMatchStyle();
+    settings.victorySound = victorySound;
 
     localStorage.setItem(
         "coinMatchStyle",
         JSON.stringify(settings)
     );
 
-    fetch("/coin-match/duration", {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-        duration: Number(settings.duration)
-    })
-});
+    await fetch("/coin-match/duration", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            duration: Number(settings.duration)
+        })
+    });
 
-fetch("/coin-match/settings", {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json"
-    },
-    body: JSON.stringify(settings)
-});
+    await fetch("/coin-match/settings", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(settings)
+    });
 
     showToast("Style Coin Match sauvegardé !");
 };
@@ -4235,6 +4241,11 @@ registerBtn.onclick = async () => {
 
         alert("Compte créé avec succès !");
 
+        // Recharge immédiatement l'application maintenant que la vraie
+        // session serveur existe. Ainsi /settings est relu avec le user_id
+        // du compte et aucune donnée anonyme ne peut écraser ses réglages.
+        location.reload();
+
     } else {
 
         alert(data.error);
@@ -4351,6 +4362,11 @@ loginBtn.onclick = async () => {
     await loadPointsStatePersistentForUser(data.user);
 
     alert("Connexion réussie");
+
+    // Important : avant la connexion, la page a pu charger les réglages
+    // anonymes du navigateur. On recharge pour relire immédiatement les
+    // réglages permanents du compte connecté avant toute sauvegarde.
+    location.reload();
 
 } else {
 
@@ -6171,7 +6187,10 @@ fetch("/settings", {
     body: JSON.stringify(appSettings)
 })
 .then(response => response.json())
-.then(() => {
+.then(result => {
+    if (result && result.settings) {
+        appSettings = result.settings;
+    }
     showToast("Paramètres sauvegardés !");
 });
 
@@ -6243,6 +6262,159 @@ function saveStats() {
 
 /* CHARGEMENT */
 
+
+/* ==========================================================
+   RESTAURATION DES PERSONNALISATIONS DU COMPTE
+   Le serveur /settings est la source principale. localStorage
+   reste seulement un cache pratique pour certaines previews.
+   ========================================================== */
+function restoreAccountPersonalizations(settings) {
+    if (!settings || typeof settings !== "object") return;
+
+    const setValue = (id, value) => {
+        const element = document.getElementById(id);
+        if (element && value !== undefined && value !== null) {
+            element.value = value;
+        }
+    };
+
+    const setChecked = (id, value) => {
+        const element = document.getElementById(id);
+        if (element && value !== undefined && value !== null) {
+            element.checked = value !== false;
+        }
+    };
+
+    if (settings.socialPanel) {
+        const x = settings.socialPanel;
+        setValue("socialFont", x.font || "Arial");
+        setValue("socialFontSize", x.fontSize || 45);
+        setValue("socialLetterSpacing", x.letterSpacing || 2);
+        setValue("socialFontColor", x.fontColor || "#000000");
+        setValue("socialBgColor", x.bgColor || "#00ff4d");
+        setValue("socialAnimation", x.animation || "fade");
+        setValue("socialDisplayTime", x.displayTime || 4);
+        setValue("socialPauseTime", x.pauseTime || 1);
+        setValue("socialRingColor1", x.ringColor1 || "#22d3ee");
+        setValue("socialRingColor2", x.ringColor2 || "#a855f7");
+        setValue("socialRingColor3", x.ringColor3 || "#ec4899");
+        setValue("socialRingSpeed", x.ringSpeed || 6);
+
+        if (typeof socialFieldsBody !== "undefined" && socialFieldsBody) {
+            socialFieldsBody.innerHTML = "";
+            (x.fields || []).forEach(field => addSocialField(field));
+        }
+
+        localStorage.setItem("socialPanelSettings", JSON.stringify(x));
+    }
+
+    if (settings.topLikes) {
+        const x = settings.topLikes;
+        setValue("topLikesTitleFont", x.titleFont || "Orbitron");
+        setValue("topLikesNameFont", x.nameFont || "Rajdhani");
+        setValue("topLikesFontSize", x.fontSize || 24);
+        setValue("topLikesTitleText", x.titleText || "Top J'aime");
+        setValue("topLikesTitleColorStart", x.titleColorStart || "#22d3ee");
+        setValue("topLikesTitleColorEnd", x.titleColorEnd || "#ff4d6d");
+        setValue("topLikesNameColor", x.nameColor || "#ffffff");
+        setValue("topLikesLikesColor", x.likesColor || "#ff4d6d");
+        setValue("topLikesRankColor", x.rankColor || "#ffd700");
+        setValue("topLikesBgColor", x.bgColor || "#05060f");
+        setValue("topLikesRowColor", x.rowColor || "#a855f7");
+        setValue("topLikesRingColor1", x.ringColor1 || "#22d3ee");
+        setValue("topLikesRingColor2", x.ringColor2 || "#a855f7");
+        setValue("topLikesRingColor3", x.ringColor3 || "#ec4899");
+        setValue("topLikesRingSpeed", x.ringSpeed || 6);
+        setValue("topLikesHeartIcon", x.heartIcon || "❤️");
+        setChecked("topLikesShowAvatar", x.showAvatar);
+        setChecked("topLikesShowCrown", x.showCrown);
+        setChecked("topLikesShowHeart", x.showHeart);
+        localStorage.setItem("topLikesSettings", JSON.stringify(x));
+        if (typeof applyTopLikesSettings === "function") applyTopLikesSettings();
+    }
+
+    if (settings.topDonors) {
+        const x = settings.topDonors;
+        setValue("topDonorsTitleFont", x.titleFont || "Orbitron");
+        setValue("topDonorsNameFont", x.nameFont || "Rajdhani");
+        setValue("topDonorsFontSize", x.fontSize || 24);
+        setValue("topDonorsTitleText", x.titleText || "Top Donateurs");
+        setValue("topDonorsTitleColorStart", x.titleColorStart || "#22d3ee");
+        setValue("topDonorsTitleColorEnd", x.titleColorEnd || "#00e5ff");
+        setValue("topDonorsNameColor", x.nameColor || "#ffffff");
+        setValue("topDonorsCoinsColor", x.coinsColor || "#00e5ff");
+        setValue("topDonorsRankColor", x.rankColor || "#ffd700");
+        setValue("topDonorsBgColor", x.bgColor || "#05060f");
+        setValue("topDonorsRowColor", x.rowColor || "#a855f7");
+        setValue("topDonorsRingColor1", x.ringColor1 || "#22d3ee");
+        setValue("topDonorsRingColor2", x.ringColor2 || "#a855f7");
+        setValue("topDonorsRingColor3", x.ringColor3 || "#ec4899");
+        setValue("topDonorsRingSpeed", x.ringSpeed || 6);
+        setValue("topDonorsCoinIcon", x.coinIcon || "🪙");
+        setChecked("topDonorsShowAvatar", x.showAvatar);
+        setChecked("topDonorsShowCrown", x.showCrown);
+        setChecked("topDonorsShowCoin", x.showCoin);
+        localStorage.setItem("topDonorsSettings", JSON.stringify(x));
+        if (typeof applyTopDonorsSettings === "function") applyTopDonorsSettings();
+    }
+
+    if (settings.topPresence) {
+        const x = settings.topPresence;
+        setValue("topPresenceTitleFont", x.titleFont || "Orbitron");
+        setValue("topPresenceNameFont", x.nameFont || "Rajdhani");
+        setValue("topPresenceFontSize", x.fontSize || 24);
+        setValue("topPresenceTitleText", x.titleText || "Top Présence LIVE");
+        setValue("topPresenceTitleColorStart", x.titleColorStart || "#22d3ee");
+        setValue("topPresenceTitleColorEnd", x.titleColorEnd || "#7CFC00");
+        setValue("topPresenceNameColor", x.nameColor || "#ffffff");
+        setValue("topPresenceTimeColor", x.timeColor || "#7CFC00");
+        setValue("topPresenceRankColor", x.rankColor || "#ffd700");
+        setValue("topPresenceBgColor", x.bgColor || "#05060f");
+        setValue("topPresenceRowColor", x.rowColor || "#a855f7");
+        setValue("topPresenceRingColor1", x.ringColor1 || "#22d3ee");
+        setValue("topPresenceRingColor2", x.ringColor2 || "#a855f7");
+        setValue("topPresenceRingColor3", x.ringColor3 || "#ec4899");
+        setValue("topPresenceRingSpeed", x.ringSpeed || 6);
+        setValue("topPresenceClockIcon", x.clockIcon || "⏱️");
+        setChecked("topPresenceShowAvatar", x.showAvatar);
+        setChecked("topPresenceShowCrown", x.showCrown);
+        setChecked("topPresenceShowClock", x.showClock);
+        localStorage.setItem("topPresenceSettings", JSON.stringify(x));
+        if (typeof applyTopPresenceSettings === "function") applyTopPresenceSettings();
+    }
+
+    if (settings.coinMatch) {
+        const x = settings.coinMatch;
+        setValue("coinBgColor", x.bg || "#1f1f1f");
+        setValue("coinBorderColor", x.border || "#ff0050");
+        setValue("coinTextColor", x.text || "#ffffff");
+        setValue("coinTimerColor", x.timer || "#35cfff");
+        setValue("coinShape", x.shape || "20");
+        setValue("coinScale", x.scale || "1");
+        setValue("coinDuration", x.duration || 300);
+        setValue("coinRingColor1", x.ringColor1 || "#22d3ee");
+        setValue("coinRingColor2", x.ringColor2 || "#a855f7");
+        setValue("coinRingColor3", x.ringColor3 || "#ec4899");
+        setValue("coinRingSpeed", x.ringSpeed || 6);
+        if (x.victorySound) localStorage.setItem("coinVictorySound", x.victorySound);
+        localStorage.setItem("coinMatchStyle", JSON.stringify(x));
+        if (typeof applyCoinMatchStyle === "function") applyCoinMatchStyle();
+    }
+
+    if (settings.giftBattle) {
+        const x = settings.giftBattle;
+        setValue("giftBattleDuration", x.duration || 300);
+        setValue("giftBattleRedName", x.redName || "Team 1");
+        setValue("giftBattleBlueName", x.blueName || "Team 2");
+        setValue("giftBattleRedColor", x.redColor || "#ff2a2a");
+        setValue("giftBattleBlueColor", x.blueColor || "#1b8cff");
+        setValue("giftBattleRedGifts", x.redGifts || "");
+        setValue("giftBattleBlueGifts", x.blueGifts || "");
+        localStorage.setItem("giftBattleStyle", JSON.stringify(x));
+        if (typeof applyGiftBattleStyle === "function") applyGiftBattleStyle();
+    }
+}
+
 const saveSoundAlerts =
     document.getElementById("saveSoundAlerts");
 
@@ -6261,6 +6433,10 @@ fetch("/settings")
 .then(settings => {
 
     appSettings = settings;
+
+    // Les réglages du compte venant du serveur prennent toujours le dessus
+    // sur les anciens caches locaux du navigateur.
+    restoreAccountPersonalizations(appSettings);
 
     populateChatBotPanel();
 
@@ -6774,7 +6950,10 @@ function saveAppSettings(message = "Paramètres sauvegardés !") {
         body: JSON.stringify(appSettings)
     })
     .then(response => response.json())
-    .then(() => {
+    .then(result => {
+        if (result && result.settings) {
+            appSettings = result.settings;
+        }
         alert(message);
     })
     .catch(error => {
@@ -7081,13 +7260,10 @@ async function checkProFromDatabase(email) {
         appSettings.pro =
             data.pro === true;
 
-            fetch("/settings", {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json"
-    },
-    body: JSON.stringify(appSettings)
-});
+        // Ne jamais sauvegarder les réglages ici. Cette fonction ne fait
+        // qu'une vérification PRO et peut s'exécuter avant que /settings
+        // ait fini de charger. L'ancienne écriture pouvait donc remplacer
+        // les sons/actions/overlays par un objet incomplet au démarrage.
 
         updateProLocks();
 

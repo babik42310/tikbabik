@@ -46,6 +46,7 @@ const pool = new Pool({
 const clientOwnerKeyByClientId = new Map();
 const userIdByOwnerKey = new Map();
 const loadedPersistentOwnerKeys = new Set();
+const userStateWriteQueues = new Map();
 
 function userOwnerKey(userId) {
     return "user:" + String(userId);
@@ -1278,6 +1279,78 @@ if (!fs.existsSync(CP_SETTINGS_DIR)) {
     fs.mkdirSync(CP_SETTINGS_DIR, { recursive: true });
 }
 
+/*
+   Sauvegarde de secours permanente par COMPTE.
+   PostgreSQL reste la base centrale, mais chaque utilisateur possède
+   aussi un fichier JSON sur le volume persistant Railway. Cela protège
+   les réglages contre une écriture incomplète et permet une restauration
+   automatique si nécessaire.
+*/
+const CP_USER_SETTINGS_DIR =
+    path.join(DATA_DIR, "user-settings");
+
+if (!fs.existsSync(CP_USER_SETTINGS_DIR)) {
+    fs.mkdirSync(CP_USER_SETTINGS_DIR, { recursive: true });
+}
+
+function cpUserSettingsFilePath(userId) {
+    return path.join(CP_USER_SETTINGS_DIR, String(userId) + ".json");
+}
+
+function isPlainObject(value) {
+    return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function mergeSettingsDeep(base, incoming) {
+    const result = isPlainObject(base) ? { ...base } : {};
+    if (!isPlainObject(incoming)) return result;
+
+    Object.entries(incoming).forEach(([key, value]) => {
+        if (isPlainObject(value) && isPlainObject(result[key])) {
+            result[key] = mergeSettingsDeep(result[key], value);
+        } else {
+            // Les tableaux doivent être remplacés intégralement : actions,
+            // alertes sonores, événements, etc.
+            result[key] = value;
+        }
+    });
+
+    return result;
+}
+
+function readUserSettingsBackup(userId) {
+    try {
+        const filePath = cpUserSettingsFilePath(userId);
+        if (!fs.existsSync(filePath)) return null;
+        const parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
+        if (!parsed || !isPlainObject(parsed.settings)) return null;
+        return parsed;
+    } catch (error) {
+        console.log("Backup réglages utilisateur illisible :", error.message);
+        return null;
+    }
+}
+
+function writeUserSettingsBackup(userId, settingsData) {
+    if (!userId) return;
+
+    try {
+        const filePath = cpUserSettingsFilePath(userId);
+        const tempPath = filePath + ".tmp";
+        const payload = {
+            version: 1,
+            userId: String(userId),
+            savedAt: new Date().toISOString(),
+            settings: settingsData
+        };
+
+        fs.writeFileSync(tempPath, JSON.stringify(payload, null, 2), "utf8");
+        fs.renameSync(tempPath, filePath);
+    } catch (error) {
+        console.log("Erreur backup réglages utilisateur :", error.message);
+    }
+}
+
 const settingsByClient = new Map();
 
 function cpSettingsFilePath(sessionId) {
@@ -1347,18 +1420,29 @@ function getClientSettings(sessionId) {
 function saveClientSettings(sessionId, data) {
 
     const ownerKey = canonicalClientKey(sessionId);
-    settingsByClient.set(ownerKey, data);
+
+    // IMPORTANT : on fusionne toujours avec l'état déjà chargé.
+    // Ainsi un POST partiel (ex. uniquement { pro: true }) ne peut plus
+    // effacer les sons, actions, overlays ou réglages de mini-jeux.
+    const currentSettings = getClientSettings(ownerKey);
+    const mergedSettings = mergeSettingsDeep(currentSettings, data || {});
+
+    settingsByClient.set(ownerKey, mergedSettings);
 
     const userId = userIdFromOwnerKey(ownerKey);
     if (userId) {
-        persistUserStateSection(userId, "settings", data);
-        return;
+        // Écriture locale atomique immédiate + PostgreSQL.
+        writeUserSettingsBackup(userId, mergedSettings);
+        persistUserStateSection(userId, "settings", mergedSettings);
+        return mergedSettings;
     }
 
     fs.writeFileSync(
         cpSettingsFilePath(ownerKey),
-        JSON.stringify(data, null, 2)
+        JSON.stringify(mergedSettings, null, 2)
     );
+
+    return mergedSettings;
 }
 
 const chatBotCooldowns = {};
@@ -1889,10 +1973,11 @@ app.get("/settings", (req, res) => {
 });
 
 app.post("/settings", (req, res) => {
-    saveClientSettings(req.cpOwnerKey || req.cpSessionId, req.body);
+    const saved = saveClientSettings(req.cpOwnerKey || req.cpSessionId, req.body);
 
     res.json({
-        success: true
+        success: true,
+        settings: saved
     });
 });
 
@@ -4078,15 +4163,33 @@ async function persistUserStateSection(userId, section, value) {
     const allowed = new Set(["settings", "stats", "rankings", "live_stats", "points_state"]);
     if (!allowed.has(section) || !userId) return;
 
-    try {
-        await pool.query(
+    // Les écritures d'un même compte sont mises en file d'attente.
+    // Sans cela, deux sauvegardes très rapprochées peuvent finir dans
+    // PostgreSQL dans le mauvais ordre et restaurer une ancienne version.
+    const normalizedUserId = String(userId);
+    const snapshot = JSON.stringify(value || {});
+    const previous = userStateWriteQueues.get(normalizedUserId) || Promise.resolve();
+
+    const writePromise = previous
+        .catch(() => {})
+        .then(() => pool.query(
             `INSERT INTO creatorpilot_user_state (user_id, ${section}, updated_at)
              VALUES ($1, $2::jsonb, NOW())
              ON CONFLICT (user_id) DO UPDATE SET ${section} = EXCLUDED.${section}, updated_at = NOW()`,
-            [userId, JSON.stringify(value || {})]
-        );
-    } catch (error) {
-        console.log("Erreur sauvegarde état utilisateur", section, ":", error.message);
+            [normalizedUserId, snapshot]
+        ))
+        .catch(error => {
+            console.log("Erreur sauvegarde état utilisateur", section, ":", error.message);
+        });
+
+    userStateWriteQueues.set(normalizedUserId, writePromise);
+
+    try {
+        await writePromise;
+    } finally {
+        if (userStateWriteQueues.get(normalizedUserId) === writePromise) {
+            userStateWriteQueues.delete(normalizedUserId);
+        }
     }
 }
 
@@ -4107,10 +4210,28 @@ async function ensurePersistentUserStateLoaded(userId) {
 
     const row = result.rows[0];
     if (row) {
-        settingsByClient.set(ownerKey, {
-            ...createFreshClientSettings(),
-            ...(row.settings || {})
-        });
+        const backup = readUserSettingsBackup(userId);
+
+        // Le fichier du compte est la sauvegarde de référence des
+        // personnalisations. S'il existe et est lisible, il gagne toujours
+        // sur une ancienne valeur PostgreSQL. PostgreSQL reste synchronisé
+        // comme seconde copie et pour le reste de l'état utilisateur.
+        const chosenSettings =
+            backup && backup.settings
+                ? backup.settings
+                : (row.settings || {});
+
+        const loadedSettings = mergeSettingsDeep(
+            createFreshClientSettings(),
+            chosenSettings
+        );
+
+        settingsByClient.set(ownerKey, loadedSettings);
+        writeUserSettingsBackup(userId, loadedSettings);
+
+        if (backup) {
+            persistUserStateSection(userId, "settings", loadedSettings);
+        }
         statsByClient.set(ownerKey, row.stats || { topGifters: {}, giftHistory: [] });
         rankingsByClient.set(ownerKey, row.rankings || { topLikes: {}, topDonors: {}, topPresence: {} });
         liveSessionStatsByClient.set(ownerKey, {
@@ -4196,6 +4317,7 @@ async function attachClientToUserAfterLogin(req, userId) {
                 JSON.stringify({ users: {}, transactions: [] })
             ]
         );
+        writeUserSettingsBackup(userId, anonymousSettings);
         migrated = true;
 
         // Les données viennent d'être transférées dans PostgreSQL : on
@@ -4410,14 +4532,20 @@ const coinMatchDefaultTemplate = {
 
 function getClientCoinMatch(clientId) {
 
-    if (!coinMatchByClient.has(clientId)) {
-        coinMatchByClient.set(
-            clientId,
-            JSON.parse(JSON.stringify(coinMatchDefaultTemplate))
-        );
+    const ownerKey = canonicalClientKey(clientId);
+
+    if (!coinMatchByClient.has(ownerKey)) {
+        const initial = JSON.parse(JSON.stringify(coinMatchDefaultTemplate));
+        const saved = getClientSettings(ownerKey).coinMatch;
+
+        if (saved && saved.duration != null) {
+            initial.duration = Number(saved.duration || 300);
+        }
+
+        coinMatchByClient.set(ownerKey, initial);
     }
 
-    return coinMatchByClient.get(clientId);
+    return coinMatchByClient.get(ownerKey);
 }
 
 const giftBattleByClient = new Map();
@@ -4435,25 +4563,42 @@ const giftBattleDefaultTemplate = {
 
 function getClientGiftBattle(clientId) {
 
-    if (!giftBattleByClient.has(clientId)) {
-        giftBattleByClient.set(
-            clientId,
-            JSON.parse(JSON.stringify(giftBattleDefaultTemplate))
-        );
+    const ownerKey = canonicalClientKey(clientId);
+
+    if (!giftBattleByClient.has(ownerKey)) {
+        const initial = JSON.parse(JSON.stringify(giftBattleDefaultTemplate));
+        const saved = getClientSettings(ownerKey).giftBattle;
+
+        if (saved && saved.duration != null) {
+            initial.duration = Number(saved.duration || 300);
+        }
+
+        giftBattleByClient.set(ownerKey, initial);
     }
 
-    return giftBattleByClient.get(clientId);
+    return giftBattleByClient.get(ownerKey);
 }
 
 const giftBattleGiftTeamsByClient = new Map();
 
 function getClientGiftBattleTeams(clientId) {
 
-    if (!giftBattleGiftTeamsByClient.has(clientId)) {
-        giftBattleGiftTeamsByClient.set(clientId, { red: [], blue: [] });
+    const ownerKey = canonicalClientKey(clientId);
+
+    if (!giftBattleGiftTeamsByClient.has(ownerKey)) {
+        const saved = getClientSettings(ownerKey).giftBattle || {};
+        const toArray = value =>
+            Array.isArray(value)
+                ? value
+                : String(value || "").split(",").map(v => v.trim()).filter(Boolean);
+
+        giftBattleGiftTeamsByClient.set(ownerKey, {
+            red: toArray(saved.redGifts),
+            blue: toArray(saved.blueGifts)
+        });
     }
 
-    return giftBattleGiftTeamsByClient.get(clientId);
+    return giftBattleGiftTeamsByClient.get(ownerKey);
 }
 
 app.get("/coin-match/status", (req, res) => {
@@ -4535,7 +4680,7 @@ app.post("/coin-match/reset", (req, res) => {
     const duration =
         getClientCoinMatch(clientId).duration || 300;
 
-    coinMatchByClient.set(clientId, {
+    coinMatchByClient.set(canonicalClientKey(clientId), {
         active: false,
         ended: false,
         winnersShown: false,
@@ -4580,6 +4725,7 @@ app.get("/coin-match/settings", (req, res) => {
             timer: "#35cfff",
             shape: "20",
             scale: "1",
+            duration: 300,
             victorySound: "victory.mp3"
         }
     );
@@ -4600,6 +4746,7 @@ app.post("/coin-match/settings", (req, res) => {
         timer: req.body.timer || "#35cfff",
         shape: req.body.shape || "20",
         scale: req.body.scale || "1",
+        duration: Number(req.body.duration || 300),
         victorySound: req.body.victorySound || "victory.mp3",
         ringColor1: req.body.ringColor1 || "#22d3ee",
         ringColor2: req.body.ringColor2 || "#a855f7",
@@ -4607,6 +4754,7 @@ app.post("/coin-match/settings", (req, res) => {
         ringSpeed: Number(req.body.ringSpeed || 6)
     };
 
+    getClientCoinMatch(clientId).duration = clientSettings.coinMatch.duration;
     saveClientSettings(clientId, clientSettings);
 
     res.json({
@@ -5103,6 +5251,13 @@ app.post("/coin-match/duration", express.json(), (req, res) => {
     coinMatch.duration =
         Number(req.body.duration || 300);
 
+    const clientSettings = getClientSettings(clientId);
+    clientSettings.coinMatch = {
+        ...(clientSettings.coinMatch || {}),
+        duration: coinMatch.duration
+    };
+    saveClientSettings(clientId, clientSettings);
+
     res.json({
         success: true,
         duration: coinMatch.duration
@@ -5237,7 +5392,7 @@ app.post("/gift-battle/reset", (req, res) => {
     const duration =
         getClientGiftBattle(clientId).duration || 300;
 
-    giftBattleByClient.set(clientId, {
+    giftBattleByClient.set(canonicalClientKey(clientId), {
         active: false,
         teamRed: 0,
         teamBlue: 0,
@@ -5576,6 +5731,13 @@ app.post("/gift-battle/duration", express.json(), (req, res) => {
     giftBattle.duration =
         Number(req.body.duration || 300);
 
+    const clientSettings = getClientSettings(clientId);
+    clientSettings.giftBattle = {
+        ...(clientSettings.giftBattle || {}),
+        duration: giftBattle.duration
+    };
+    saveClientSettings(clientId, clientSettings);
+
     res.json({
         success: true,
         duration: giftBattle.duration
@@ -5597,7 +5759,15 @@ app.post("/gift-battle/gift-teams", express.json(), (req, res) => {
         blue: req.body.blue || []
     };
 
-    giftBattleGiftTeamsByClient.set(clientId, teams);
+    giftBattleGiftTeamsByClient.set(canonicalClientKey(clientId), teams);
+
+    const clientSettings = getClientSettings(clientId);
+    clientSettings.giftBattle = {
+        ...(clientSettings.giftBattle || {}),
+        redGifts: teams.red.join(", "),
+        blueGifts: teams.blue.join(", ")
+    };
+    saveClientSettings(clientId, clientSettings);
 
     res.json({
         success: true,
