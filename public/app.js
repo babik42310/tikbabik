@@ -4510,7 +4510,7 @@ function playAlert(sound, image, volume, text) {
     });
     }
 
-    giftAlert.innerHTML = text;
+    giftAlert.textContent = text;
     giftAlert.style.display = "block";
 
     if (image) {
@@ -5281,7 +5281,12 @@ socket.on("chat", data => {
 
     const div = document.createElement("div");
     div.className = "message";
-    div.innerHTML = `<strong>${user}</strong> : ${message}`;
+
+    const chatStrong = document.createElement("strong");
+    chatStrong.textContent = user;
+    div.appendChild(chatStrong);
+    div.appendChild(document.createTextNode(" : " + message));
+
     messages.prepend(div);
 
     const liveChatMessages =
@@ -5293,7 +5298,11 @@ socket.on("chat", data => {
             document.createElement("div");
 
         feedMsg.className = "cpLiveChatMsg";
-        feedMsg.innerHTML = `<b>${user}</b>${message}`;
+
+        const feedBold = document.createElement("b");
+        feedBold.textContent = user;
+        feedMsg.appendChild(feedBold);
+        feedMsg.appendChild(document.createTextNode(message));
 
         liveChatMessages.appendChild(feedMsg);
 
@@ -5311,7 +5320,13 @@ socket.on("chat", data => {
 socket.on("gift", data => {
     const div = document.createElement("div");
     div.className = "message";
-    div.innerHTML = `🎁 <strong>${data.user}</strong> a envoyé : ${data.gift}`;
+
+    const giftStrong = document.createElement("strong");
+    giftStrong.textContent = data.user;
+    div.appendChild(document.createTextNode("🎁 "));
+    div.appendChild(giftStrong);
+    div.appendChild(document.createTextNode(" a envoyé : " + data.gift));
+
     messages.prepend(div);
 
     const diamonds = Number(data.diamonds || 0);
@@ -6090,7 +6105,7 @@ function refreshStatsDisplay() {
 
     ranking.forEach(([user, total]) => {
         const li = document.createElement("li");
-        li.innerHTML = `${user} - ${total} 🪙`;
+        li.appendChild(document.createTextNode(user + " - " + total + " 🪙"));
         topGiftersList.appendChild(li);
     });
 
@@ -6100,18 +6115,19 @@ function refreshStatsDisplay() {
         const div = document.createElement("div");
         div.className = "giftHistoryItem";
 
-        div.innerHTML = `
-            ${
-                item.image
-                ? `<img src="${item.image}" class="giftHistoryImage">`
-                : ""
-            }
+        if (item.image) {
+            const img = document.createElement("img");
+            img.src = item.image;
+            img.className = "giftHistoryImage";
+            div.appendChild(img);
+        }
 
-            <span>
-                🎁 ${item.user} → ${item.gift}
-                (+${item.diamonds} 🪙)
-            </span>
-        `;
+        const span = document.createElement("span");
+        span.appendChild(document.createTextNode(
+            "🎁 " + item.user + " → " + item.gift +
+            " (+" + item.diamonds + " 🪙)"
+        ));
+        div.appendChild(span);
 
         giftHistoryList.appendChild(div);
     });
