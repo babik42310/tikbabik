@@ -393,22 +393,45 @@ if (!fs.existsSync(imagesDir)) {
         recursive: true
     });
 }
+const ALLOWED_UPLOAD_TYPES = {
+    "audio/mpeg": { dir: () => soundsDir, ext: "mp3" },
+    "audio/mp3": { dir: () => soundsDir, ext: "mp3" },
+    "audio/wav": { dir: () => soundsDir, ext: "wav" },
+    "audio/x-wav": { dir: () => soundsDir, ext: "wav" },
+    "audio/ogg": { dir: () => soundsDir, ext: "ogg" },
+    "image/png": { dir: () => imagesDir, ext: "png" },
+    "image/jpeg": { dir: () => imagesDir, ext: "jpg" },
+    "image/gif": { dir: () => imagesDir, ext: "gif" },
+    "image/webp": { dir: () => imagesDir, ext: "webp" }
+};
+
 const storage = multer.diskStorage({
 
     destination: (req, file, cb) => {
 
-        if (file.mimetype.startsWith("audio/")) {
-            cb(null, soundsDir);
-        } else if (file.mimetype.startsWith("image/")) {
-            cb(null, imagesDir);
-        } else {
-            cb(null, path.join(__dirname, "public"));
+        const allowed =
+            ALLOWED_UPLOAD_TYPES[file.mimetype];
+
+        if (!allowed) {
+            return cb(new Error("Type de fichier non autorisé"));
         }
+
+        cb(null, allowed.dir());
 
     },
 
     filename: (req, file, cb) => {
-        cb(null, file.originalname);
+
+        const allowed =
+            ALLOWED_UPLOAD_TYPES[file.mimetype];
+
+        const safeName =
+            crypto.randomBytes(16).toString("hex") +
+            "." +
+            (allowed ? allowed.ext : "bin");
+
+        cb(null, safeName);
+
     }
 
 });
@@ -416,7 +439,19 @@ const storage = multer.diskStorage({
 
 
 const upload = multer({
-    storage: storage
+    storage: storage,
+    limits: {
+        fileSize: 15 * 1024 * 1024 // 15 Mo max
+    },
+    fileFilter: (req, file, cb) => {
+
+        if (!ALLOWED_UPLOAD_TYPES[file.mimetype]) {
+            return cb(new Error("Type de fichier non autorisé"));
+        }
+
+        cb(null, true);
+
+    }
 });
 
 app.use(
@@ -604,35 +639,50 @@ app.post("/grant-pro", async (req, res) => {
 
 });
 
-app.post("/upload", upload.single("file"), (req, res) => {
+app.post("/upload", (req, res) => {
 
-    try {
+    upload.single("file")(req, res, error => {
 
-        console.log("UPLOAD REÇU :", req.file);
-
-        if (!req.file) {
+        if (error) {
+            console.log("ERREUR UPLOAD :", error.message);
             return res.status(400).json({
                 success: false,
-                error: "Aucun fichier reçu"
+                error:
+                    error.code === "LIMIT_FILE_SIZE"
+                        ? "Fichier trop volumineux (15 Mo maximum)"
+                        : "Type de fichier non autorisé (images et sons uniquement)"
             });
         }
 
-        res.json({
-            success: true,
-            filename: req.file.filename,
-            type: req.file.mimetype
-        });
+        try {
 
-    } catch (error) {
+            console.log("UPLOAD REÇU :", req.file);
 
-        console.log("ERREUR UPLOAD :", error);
+            if (!req.file) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Aucun fichier reçu"
+                });
+            }
 
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+            res.json({
+                success: true,
+                filename: req.file.filename,
+                type: req.file.mimetype
+            });
 
-    }
+        } catch (error) {
+
+            console.log("ERREUR UPLOAD :", error);
+
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+
+        }
+
+    });
 
 });
 
