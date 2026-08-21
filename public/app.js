@@ -5287,6 +5287,19 @@ socket.on("tiktok-reconnect-failed", data => {
 
 });
 
+socket.on("tiktok-reconnect-succeeded", () => {
+
+    const banner =
+        document.getElementById("cpReconnectBanner");
+
+    if (banner) {
+        banner.remove();
+    }
+
+    showToast("Connexion TikTok rétablie automatiquement !");
+
+});
+
 /* ==================== ANNONCE VOCALE D'OBJECTIF ATTEINT ==================== */
 
 function announceGoalMessage(text) {

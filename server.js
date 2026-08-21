@@ -2692,26 +2692,40 @@ function attemptTikTokReconnect(clientId) {
 
     reconnectAttemptsByClient.set(clientId, attempts);
 
-    if (attempts > 5) {
+    /*
+       5 premiers essais rapprochés (jusqu'à 3 min d'écart) pour les
+       coupures courtes. Au-delà, on ne renonce plus complètement —
+       on passe à un rythme lent (toutes les 5 min) pour ne pas
+       épuiser le quota Euler Stream partagé, tout en continuant
+       d'essayer en arrière-plan. La bannière prévient une seule
+       fois du passage en mode lent, avec un bouton pour forcer une
+       tentative immédiate si besoin.
+    */
+    const isFirstSlowAttempt =
+        attempts === 6;
+
+    if (isFirstSlowAttempt) {
+
         console.log(
-            "Reconnexion TikTok abandonnée pour", clientId,
-            "après 5 tentatives — reconnexion manuelle nécessaire"
+            "Reconnexion TikTok toujours en cours pour", clientId,
+            "après 5 tentatives rapprochées — passage en tentatives espacées (toutes les 5 min)"
         );
 
         emitToCreatorPilotClient(clientId, "tiktok-reconnect-failed", {
-            message: "La connexion à TikTok a été perdue et n'a pas pu être rétablie automatiquement. Reconnecte-toi manuellement."
+            message: "La connexion à TikTok a été perdue. Nouvelle tentative automatique toutes les 5 minutes — tu peux aussi forcer une reconnexion immédiate."
         });
 
-        return;
     }
 
     const delay =
-        Math.min(180000, 15000 * attempts);
+        attempts <= 5
+            ? Math.min(180000, 15000 * attempts)
+            : 300000;
 
     console.log(
         "Nouvelle tentative de reconnexion TikTok dans",
         Math.round(delay / 1000) + "s",
-        "(essai", attempts + "/5)"
+        "(essai", attempts + (attempts <= 5 ? "/5" : ", mode lent") + ")"
     );
 
     setTimeout(async () => {
@@ -2738,6 +2752,10 @@ function attemptTikTokReconnect(clientId) {
 
             stats.connected = true;
             emitLiveStats(clientId);
+
+            if (attempts > 5) {
+                emitToCreatorPilotClient(clientId, "tiktok-reconnect-succeeded", {});
+            }
 
             reconnectAttemptsByClient.set(clientId, 0);
 
