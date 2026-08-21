@@ -1397,6 +1397,7 @@ function getClientSettings(sessionId) {
     const ownerKey = canonicalClientKey(sessionId);
 
     if (settingsByClient.has(ownerKey)) {
+        console.log("📂 GET SETTINGS — ownerKey:", ownerKey, "→ trouvé en mémoire (cache)");
         return settingsByClient.get(ownerKey);
     }
 
@@ -1407,10 +1408,15 @@ function getClientSettings(sessionId) {
         if (fs.existsSync(filePath)) {
             try {
                 clientSettings = JSON.parse(fs.readFileSync(filePath, "utf8"));
+                console.log("📂 GET SETTINGS — ownerKey:", ownerKey, "→ chargé depuis fichier anonyme:", filePath);
             } catch (error) {
                 console.log("Réglages client illisibles pour", ownerKey, "- valeurs par défaut utilisées");
             }
+        } else {
+            console.log("📂 GET SETTINGS — ownerKey:", ownerKey, "→ AUCUN fichier trouvé, réglages VIERGES utilisés (userId lié: aucun)");
         }
+    } else {
+        console.log("📂 GET SETTINGS — ownerKey:", ownerKey, "→ userId lié:", userIdFromOwnerKey(ownerKey), "mais PAS ENCORE EN CACHE → réglages VIERGES retournés (ensurePersistentUserStateLoaded n'a pas encore tourné pour ce compte)");
     }
 
     settingsByClient.set(ownerKey, clientSettings);
@@ -1420,6 +1426,8 @@ function getClientSettings(sessionId) {
 function saveClientSettings(sessionId, data) {
 
     const ownerKey = canonicalClientKey(sessionId);
+
+    console.log("💾 SAVE SETTINGS — sessionId:", sessionId, "→ ownerKey:", ownerKey, "→ userId lié:", userIdFromOwnerKey(ownerKey) || "(aucun, anonyme)");
 
     // IMPORTANT : on fusionne toujours avec l'état déjà chargé.
     // Ainsi un POST partiel (ex. uniquement { pro: true }) ne peut plus
@@ -1433,7 +1441,9 @@ function saveClientSettings(sessionId, data) {
     if (userId) {
         // Écriture locale atomique immédiate + PostgreSQL.
         writeUserSettingsBackup(userId, mergedSettings);
-        persistUserStateSection(userId, "settings", mergedSettings);
+        persistUserStateSection(userId, "settings", mergedSettings)
+            .then(() => console.log("✅ SAVE SETTINGS réussi en base PostgreSQL pour userId:", userId))
+            .catch(error => console.log("❌ SAVE SETTINGS échec PostgreSQL pour userId:", userId, "-", error.message));
         return mergedSettings;
     }
 
@@ -1441,6 +1451,8 @@ function saveClientSettings(sessionId, data) {
         cpSettingsFilePath(ownerKey),
         JSON.stringify(mergedSettings, null, 2)
     );
+
+    console.log("✅ SAVE SETTINGS réussi en fichier (anonyme) :", cpSettingsFilePath(ownerKey));
 
     return mergedSettings;
 }

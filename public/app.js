@@ -106,6 +106,50 @@ document.addEventListener("DOMContentLoaded", () => {
 
 });
 
+/*
+   ============================================================
+   SAUVEGARDE LOCALE AUTOMATIQUE (par navigateur/PC)
+
+   Copie régulièrement les réglages actuels dans le navigateur de
+   CE client précis, indépendamment du serveur. Sert de filet de
+   sécurité : si jamais la sauvegarde côté serveur pose problème,
+   chaque client garde quand même une copie récente chez lui.
+   ============================================================
+*/
+let lastLocalBackupSnapshot = "";
+
+setInterval(() => {
+
+    try {
+
+        if (typeof appSettings === "undefined" || !appSettings) {
+            return;
+        }
+
+        const snapshot =
+            JSON.stringify(appSettings);
+
+        if (snapshot === lastLocalBackupSnapshot) {
+            return;
+        }
+
+        lastLocalBackupSnapshot = snapshot;
+
+        localStorage.setItem(
+            "cp_settings_local_backup",
+            JSON.stringify({
+                savedAt: new Date().toISOString(),
+                settings: appSettings
+            })
+        );
+
+    } catch (error) {
+        // Sauvegarde locale best-effort : une erreur ici ne doit
+        // jamais bloquer le reste de l'app.
+    }
+
+}, 5000);
+
 function showToast(message) {
 
     let container =
@@ -6433,6 +6477,60 @@ fetch("/settings")
 .then(settings => {
 
     appSettings = settings;
+
+    /*
+       Sauvegarde locale de secours (par navigateur/PC, indépendante
+       du serveur). Si les réglages reçus du serveur semblent vides
+       de façon suspecte (aucune action, aucune alerte sonore) alors
+       qu'une sauvegarde locale plus riche existe sur cet ordinateur,
+       on propose de la restaurer.
+    */
+    try {
+
+        const localBackupRaw =
+            localStorage.getItem("cp_settings_local_backup");
+
+        const localBackup =
+            localBackupRaw ? JSON.parse(localBackupRaw) : null;
+
+        const serverLooksEmpty =
+            (!appSettings.actions || appSettings.actions.length === 0) &&
+            (!appSettings.soundAlerts || appSettings.soundAlerts.length === 0);
+
+        const localLooksRicher =
+            localBackup &&
+            (
+                (localBackup.actions && localBackup.actions.length > 0) ||
+                (localBackup.soundAlerts && localBackup.soundAlerts.length > 0)
+            );
+
+        if (serverLooksEmpty && localLooksRicher) {
+
+            const wantsRestore = confirm(
+                "Tes réglages semblent vides côté serveur, mais une sauvegarde locale plus complète existe sur cet ordinateur (datant du " +
+                (localBackup.savedAt ? new Date(localBackup.savedAt).toLocaleString("fr-FR") : "?") +
+                "). Veux-tu restaurer cette sauvegarde locale maintenant ?"
+            );
+
+            if (wantsRestore) {
+
+                appSettings = localBackup.settings || localBackup;
+
+                fetch("/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(appSettings)
+                }).then(() => {
+                    showToast("Sauvegarde locale restaurée sur le serveur !");
+                });
+
+            }
+
+        }
+
+    } catch (error) {
+        console.log("Vérification de la sauvegarde locale impossible :", error);
+    }
 
     // Les réglages du compte venant du serveur prennent toujours le dessus
     // sur les anciens caches locaux du navigateur.
