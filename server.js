@@ -2697,6 +2697,11 @@ function attemptTikTokReconnect(clientId) {
             "Reconnexion TikTok abandonnée pour", clientId,
             "après 5 tentatives — reconnexion manuelle nécessaire"
         );
+
+        emitToCreatorPilotClient(clientId, "tiktok-reconnect-failed", {
+            message: "La connexion à TikTok a été perdue et n'a pas pu être rétablie automatiquement. Reconnecte-toi manuellement."
+        });
+
         return;
     }
 

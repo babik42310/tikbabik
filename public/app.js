@@ -5232,6 +5232,61 @@ socket.on("liveStats", data => {
 
 setInterval(renderLiveStats, 1000);
 
+/* ==================== CONNEXION TIKTOK PERDUE (échec de reconnexion auto) ==================== */
+
+socket.on("tiktok-reconnect-failed", data => {
+
+    const message =
+        (data && data.message) ||
+        "La connexion à TikTok a été perdue.";
+
+    let banner =
+        document.getElementById("cpReconnectBanner");
+
+    if (!banner) {
+
+        banner = document.createElement("div");
+        banner.id = "cpReconnectBanner";
+
+        banner.style.cssText =
+            "position:fixed;top:0;left:0;right:0;z-index:999999;" +
+            "background:linear-gradient(90deg,#ec4899,#a855f7);" +
+            "color:#05060f;font-weight:700;padding:14px 20px;" +
+            "display:flex;align-items:center;justify-content:center;gap:16px;" +
+            "font-family:sans-serif;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
+
+        document.body.appendChild(banner);
+
+    }
+
+    banner.innerHTML = "";
+
+    const text =
+        document.createElement("span");
+
+    text.textContent =
+        "⚠️ " + message;
+
+    const button =
+        document.createElement("button");
+
+    button.textContent =
+        "Reconnecter maintenant";
+
+    button.style.cssText =
+        "background:#05060f;color:#fff;border:none;padding:8px 16px;" +
+        "border-radius:8px;cursor:pointer;font-weight:700;";
+
+    button.onclick = () => {
+        document.getElementById("startConnectTikTokButton")?.click();
+        banner.remove();
+    };
+
+    banner.appendChild(text);
+    banner.appendChild(button);
+
+});
+
 /* ==================== ANNONCE VOCALE D'OBJECTIF ATTEINT ==================== */
 
 function announceGoalMessage(text) {
