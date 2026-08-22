@@ -1604,24 +1604,34 @@ function addToCoinJar(clientId, diamonds, giftName, giftImage, donorName, donorA
         diamonds: diamonds
     });
 
-    if (jar.current >= target) {
+    /*
+       On attend que l'animation de chute (côté client, ~500ms) ait
+       eu le temps de se jouer avant d'annoncer la mise à jour du
+       tas de cadeaux posés — sinon le cadeau apparaît instantanément
+       en bas, sans jamais sembler "tomber".
+    */
+    setTimeout(() => {
 
-        jar.current = target;
-        jar.celebrating = true;
+        if (jar.current >= target) {
+
+            jar.current = target;
+            jar.celebrating = true;
+
+            emitToCreatorPilotClient(clientId, "coinJarUpdated", jar);
+
+            setTimeout(() => {
+                jar.current = 0;
+                jar.celebrating = false;
+                jar.settledGifts = [];
+                emitToCreatorPilotClient(clientId, "coinJarUpdated", jar);
+            }, 4000);
+
+            return;
+        }
 
         emitToCreatorPilotClient(clientId, "coinJarUpdated", jar);
 
-        setTimeout(() => {
-            jar.current = 0;
-            jar.celebrating = false;
-            jar.settledGifts = [];
-            emitToCreatorPilotClient(clientId, "coinJarUpdated", jar);
-        }, 4000);
-
-        return;
-    }
-
-    emitToCreatorPilotClient(clientId, "coinJarUpdated", jar);
+    }, 550);
 
 }
 
