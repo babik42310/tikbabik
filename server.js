@@ -1860,7 +1860,7 @@ app.get("/overlay/recent-gifts", (req, res) => {
 const clientId = "${clientId}";
 const socket = io();
 
-socket.emit("register-client", clientId);
+socket.emit("register-client", { clientId: clientId });
 
 let settings = {
     enabled: true,
@@ -2091,7 +2091,7 @@ app.get("/overlay/follow-welcome", (req, res) => {
 const clientId = "${clientId}";
 const socket = io();
 
-socket.emit("register-client", clientId);
+socket.emit("register-client", { clientId: clientId });
 
 let settings = {
     enabled: true,
@@ -2544,7 +2544,7 @@ body{
 
 const clientId = "${clientId}";
 const socket = io();
-socket.emit("register-client", clientId);
+socket.emit("register-client", { clientId: clientId });
 
 function makeGiftEl(gift, className){
 
