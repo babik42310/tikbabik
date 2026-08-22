@@ -1666,7 +1666,7 @@ value="/overlay/chrono"        readonly>
                     readonly>
 
                 <button class="copyOverlayUrl" data-pro="true">🔒 Copier URL</button>
-                <button class="testOverlayUrl" data-pro="true">🔒 Tester</button>
+                <button id="testCoinJar" data-pro="true">🔒 Test cadeau</button>
                 <button id="customizeCoinJar">⚙️ Personnaliser</button>
                 <button id="resetCoinJar" class="dangerButton">🗑 Réinitialiser</button>
 
@@ -1683,23 +1683,19 @@ value="/overlay/chrono"        readonly>
                     <label>Texte de célébration</label>
                     <input type="text" id="coinJarCelebrationText" value="Tirelire pleine !">
 
-                    <label>Couleur du remplissage (bas)</label>
+                    <label>Couleur du remplissage</label>
                     <input type="color" id="coinJarColor" value="#22d3ee">
 
-                    <label>Couleur des pièces</label>
+                    <label>Couleur du contour du bocal</label>
                     <input type="color" id="coinJarCoinColor" value="#ffd700">
 
-                    <label>Anneau — couleur 1</label>
-                    <input type="color" id="coinJarRingColor1" value="#22d3ee">
+                    <label>Couleur de fond du bocal</label>
+                    <input type="color" id="coinJarBgColor" value="#0c1625">
 
-                    <label>Anneau — couleur 2</label>
-                    <input type="color" id="coinJarRingColor2" value="#a855f7">
-
-                    <label>Anneau — couleur 3</label>
-                    <input type="color" id="coinJarRingColor3" value="#ec4899">
-
-                    <label>Vitesse de rotation de l'anneau (secondes)</label>
-                    <input type="number" id="coinJarRingSpeed" value="6" min="1">
+                    <label>
+                        <input type="checkbox" id="coinJarTransparent">
+                        Fond transparent (pour OBS)
+                    </label>
 
                     <br><br>
 

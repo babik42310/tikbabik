@@ -5304,10 +5304,8 @@ if (customizeCoinJar && coinJarCustomize) {
                 document.getElementById("coinJarCelebrationText").value = s.celebrationText || "Tirelire pleine !";
                 document.getElementById("coinJarColor").value = s.jarColor || "#22d3ee";
                 document.getElementById("coinJarCoinColor").value = s.coinColor || "#ffd700";
-                document.getElementById("coinJarRingColor1").value = s.ringColor1 || "#22d3ee";
-                document.getElementById("coinJarRingColor2").value = s.ringColor2 || "#a855f7";
-                document.getElementById("coinJarRingColor3").value = s.ringColor3 || "#ec4899";
-                document.getElementById("coinJarRingSpeed").value = s.ringSpeed || 6;
+                document.getElementById("coinJarBgColor").value = s.bgColor || "#0c1625";
+                document.getElementById("coinJarTransparent").checked = s.transparent === true;
 
             } catch (error) {}
 
@@ -5330,10 +5328,8 @@ if (saveCoinJar) {
             celebrationText: document.getElementById("coinJarCelebrationText").value || "Tirelire pleine !",
             jarColor: document.getElementById("coinJarColor").value,
             coinColor: document.getElementById("coinJarCoinColor").value,
-            ringColor1: document.getElementById("coinJarRingColor1").value,
-            ringColor2: document.getElementById("coinJarRingColor2").value,
-            ringColor3: document.getElementById("coinJarRingColor3").value,
-            ringSpeed: Number(document.getElementById("coinJarRingSpeed").value || 6)
+            bgColor: document.getElementById("coinJarBgColor").value,
+            transparent: document.getElementById("coinJarTransparent").checked
         };
 
         await fetch("/coin-jar/settings", {
@@ -5350,6 +5346,29 @@ if (saveCoinJar) {
         }
 
         showToast("Tirelire sauvegardée !");
+
+    };
+
+}
+
+const testCoinJar =
+    document.getElementById("testCoinJar");
+
+if (testCoinJar) {
+
+    testCoinJar.onclick = async () => {
+
+        if (
+            testCoinJar.dataset.pro === "true" &&
+            !isProUser()
+        ) {
+            goToProCheckout();
+            return;
+        }
+
+        await fetch("/coin-jar/test", { method: "POST" });
+
+        showToast("Cadeau de test envoyé dans la tirelire !");
 
     };
 

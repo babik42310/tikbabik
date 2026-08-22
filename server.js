@@ -1522,12 +1522,38 @@ function getClientCoinJar(clientId) {
     return coinJarByClient.get(clientId);
 }
 
-function addToCoinJar(clientId, diamonds) {
+const GIFT_ICON_KEYWORDS = [
+    { keywords: ["rose"], icon: "🌹" },
+    { keywords: ["coeur", "heart", "love"], icon: "❤️" },
+    { keywords: ["diamant", "diamond"], icon: "💎" },
+    { keywords: ["couronne", "crown"], icon: "👑" },
+    { keywords: ["etoile", "star"], icon: "⭐" },
+    { keywords: ["fusée", "fusee", "rocket"], icon: "🚀" },
+    { keywords: ["lion"], icon: "🦁" },
+    { keywords: ["licorne", "unicorn"], icon: "🦄" },
+    { keywords: ["feu", "fire"], icon: "🔥" }
+];
+
+function guessGiftIcon(giftName) {
+
+    const normalized =
+        String(giftName || "").toLowerCase();
+
+    const match =
+        GIFT_ICON_KEYWORDS.find(entry =>
+            entry.keywords.some(word => normalized.includes(word))
+        );
+
+    return match ? match.icon : "🎁";
+
+}
+
+function addToCoinJar(clientId, diamonds, giftName) {
 
     const jarSettings =
-        getClientSettings(clientId).coinJar;
+        getClientSettings(clientId).coinJar || {};
 
-    if (!jarSettings || !jarSettings.enabled) {
+    if (jarSettings.enabled === false) {
         return;
     }
 
@@ -1542,6 +1568,10 @@ function addToCoinJar(clientId, diamonds) {
     }
 
     jar.current += diamonds;
+
+    emitToCreatorPilotClient(clientId, "coinJarGiftFell", {
+        icon: guessGiftIcon(giftName)
+    });
 
     if (jar.current >= target) {
 
@@ -1563,6 +1593,26 @@ function addToCoinJar(clientId, diamonds) {
 
 }
 
+app.post("/coin-jar/test", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const testGifts =
+        ["Rose", "Coeur", "Couronne", "Fusée", "Lion", "Diamant"];
+
+    const randomGift =
+        testGifts[Math.floor(Math.random() * testGifts.length)];
+
+    const randomAmount =
+        10 + Math.floor(Math.random() * 90);
+
+    addToCoinJar(clientId, randomAmount, randomGift);
+
+    res.json({ success: true, gift: randomGift, amount: randomAmount });
+
+});
+
 app.get("/coin-jar/status", (req, res) => {
     res.json(getClientCoinJar(resolveClientId(req)));
 });
@@ -1578,10 +1628,8 @@ app.get("/coin-jar/settings", (req, res) => {
             target: 1000,
             jarColor: "#22d3ee",
             coinColor: "#ffd700",
-            ringColor1: "#22d3ee",
-            ringColor2: "#a855f7",
-            ringColor3: "#ec4899",
-            ringSpeed: 6,
+            bgColor: "#0c1625",
+            transparent: false,
             celebrationText: "Tirelire pleine !"
         }
     );
@@ -1601,10 +1649,8 @@ app.post("/coin-jar/settings", express.json(), (req, res) => {
         target: Number(req.body.target || 1000),
         jarColor: req.body.jarColor || "#22d3ee",
         coinColor: req.body.coinColor || "#ffd700",
-        ringColor1: req.body.ringColor1 || "#22d3ee",
-        ringColor2: req.body.ringColor2 || "#a855f7",
-        ringColor3: req.body.ringColor3 || "#ec4899",
-        ringSpeed: Number(req.body.ringSpeed || 6),
+        bgColor: req.body.bgColor || "#0c1625",
+        transparent: req.body.transparent === true,
         celebrationText: req.body.celebrationText || "Tirelire pleine !"
     };
 
@@ -2065,17 +2111,8 @@ app.get("/overlay/coin-jar", (req, res) => {
     const coinColor =
         jarSettings.coinColor || "#ffd700";
 
-    const ringColor1 =
-        jarSettings.ringColor1 || "#22d3ee";
-
-    const ringColor2 =
-        jarSettings.ringColor2 || "#a855f7";
-
-    const ringColor3 =
-        jarSettings.ringColor3 || "#ec4899";
-
-    const ringSpeed =
-        jarSettings.ringSpeed || 6;
+    const bgColor =
+        jarSettings.transparent ? "transparent" : (jarSettings.bgColor || "#0c1625");
 
     const celebrationText =
         jarSettings.celebrationText || "Tirelire pleine !";
@@ -2088,24 +2125,11 @@ app.get("/overlay/coin-jar", (req, res) => {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 <style>
-@property --angle {
-    syntax: '<angle>';
-    initial-value: 0deg;
-    inherits: false;
-}
 
-@keyframes spin {
-    to { --angle: 360deg; }
-}
-
-@keyframes coinFloat {
-    0% { transform: translateY(0) scale(1); opacity: 1; }
-    100% { transform: translateY(-140px) scale(0.4); opacity: 0; }
-}
-
-@keyframes jarPulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+@keyframes fallIntoJar {
+    0% { transform: translateY(-120px) rotate(0deg); opacity: 1; }
+    85% { opacity: 1; }
+    100% { transform: translateY(0) rotate(20deg); opacity: 0; }
 }
 
 @keyframes celebrationText {
@@ -2113,6 +2137,12 @@ app.get("/overlay/coin-jar", (req, res) => {
     30% { transform: scale(1.2) rotate(3deg); opacity: 1; }
     50% { transform: scale(1) rotate(0deg); }
     100% { transform: scale(1) rotate(0deg); opacity: 0; }
+}
+
+@keyframes jarShake {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-2deg); }
+    75% { transform: rotate(2deg); }
 }
 
 body{
@@ -2126,40 +2156,41 @@ body{
     font-family:'Rajdhani', sans-serif;
 }
 
-#ring{
+#jarWrap{
     position:relative;
-    width:220px;
-    height:280px;
-    padding:3px;
-    border-radius:110px 110px 24px 24px;
-    background:conic-gradient(from var(--angle), ${ringColor1}, ${ringColor2}, ${ringColor3}, ${ringColor1});
-    animation:spin ${ringSpeed}s linear infinite;
+    width:240px;
+    height:300px;
 }
 
-#jarBox{
-    width:100%;
-    height:100%;
-    border-radius:108px 108px 22px 22px;
-    background:#05060f;
-    position:relative;
-    overflow:hidden;
-    display:flex;
-    align-items:flex-end;
-    justify-content:center;
+/* Vrai bocal : goulot étroit en haut, corps arrondi, base plate */
+#jarShape{
+    position:absolute;
+    inset:0;
+    clip-path: path("M 90 0 L 150 0 L 150 35 C 150 35 230 55 230 150 C 230 230 190 300 120 300 C 50 300 10 230 10 150 C 10 55 90 35 90 35 Z");
+    background:${bgColor};
+    border:4px solid ${jarColor};
+    box-sizing:border-box;
+}
+
+#jarShape.shaking{
+    animation: jarShake 0.4s ease-in-out 3;
 }
 
 #fill{
-    width:100%;
+    position:absolute;
+    left:4px;
+    right:4px;
+    bottom:4px;
     height:0%;
-    background:linear-gradient(180deg, ${coinColor}cc, ${jarColor});
-    box-shadow:0 0 25px ${coinColor}aa;
+    background:linear-gradient(180deg, ${coinColor}dd, ${jarColor});
+    box-shadow:0 0 25px ${coinColor}aa inset;
     transition:height 0.6s ease;
-    border-radius:0 0 22px 22px;
+    clip-path: path("M 90 0 L 150 0 L 150 35 C 150 35 230 55 230 150 C 230 230 190 300 120 300 C 50 300 10 230 10 150 C 10 55 90 35 90 35 Z");
 }
 
 #label{
     position:absolute;
-    top:14px;
+    top:-34px;
     left:0;
     right:0;
     text-align:center;
@@ -2177,7 +2208,7 @@ body{
     left:50%;
     transform:translate(-50%, -50%) scale(0);
     font-family:'Orbitron', sans-serif;
-    font-size:22px;
+    font-size:20px;
     font-weight:800;
     color:${coinColor};
     text-shadow:0 0 20px ${coinColor};
@@ -2190,77 +2221,84 @@ body{
     animation:celebrationText 4s ease forwards;
 }
 
-.floatingCoin{
+.fallingGift{
     position:absolute;
-    bottom:20px;
-    font-size:22px;
-    animation:coinFloat 1.2s ease-out forwards;
+    top:-40px;
+    font-size:34px;
+    animation:fallIntoJar 0.9s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
     z-index:8;
 }
 
-#ring.pulsing{
-    animation:spin ${ringSpeed}s linear infinite, jarPulse 0.6s ease infinite;
-}
 </style>
 </head>
 <body>
 
-<div id="ring">
-<div id="jarBox">
+<div id="jarWrap">
     <div id="label">0 / ${target}</div>
-    <div id="fill"></div>
+    <div id="jarShape">
+        <div id="fill"></div>
+    </div>
     <div id="celebration">🎉 ${celebrationText} 🎉</div>
 </div>
-</div>
 
+<script src="/socket.io/socket.io.js"></script>
 <script>
-let lastCurrent = 0;
 
-async function updateCoinJar(){
+const clientId = "${clientId}";
+const socket = io();
+socket.emit("register-client", clientId);
 
-    const response = await fetch("/coin-jar/status?client=${clientId}");
-    const data = await response.json();
+function updateFromStatus(data){
 
     const percent = Math.min(100, Math.round((data.current / ${target}) * 100));
 
     document.getElementById("fill").style.height = percent + "%";
     document.getElementById("label").textContent = data.current + " / ${target}";
 
-    const ring = document.getElementById("ring");
+    const jarShape = document.getElementById("jarShape");
     const celebration = document.getElementById("celebration");
 
     if (data.celebrating) {
-        ring.classList.add("pulsing");
         celebration.classList.add("active");
     } else {
-        ring.classList.remove("pulsing");
         celebration.classList.remove("active");
     }
 
-    if (data.current > lastCurrent && !data.celebrating) {
-
-        const coin = document.createElement("div");
-        coin.className = "floatingCoin";
-        coin.textContent = "🪙";
-        coin.style.left = (40 + Math.random() * 20) + "%";
-        document.getElementById("jarBox").appendChild(coin);
-
-        setTimeout(() => coin.remove(), 1200);
-
-    }
-
-    lastCurrent = data.current;
-
 }
 
-setInterval(updateCoinJar, 1000);
-updateCoinJar();
+socket.on("coinJarUpdated", data => {
+    updateFromStatus(data);
+});
+
+socket.on("coinJarGiftFell", data => {
+
+    const gift = document.createElement("div");
+    gift.className = "fallingGift";
+    gift.textContent = data.icon || "🎁";
+    gift.style.left = (30 + Math.random() * 40) + "%";
+    document.getElementById("jarWrap").appendChild(gift);
+
+    const jarShape = document.getElementById("jarShape");
+    jarShape.classList.add("shaking");
+
+    setTimeout(() => {
+        gift.remove();
+        jarShape.classList.remove("shaking");
+    }, 900);
+
+});
+
+fetch("/coin-jar/status?client=" + clientId)
+    .then(r => r.json())
+    .then(updateFromStatus);
+
 </script>
 
 </body>
 </html>
 `);
 });
+
 
 /*
    ============================================================
@@ -3520,7 +3558,7 @@ if (clientGiftBattle.active) {
             getClientSettings(clientId).diamondsGoal
         );
 
-        addToCoinJar(clientId, totalDiamonds);
+        addToCoinJar(clientId, totalDiamonds, giftName);
 
 emitToCreatorPilotClient(clientId, "gift", {
             user: user,
