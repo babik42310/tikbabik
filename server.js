@@ -1548,7 +1548,7 @@ function guessGiftIcon(giftName) {
 
 }
 
-function addToCoinJar(clientId, diamonds, giftName) {
+function addToCoinJar(clientId, diamonds, giftName, giftImage) {
 
     const jarSettings =
         getClientSettings(clientId).coinJar || {};
@@ -1570,7 +1570,8 @@ function addToCoinJar(clientId, diamonds, giftName) {
     jar.current += diamonds;
 
     emitToCreatorPilotClient(clientId, "coinJarGiftFell", {
-        icon: guessGiftIcon(giftName)
+        image: giftImage || "",
+        icon: giftImage ? "" : guessGiftIcon(giftName)
     });
 
     if (jar.current >= target) {
@@ -1598,18 +1599,30 @@ app.post("/coin-jar/test", (req, res) => {
     const clientId =
         resolveClientId(req);
 
-    const testGifts =
-        ["Rose", "Coeur", "Couronne", "Fusée", "Lion", "Diamant"];
+    let giftLibrary = [];
 
-    const randomGift =
-        testGifts[Math.floor(Math.random() * testGifts.length)];
+    try {
+        giftLibrary = JSON.parse(
+            fs.readFileSync(
+                path.join(__dirname, "public", "giftLibrary.json"),
+                "utf8"
+            )
+        );
+    } catch (error) {}
+
+    let randomGift = { name: "Rose", image: "" };
+
+    if (giftLibrary.length > 0) {
+        randomGift =
+            giftLibrary[Math.floor(Math.random() * giftLibrary.length)];
+    }
 
     const randomAmount =
         10 + Math.floor(Math.random() * 90);
 
-    addToCoinJar(clientId, randomAmount, randomGift);
+    addToCoinJar(clientId, randomAmount, randomGift.name, randomGift.image);
 
-    res.json({ success: true, gift: randomGift, amount: randomAmount });
+    res.json({ success: true, gift: randomGift.name, amount: randomAmount });
 
 });
 
@@ -2127,9 +2140,9 @@ app.get("/overlay/coin-jar", (req, res) => {
 <style>
 
 @keyframes fallIntoJar {
-    0% { transform: translateY(-120px) rotate(0deg); opacity: 1; }
-    85% { opacity: 1; }
-    100% { transform: translateY(0) rotate(20deg); opacity: 0; }
+    0% { transform: translateY(-140px) rotate(0deg); opacity: 1; }
+    80% { opacity: 1; }
+    100% { transform: translateY(70px) rotate(25deg); opacity: 0; }
 }
 
 @keyframes celebrationText {
@@ -2141,8 +2154,8 @@ app.get("/overlay/coin-jar", (req, res) => {
 
 @keyframes jarShake {
     0%, 100% { transform: rotate(0deg); }
-    25% { transform: rotate(-2deg); }
-    75% { transform: rotate(2deg); }
+    25% { transform: rotate(-1.5deg); }
+    75% { transform: rotate(1.5deg); }
 }
 
 body{
@@ -2158,34 +2171,61 @@ body{
 
 #jarWrap{
     position:relative;
-    width:240px;
-    height:300px;
+    width:220px;
+    height:280px;
 }
 
-/* Vrai bocal : goulot étroit en haut, corps arrondi, base plate */
-#jarShape{
+#jarNeck{
     position:absolute;
-    inset:0;
-    clip-path: path("M 90 0 L 150 0 L 150 35 C 150 35 230 55 230 150 C 230 230 190 300 120 300 C 50 300 10 230 10 150 C 10 55 90 35 90 35 Z");
+    top:0;
+    left:50%;
+    transform:translateX(-50%);
+    width:70px;
+    height:26px;
     background:${bgColor};
     border:4px solid ${jarColor};
+    border-bottom:none;
+    border-radius:6px 6px 0 0;
     box-sizing:border-box;
+    overflow:hidden;
+    z-index:2;
 }
 
-#jarShape.shaking{
+#jarBody{
+    position:absolute;
+    top:22px;
+    left:0;
+    width:100%;
+    height:258px;
+    background:${bgColor};
+    border:4px solid ${jarColor};
+    border-radius:24px 24px 40px 40px;
+    box-sizing:border-box;
+    overflow:hidden;
+}
+
+#jarBody.shaking, #jarNeck.shaking{
     animation: jarShake 0.4s ease-in-out 3;
 }
 
-#fill{
+#fillNeck{
     position:absolute;
-    left:4px;
-    right:4px;
-    bottom:4px;
+    bottom:0;
+    left:0;
+    width:100%;
     height:0%;
     background:linear-gradient(180deg, ${coinColor}dd, ${jarColor});
-    box-shadow:0 0 25px ${coinColor}aa inset;
+}
+
+#fillBody{
+    position:absolute;
+    bottom:0;
+    left:0;
+    width:100%;
+    height:0%;
+    background:linear-gradient(180deg, ${coinColor}dd, ${jarColor});
+    box-shadow:0 0 20px ${coinColor}aa inset;
     transition:height 0.6s ease;
-    clip-path: path("M 90 0 L 150 0 L 150 35 C 150 35 230 55 230 150 C 230 230 190 300 120 300 C 50 300 10 230 10 150 C 10 55 90 35 90 35 Z");
 }
 
 #label{
@@ -2204,11 +2244,11 @@ body{
 
 #celebration{
     position:absolute;
-    top:40%;
+    top:35%;
     left:50%;
     transform:translate(-50%, -50%) scale(0);
     font-family:'Orbitron', sans-serif;
-    font-size:20px;
+    font-size:18px;
     font-weight:800;
     color:${coinColor};
     text-shadow:0 0 20px ${coinColor};
@@ -2223,10 +2263,19 @@ body{
 
 .fallingGift{
     position:absolute;
-    top:-40px;
-    font-size:34px;
-    animation:fallIntoJar 0.9s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
+    top:-50px;
+    width:36px;
+    height:36px;
+    font-size:32px;
+    text-align:center;
+    animation:fallIntoJar 0.8s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
     z-index:8;
+}
+
+.fallingGift img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
 }
 
 </style>
@@ -2235,8 +2284,9 @@ body{
 
 <div id="jarWrap">
     <div id="label">0 / ${target}</div>
-    <div id="jarShape">
-        <div id="fill"></div>
+    <div id="jarNeck"><div id="fillNeck"></div></div>
+    <div id="jarBody">
+        <div id="fillBody"></div>
     </div>
     <div id="celebration">🎉 ${celebrationText} 🎉</div>
 </div>
@@ -2252,10 +2302,25 @@ function updateFromStatus(data){
 
     const percent = Math.min(100, Math.round((data.current / ${target}) * 100));
 
-    document.getElementById("fill").style.height = percent + "%";
+    // Le corps du bocal (258px) se remplit d'abord, puis le col
+    // (26px) une fois le corps déjà plein — pour un rendu réaliste.
+    const bodyHeight = 258;
+    const neckHeight = 26;
+    const totalHeight = bodyHeight + neckHeight;
+
+    const filledPixels = (percent / 100) * totalHeight;
+
+    const bodyFillPixels = Math.min(bodyHeight, filledPixels);
+    const neckFillPixels = Math.max(0, filledPixels - bodyHeight);
+
+    document.getElementById("fillBody").style.height =
+        Math.round((bodyFillPixels / bodyHeight) * 100) + "%";
+
+    document.getElementById("fillNeck").style.height =
+        Math.round((neckFillPixels / neckHeight) * 100) + "%";
+
     document.getElementById("label").textContent = data.current + " / ${target}";
 
-    const jarShape = document.getElementById("jarShape");
     const celebration = document.getElementById("celebration");
 
     if (data.celebrating) {
@@ -2274,17 +2339,28 @@ socket.on("coinJarGiftFell", data => {
 
     const gift = document.createElement("div");
     gift.className = "fallingGift";
-    gift.textContent = data.icon || "🎁";
-    gift.style.left = (30 + Math.random() * 40) + "%";
+
+    if (data.image) {
+        const img = document.createElement("img");
+        img.src = data.image;
+        gift.appendChild(img);
+    } else {
+        gift.textContent = data.icon || "🎁";
+    }
+
+    gift.style.left = (35 + Math.random() * 30) + "%";
     document.getElementById("jarWrap").appendChild(gift);
 
-    const jarShape = document.getElementById("jarShape");
-    jarShape.classList.add("shaking");
+    const jarBody = document.getElementById("jarBody");
+    const jarNeck = document.getElementById("jarNeck");
+    jarBody.classList.add("shaking");
+    jarNeck.classList.add("shaking");
 
     setTimeout(() => {
         gift.remove();
-        jarShape.classList.remove("shaking");
-    }, 900);
+        jarBody.classList.remove("shaking");
+        jarNeck.classList.remove("shaking");
+    }, 800);
 
 });
 
@@ -2298,6 +2374,7 @@ fetch("/coin-jar/status?client=" + clientId)
 </html>
 `);
 });
+
 
 
 /*
@@ -3558,7 +3635,7 @@ if (clientGiftBattle.active) {
             getClientSettings(clientId).diamondsGoal
         );
 
-        addToCoinJar(clientId, totalDiamonds, giftName);
+        addToCoinJar(clientId, totalDiamonds, giftName, data.giftPictureUrl);
 
 emitToCreatorPilotClient(clientId, "gift", {
             user: user,
