@@ -1605,10 +1605,10 @@ function addToCoinJar(clientId, diamonds, giftName, giftImage, donorName, donorA
     });
 
     /*
-       On attend que l'animation de chute (côté client, ~500ms) ait
-       eu le temps de se jouer avant d'annoncer la mise à jour du
-       tas de cadeaux posés — sinon le cadeau apparaît instantanément
-       en bas, sans jamais sembler "tomber".
+       On attend que l'animation de chute (côté client) ait eu le
+       temps de se jouer avant d'annoncer la mise à jour du tas de
+       cadeaux posés — sinon le cadeau apparaît instantanément en
+       bas, sans jamais sembler "tomber".
     */
     setTimeout(() => {
 
@@ -1631,7 +1631,7 @@ function addToCoinJar(clientId, diamonds, giftName, giftImage, donorName, donorA
 
         emitToCreatorPilotClient(clientId, "coinJarUpdated", jar);
 
-    }, 550);
+    }, 2000);
 
 }
 
@@ -2652,13 +2652,19 @@ socket.on("coinJarGiftFell", data => {
     setTimeout(() => {
 
         jarWrap.classList.add("shaking");
-        fallingEl.remove();
 
         setTimeout(() => {
             jarWrap.classList.remove("shaking");
         }, 400);
 
-    }, 480);
+    }, 500);
+
+    // Le cadeau reste visible, posé dans le bocal, jusqu'à ce que le
+    // serveur confirme la mise à jour officielle du tas (2s) — pour
+    // ne jamais avoir de moment où le bocal semble vide entre les deux.
+    setTimeout(() => {
+        fallingEl.remove();
+    }, 1950);
 
     showGiftBubble(data);
 
