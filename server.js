@@ -1515,7 +1515,8 @@ function getClientCoinJar(clientId) {
     if (!coinJarByClient.has(clientId)) {
         coinJarByClient.set(clientId, {
             current: 0,
-            celebrating: false
+            celebrating: false,
+            settledGifts: []
         });
     }
 
@@ -1548,6 +1549,12 @@ function guessGiftIcon(giftName) {
 
 }
 
+// Nombre maximum de cadeaux visuellement empilés en même temps
+// dans le bocal — au-delà, les plus anciens sont retirés pour
+// garder un rendu lisible (pas de vrai impact sur le compteur de
+// diamants, uniquement sur l'affichage).
+const COIN_JAR_MAX_VISIBLE_GIFTS = 60;
+
 function addToCoinJar(clientId, diamonds, giftName, giftImage) {
 
     const jarSettings =
@@ -1569,6 +1576,19 @@ function addToCoinJar(clientId, diamonds, giftName, giftImage) {
 
     jar.current += diamonds;
 
+    if (!jar.settledGifts) {
+        jar.settledGifts = [];
+    }
+
+    jar.settledGifts.push({
+        image: giftImage || "",
+        icon: giftImage ? "" : guessGiftIcon(giftName)
+    });
+
+    while (jar.settledGifts.length > COIN_JAR_MAX_VISIBLE_GIFTS) {
+        jar.settledGifts.shift();
+    }
+
     emitToCreatorPilotClient(clientId, "coinJarGiftFell", {
         image: giftImage || "",
         icon: giftImage ? "" : guessGiftIcon(giftName)
@@ -1584,6 +1604,7 @@ function addToCoinJar(clientId, diamonds, giftName, giftImage) {
         setTimeout(() => {
             jar.current = 0;
             jar.celebrating = false;
+            jar.settledGifts = [];
             emitToCreatorPilotClient(clientId, "coinJarUpdated", jar);
         }, 4000);
 
@@ -1683,7 +1704,8 @@ app.post("/coin-jar/reset", (req, res) => {
 
     coinJarByClient.set(clientId, {
         current: 0,
-        celebrating: false
+        celebrating: false,
+        settledGifts: []
     });
 
     emitToCreatorPilotClient(clientId, "coinJarUpdated", getClientCoinJar(clientId));
@@ -2121,9 +2143,6 @@ app.get("/overlay/coin-jar", (req, res) => {
     const jarColor =
         jarSettings.jarColor || "#22d3ee";
 
-    const coinColor =
-        jarSettings.coinColor || "#ffd700";
-
     const bgColor =
         jarSettings.transparent ? "transparent" : (jarSettings.bgColor || "#0c1625");
 
@@ -2136,13 +2155,12 @@ app.get("/overlay/coin-jar", (req, res) => {
 <head>
 <meta charset="UTF-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
 <style>
 
 @keyframes fallIntoJar {
-    0% { transform: translateY(-140px) rotate(0deg); opacity: 1; }
-    80% { opacity: 1; }
-    100% { transform: translateY(70px) rotate(25deg); opacity: 0; }
+    0% { transform: translateY(-160px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(0) rotate(var(--finalRotate)); opacity: 1; }
 }
 
 @keyframes celebrationText {
@@ -2166,7 +2184,7 @@ body{
     align-items:center;
     justify-content:center;
     height:100vh;
-    font-family:'Rajdhani', sans-serif;
+    font-family:'Segoe UI', Arial, sans-serif;
 }
 
 #jarWrap{
@@ -2187,7 +2205,6 @@ body{
     border-bottom:none;
     border-radius:6px 6px 0 0;
     box-sizing:border-box;
-    overflow:hidden;
     z-index:2;
 }
 
@@ -2208,24 +2225,41 @@ body{
     animation: jarShake 0.4s ease-in-out 3;
 }
 
-#fillNeck{
+/* Les cadeaux accumulés dans le bocal, chacun positionné à un
+   endroit fixe une fois "posé" (pas de vraie physique, juste un
+   agencement en grille légèrement aléatoire qui donne un effet
+   naturel d'empilement). */
+#giftsPile{
     position:absolute;
-    bottom:0;
-    left:0;
-    width:100%;
-    height:0%;
-    background:linear-gradient(180deg, ${coinColor}dd, ${jarColor});
+    inset:0;
+    display:flex;
+    flex-wrap:wrap-reverse;
+    align-content:flex-start;
+    align-items:flex-start;
+    justify-content:center;
+    padding:8px;
+    box-sizing:border-box;
+    gap:2px;
 }
 
-#fillBody{
-    position:absolute;
-    bottom:0;
-    left:0;
+.settledGift{
+    width:26px;
+    height:26px;
+    flex-shrink:0;
+}
+
+.settledGift img{
     width:100%;
-    height:0%;
-    background:linear-gradient(180deg, ${coinColor}dd, ${jarColor});
-    box-shadow:0 0 20px ${coinColor}aa inset;
-    transition:height 0.6s ease;
+    height:100%;
+    object-fit:contain;
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,0.4));
+}
+
+.settledGift .emojiIcon{
+    font-size:22px;
+    line-height:26px;
+    text-align:center;
+    display:block;
 }
 
 #label{
@@ -2238,7 +2272,7 @@ body{
     font-size:16px;
     font-weight:800;
     color:#f5f7ff;
-    text-shadow:0 0 10px ${coinColor}aa;
+    text-shadow:0 0 10px ${jarColor}aa;
     z-index:5;
 }
 
@@ -2250,11 +2284,14 @@ body{
     font-family:'Orbitron', sans-serif;
     font-size:18px;
     font-weight:800;
-    color:${coinColor};
-    text-shadow:0 0 20px ${coinColor};
+    color:${jarColor};
+    text-shadow:0 0 20px ${jarColor};
     text-align:center;
     white-space:nowrap;
     z-index:10;
+    background:#05060fdd;
+    padding:10px 16px;
+    border-radius:12px;
 }
 
 #celebration.active{
@@ -2262,14 +2299,12 @@ body{
 }
 
 .fallingGift{
-    position:absolute;
-    top:-50px;
-    width:36px;
-    height:36px;
-    font-size:32px;
-    text-align:center;
-    animation:fallIntoJar 0.8s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
-    z-index:8;
+    position:fixed;
+    top:0;
+    width:34px;
+    height:34px;
+    z-index:20;
+    animation:fallIntoJar 0.6s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
 }
 
 .fallingGift img{
@@ -2278,15 +2313,21 @@ body{
     object-fit:contain;
 }
 
+.fallingGift .emojiIcon{
+    font-size:30px;
+    display:block;
+    text-align:center;
+}
+
 </style>
 </head>
 <body>
 
 <div id="jarWrap">
     <div id="label">0 / ${target}</div>
-    <div id="jarNeck"><div id="fillNeck"></div></div>
+    <div id="jarNeck"></div>
     <div id="jarBody">
-        <div id="fillBody"></div>
+        <div id="giftsPile"></div>
     </div>
     <div id="celebration">🎉 ${celebrationText} 🎉</div>
 </div>
@@ -2298,28 +2339,45 @@ const clientId = "${clientId}";
 const socket = io();
 socket.emit("register-client", clientId);
 
+function makeGiftEl(gift, className){
+
+    const el = document.createElement("div");
+    el.className = className;
+
+    if (gift.image) {
+        const img = document.createElement("img");
+        img.src = gift.image;
+        el.appendChild(img);
+    } else {
+        const span = document.createElement("span");
+        span.className = "emojiIcon";
+        span.textContent = gift.icon || "🎁";
+        el.appendChild(span);
+    }
+
+    return el;
+
+}
+
+function renderPile(settledGifts){
+
+    const pile =
+        document.getElementById("giftsPile");
+
+    pile.innerHTML = "";
+
+    (settledGifts || []).forEach(gift => {
+        pile.appendChild(makeGiftEl(gift, "settledGift"));
+    });
+
+}
+
 function updateFromStatus(data){
 
-    const percent = Math.min(100, Math.round((data.current / ${target}) * 100));
+    document.getElementById("label").textContent =
+        data.current + " / ${target}";
 
-    // Le corps du bocal (258px) se remplit d'abord, puis le col
-    // (26px) une fois le corps déjà plein — pour un rendu réaliste.
-    const bodyHeight = 258;
-    const neckHeight = 26;
-    const totalHeight = bodyHeight + neckHeight;
-
-    const filledPixels = (percent / 100) * totalHeight;
-
-    const bodyFillPixels = Math.min(bodyHeight, filledPixels);
-    const neckFillPixels = Math.max(0, filledPixels - bodyHeight);
-
-    document.getElementById("fillBody").style.height =
-        Math.round((bodyFillPixels / bodyHeight) * 100) + "%";
-
-    document.getElementById("fillNeck").style.height =
-        Math.round((neckFillPixels / neckHeight) * 100) + "%";
-
-    document.getElementById("label").textContent = data.current + " / ${target}";
+    renderPile(data.settledGifts);
 
     const celebration = document.getElementById("celebration");
 
@@ -2337,30 +2395,48 @@ socket.on("coinJarUpdated", data => {
 
 socket.on("coinJarGiftFell", data => {
 
-    const gift = document.createElement("div");
-    gift.className = "fallingGift";
+    // Anime la chute depuis le haut de l'écran jusqu'au bocal, puis
+    // laisse le prochain "coinJarUpdated" afficher la version posée
+    // dans la pile — évite d'avoir deux copies visibles en même temps.
+    const jarRect =
+        document.getElementById("jarBody").getBoundingClientRect();
 
-    if (data.image) {
-        const img = document.createElement("img");
-        img.src = data.image;
-        gift.appendChild(img);
-    } else {
-        gift.textContent = data.icon || "🎁";
-    }
+    const startX =
+        window.innerWidth / 2 - 17 + (Math.random() * 60 - 30);
 
-    gift.style.left = (35 + Math.random() * 30) + "%";
-    document.getElementById("jarWrap").appendChild(gift);
+    const fallingEl =
+        makeGiftEl(data, "fallingGift");
+
+    fallingEl.style.left = startX + "px";
+    fallingEl.style.setProperty("--finalRotate", (Math.random() * 40 - 20) + "deg");
+    fallingEl.style.setProperty("--fallDistance", (jarRect.top + jarRect.height - 40) + "px");
+    fallingEl.style.transform = "translateY(" + (jarRect.top + jarRect.height - 40) + "px)";
+    fallingEl.style.animationName = "none";
+
+    document.body.appendChild(fallingEl);
+
+    requestAnimationFrame(() => {
+        fallingEl.style.transition = "transform 0.5s cubic-bezier(0.34, 1.2, 0.64, 1)";
+        fallingEl.style.transform =
+            "translateY(" + (jarRect.top + jarRect.height - 40) + "px) rotate(" +
+            (Math.random() * 40 - 20) + "deg)";
+    });
 
     const jarBody = document.getElementById("jarBody");
     const jarNeck = document.getElementById("jarNeck");
-    jarBody.classList.add("shaking");
-    jarNeck.classList.add("shaking");
 
     setTimeout(() => {
-        gift.remove();
-        jarBody.classList.remove("shaking");
-        jarNeck.classList.remove("shaking");
-    }, 800);
+
+        jarBody.classList.add("shaking");
+        jarNeck.classList.add("shaking");
+        fallingEl.remove();
+
+        setTimeout(() => {
+            jarBody.classList.remove("shaking");
+            jarNeck.classList.remove("shaking");
+        }, 400);
+
+    }, 500);
 
 });
 
@@ -2374,6 +2450,7 @@ fetch("/coin-jar/status?client=" + clientId)
 </html>
 `);
 });
+
 
 
 
