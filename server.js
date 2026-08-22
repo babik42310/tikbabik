@@ -1597,7 +1597,11 @@ function addToCoinJar(clientId, diamonds, giftName, giftImage, donorName, donorA
 
     emitToCreatorPilotClient(clientId, "coinJarGiftFell", {
         image: giftImage || "",
-        icon: giftImage ? "" : guessGiftIcon(giftName)
+        icon: giftImage ? "" : guessGiftIcon(giftName),
+        giftName: giftName || "Cadeau",
+        donorName: donorName || "Quelqu'un",
+        donorAvatar: donorAvatar || "",
+        diamonds: diamonds
     });
 
     if (jar.current >= target) {
@@ -2355,6 +2359,85 @@ body{
     margin-left:auto;
 }
 
+@keyframes bubbleIn {
+    0% { transform:translateX(-20px) scale(0.9); opacity:0; }
+    100% { transform:translateX(0) scale(1); opacity:1; }
+}
+
+@keyframes bubbleOut {
+    0% { transform:translateX(0) scale(1); opacity:1; }
+    100% { transform:translateX(-20px) scale(0.9); opacity:0; }
+}
+
+#giftBubble{
+    position:fixed;
+    top:50%;
+    left:24px;
+    transform:translateY(-50%);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:#111018ee;
+    border:1px solid #ffffff22;
+    border-radius:12px;
+    padding:10px 16px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.5);
+    z-index:30;
+    opacity:0;
+    max-width:340px;
+    white-space:nowrap;
+}
+
+#giftBubble::after{
+    content:"";
+    position:absolute;
+    right:-8px;
+    top:50%;
+    transform:translateY(-50%);
+    border-width:8px 0 8px 8px;
+    border-style:solid;
+    border-color:transparent transparent transparent #111018ee;
+}
+
+#giftBubble.show{
+    animation: bubbleIn 0.35s ease forwards;
+}
+
+#giftBubble.hide{
+    animation: bubbleOut 0.35s ease forwards;
+}
+
+#giftBubbleAvatar{
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    object-fit:cover;
+    background:#333;
+    flex-shrink:0;
+}
+
+#giftBubbleIcon img, #giftBubbleIcon .emojiIcon{
+    width:22px;
+    height:22px;
+    object-fit:contain;
+    font-size:20px;
+}
+
+#giftBubbleText{
+    font-size:15px;
+    font-weight:700;
+    color:#fff;
+}
+
+#giftBubbleText b{
+    color:#fff;
+}
+
+#giftBubbleText .giftAmount{
+    color:#ffd700;
+    font-weight:800;
+}
+
 </style>
 </head>
 <body>
@@ -2427,6 +2510,11 @@ body{
     <img id="donorAvatar" src="">
     <div id="donorName">—</div>
     <div id="donorAmount">🪙 <span id="donorAmountValue">0</span></div>
+</div>
+
+<div id="giftBubble">
+    <img id="giftBubbleAvatar" src="" style="display:none;">
+    <div id="giftBubbleText"></div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -2562,7 +2650,80 @@ socket.on("coinJarGiftFell", data => {
 
     }, 480);
 
+    showGiftBubble(data);
+
 });
+
+let giftBubbleTimeout = null;
+let giftBubbleHideTimeout = null;
+
+function showGiftBubble(data){
+
+    const bubble =
+        document.getElementById("giftBubble");
+
+    const avatarImg =
+        document.getElementById("giftBubbleAvatar");
+
+    const textEl =
+        document.getElementById("giftBubbleText");
+
+    clearTimeout(giftBubbleTimeout);
+    clearTimeout(giftBubbleHideTimeout);
+    bubble.classList.remove("hide");
+
+    if (data.donorAvatar) {
+        avatarImg.src = data.donorAvatar;
+        avatarImg.style.display = "block";
+    } else {
+        avatarImg.style.display = "none";
+    }
+
+    textEl.innerHTML = "";
+
+    const boldName = document.createElement("b");
+    boldName.textContent = data.donorName || "Quelqu'un";
+    textEl.appendChild(boldName);
+
+    textEl.appendChild(document.createTextNode(" a envoyé "));
+
+    if (data.image) {
+        const giftImg = document.createElement("img");
+        giftImg.src = data.image;
+        giftImg.style.width = "20px";
+        giftImg.style.height = "20px";
+        giftImg.style.verticalAlign = "middle";
+        giftImg.style.objectFit = "contain";
+        textEl.appendChild(giftImg);
+    } else {
+        textEl.appendChild(document.createTextNode((data.icon || "🎁") + " "));
+    }
+
+    textEl.appendChild(document.createTextNode(" " + (data.giftName || "un cadeau") + " ("));
+
+    const amountSpan = document.createElement("span");
+    amountSpan.className = "giftAmount";
+    amountSpan.textContent = (data.diamonds || 0) + " 🪙";
+    textEl.appendChild(amountSpan);
+
+    textEl.appendChild(document.createTextNode(")"));
+
+    bubble.classList.remove("show");
+    void bubble.offsetWidth;
+    bubble.classList.add("show");
+
+    giftBubbleTimeout = setTimeout(() => {
+
+        bubble.classList.remove("show");
+        bubble.classList.add("hide");
+
+        giftBubbleHideTimeout = setTimeout(() => {
+            bubble.classList.remove("hide");
+        }, 400);
+
+    }, 4000);
+
+}
 
 fetch("/coin-jar/status?client=" + clientId)
     .then(r => r.json())
