@@ -2305,12 +2305,24 @@ body{
     animation:celebrationText 4s ease forwards;
 }
 
+@keyframes fallIntoJarReal {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(var(--fallDistance, 200px)) rotate(var(--fallRotate, 20deg));
+        opacity: 1;
+    }
+}
+
 .fallingGift{
     position:fixed;
     top:0;
     width:32px;
     height:32px;
     z-index:20;
+    animation: fallIntoJarReal 0.7s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
 }
 
 .fallingGift img{
@@ -2627,6 +2639,12 @@ socket.on("coinJarGiftFell", data => {
     const jarRect =
         document.getElementById("jarWrap").getBoundingClientRect();
 
+    const startY =
+        jarRect.top - 60;
+
+    const landingY =
+        jarRect.top + jarRect.height * 0.68;
+
     const startX =
         jarRect.left + jarRect.width / 2 - 16 + (Math.random() * 50 - 25);
 
@@ -2634,18 +2652,11 @@ socket.on("coinJarGiftFell", data => {
         makeGiftEl(data, "fallingGift");
 
     fallingEl.style.left = startX + "px";
-    fallingEl.style.top = (jarRect.top - 40) + "px";
+    fallingEl.style.top = startY + "px";
+    fallingEl.style.setProperty("--fallDistance", (landingY - startY) + "px");
+    fallingEl.style.setProperty("--fallRotate", (Math.random() * 50 - 25) + "deg");
 
     document.body.appendChild(fallingEl);
-
-    const landingY =
-        jarRect.top + jarRect.height * 0.68;
-
-    requestAnimationFrame(() => {
-        fallingEl.style.transition = "top 0.5s cubic-bezier(0.34, 1.2, 0.64, 1), transform 0.5s ease";
-        fallingEl.style.top = landingY + "px";
-        fallingEl.style.transform = "rotate(" + (Math.random() * 50 - 25) + "deg)";
-    });
 
     const jarWrap = document.getElementById("jarWrap");
 
@@ -2657,7 +2668,7 @@ socket.on("coinJarGiftFell", data => {
             jarWrap.classList.remove("shaking");
         }, 400);
 
-    }, 500);
+    }, 700);
 
     // Le cadeau reste visible, posé dans le bocal, jusqu'à ce que le
     // serveur confirme la mise à jour officielle du tas (2s) — pour
