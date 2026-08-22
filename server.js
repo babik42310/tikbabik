@@ -1397,7 +1397,6 @@ function getClientSettings(sessionId) {
     const ownerKey = canonicalClientKey(sessionId);
 
     if (settingsByClient.has(ownerKey)) {
-        console.log("📂 GET SETTINGS — ownerKey:", ownerKey, "→ trouvé en mémoire (cache)");
         return settingsByClient.get(ownerKey);
     }
 
@@ -1408,15 +1407,10 @@ function getClientSettings(sessionId) {
         if (fs.existsSync(filePath)) {
             try {
                 clientSettings = JSON.parse(fs.readFileSync(filePath, "utf8"));
-                console.log("📂 GET SETTINGS — ownerKey:", ownerKey, "→ chargé depuis fichier anonyme:", filePath);
             } catch (error) {
                 console.log("Réglages client illisibles pour", ownerKey, "- valeurs par défaut utilisées");
             }
-        } else {
-            console.log("📂 GET SETTINGS — ownerKey:", ownerKey, "→ AUCUN fichier trouvé, réglages VIERGES utilisés (userId lié: aucun)");
         }
-    } else {
-        console.log("📂 GET SETTINGS — ownerKey:", ownerKey, "→ userId lié:", userIdFromOwnerKey(ownerKey), "mais PAS ENCORE EN CACHE → réglages VIERGES retournés (ensurePersistentUserStateLoaded n'a pas encore tourné pour ce compte)");
     }
 
     settingsByClient.set(ownerKey, clientSettings);
@@ -1426,8 +1420,6 @@ function getClientSettings(sessionId) {
 function saveClientSettings(sessionId, data) {
 
     const ownerKey = canonicalClientKey(sessionId);
-
-    console.log("💾 SAVE SETTINGS — sessionId:", sessionId, "→ ownerKey:", ownerKey, "→ userId lié:", userIdFromOwnerKey(ownerKey) || "(aucun, anonyme)");
 
     // IMPORTANT : on fusionne toujours avec l'état déjà chargé.
     // Ainsi un POST partiel (ex. uniquement { pro: true }) ne peut plus
@@ -1441,9 +1433,7 @@ function saveClientSettings(sessionId, data) {
     if (userId) {
         // Écriture locale atomique immédiate + PostgreSQL.
         writeUserSettingsBackup(userId, mergedSettings);
-        persistUserStateSection(userId, "settings", mergedSettings)
-            .then(() => console.log("✅ SAVE SETTINGS réussi en base PostgreSQL pour userId:", userId))
-            .catch(error => console.log("❌ SAVE SETTINGS échec PostgreSQL pour userId:", userId, "-", error.message));
+        persistUserStateSection(userId, "settings", mergedSettings);
         return mergedSettings;
     }
 
@@ -1451,8 +1441,6 @@ function saveClientSettings(sessionId, data) {
         cpSettingsFilePath(ownerKey),
         JSON.stringify(mergedSettings, null, 2)
     );
-
-    console.log("✅ SAVE SETTINGS réussi en fichier (anonyme) :", cpSettingsFilePath(ownerKey));
 
     return mergedSettings;
 }
@@ -1468,6 +1456,59 @@ const chatBotCooldowns = {};
 */
 
 const coinJarByClient = new Map();
+
+const recentGiftsByClient = new Map();
+
+function getClientRecentGifts(clientId) {
+    if (!recentGiftsByClient.has(clientId)) {
+        recentGiftsByClient.set(clientId, []);
+    }
+    return recentGiftsByClient.get(clientId);
+}
+
+function addToRecentGifts(clientId, entry) {
+
+    const settings =
+        getClientSettings(clientId).recentGifts;
+
+    if (settings && settings.enabled === false) {
+        return;
+    }
+
+    const list =
+        getClientRecentGifts(clientId);
+
+    list.unshift({
+        user: entry.user,
+        gift: entry.gift,
+        diamonds: entry.diamonds,
+        avatar: entry.avatar || "",
+        at: Date.now()
+    });
+
+    while (list.length > 15) {
+        list.pop();
+    }
+
+    emitToCreatorPilotClient(clientId, "recentGiftsUpdated", list);
+
+}
+
+function announceNewFollower(clientId, followerData) {
+
+    const settings =
+        getClientSettings(clientId).followWelcome;
+
+    if (settings && settings.enabled === false) {
+        return;
+    }
+
+    emitToCreatorPilotClient(clientId, "newFollowerWelcome", {
+        user: followerData.user,
+        avatar: followerData.avatar || ""
+    });
+
+}
 
 function getClientCoinJar(clientId) {
 
@@ -1589,6 +1630,421 @@ app.post("/coin-jar/reset", (req, res) => {
     emitToCreatorPilotClient(clientId, "coinJarUpdated", getClientCoinJar(clientId));
 
     res.json({ success: true });
+
+});
+
+app.get("/recent-gifts/status", (req, res) => {
+    res.json(getClientRecentGifts(resolveClientId(req)));
+});
+
+app.get("/recent-gifts/settings", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    res.json(
+        getClientSettings(clientId).recentGifts || {
+            enabled: true,
+            bgColor: "#0c1625",
+            textColor: "#ffffff",
+            accentColor: "#22d3ee",
+            speed: 25
+        }
+    );
+
+});
+
+app.post("/recent-gifts/settings", express.json(), (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const clientSettings =
+        getClientSettings(clientId);
+
+    clientSettings.recentGifts = {
+        enabled: req.body.enabled !== false,
+        bgColor: req.body.bgColor || "#0c1625",
+        textColor: req.body.textColor || "#ffffff",
+        accentColor: req.body.accentColor || "#22d3ee",
+        speed: Number(req.body.speed || 25)
+    };
+
+    saveClientSettings(clientId, clientSettings);
+
+    res.json({
+        success: true,
+        settings: clientSettings.recentGifts
+    });
+
+});
+
+app.get("/overlay/recent-gifts", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+        font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    #cpGiftTicker {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    #cpGiftTickerTrack {
+        display: flex;
+        align-items: center;
+        gap: 40px;
+        animation: cpTickerScroll linear infinite;
+        padding-left: 100vw;
+    }
+    .cpGiftTickerItem {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 22px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .cpGiftTickerItem img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    @keyframes cpTickerScroll {
+        from { transform: translateX(0); }
+        to { transform: translateX(-100%); }
+    }
+</style>
+</head>
+<body>
+
+<div id="cpGiftTicker">
+    <div id="cpGiftTickerTrack"></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+
+const clientId = "${clientId}";
+const socket = io();
+
+socket.emit("register-client", clientId);
+
+let settings = {
+    enabled: true,
+    bgColor: "#0c1625",
+    textColor: "#ffffff",
+    accentColor: "#22d3ee",
+    speed: 25
+};
+
+let currentList = [];
+
+function applySettingsToDom() {
+
+    document.getElementById("cpGiftTicker").style.background = settings.bgColor;
+
+    const track = document.getElementById("cpGiftTickerTrack");
+    track.style.animationDuration = settings.speed + "s";
+
+}
+
+function render() {
+
+    const track =
+        document.getElementById("cpGiftTickerTrack");
+
+    if (currentList.length === 0) {
+        track.innerHTML = "";
+        return;
+    }
+
+    track.innerHTML = "";
+
+    currentList.slice().reverse().forEach(item => {
+
+        const el = document.createElement("div");
+        el.className = "cpGiftTickerItem";
+        el.style.color = settings.textColor;
+
+        if (item.avatar) {
+            const img = document.createElement("img");
+            img.src = item.avatar;
+            el.appendChild(img);
+        }
+
+        const strong = document.createElement("strong");
+        strong.style.color = settings.accentColor;
+        strong.textContent = item.user;
+        el.appendChild(strong);
+
+        el.appendChild(document.createTextNode(
+            " a envoyé " + item.gift + " (" + item.diamonds + " 🪙)"
+        ));
+
+        track.appendChild(el);
+
+    });
+
+}
+
+fetch("/recent-gifts/settings?client=" + clientId)
+    .then(r => r.json())
+    .then(data => {
+        settings = data;
+        applySettingsToDom();
+    });
+
+fetch("/recent-gifts/status?client=" + clientId)
+    .then(r => r.json())
+    .then(data => {
+        currentList = data;
+        render();
+    });
+
+socket.on("recentGiftsUpdated", data => {
+    currentList = data;
+    render();
+});
+
+</script>
+</body>
+</html>
+    `);
+
+});
+
+app.get("/followwelcome/status", (req, res) => {
+    res.json({ ok: true });
+});
+
+app.get("/followwelcome/settings", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    res.json(
+        getClientSettings(clientId).followWelcome || {
+            enabled: true,
+            style: "bulle",
+            text: "Merci pour ton follow, {user} !",
+            bgColor: "#22d3ee",
+            textColor: "#05060f",
+            duration: 4,
+            voiceEnabled: false,
+            voiceText: "Merci pour ton follow {user} !"
+        }
+    );
+
+});
+
+app.post("/followwelcome/settings", express.json(), (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    const clientSettings =
+        getClientSettings(clientId);
+
+    clientSettings.followWelcome = {
+        enabled: req.body.enabled !== false,
+        style: req.body.style || "bulle",
+        text: req.body.text || "Merci pour ton follow, {user} !",
+        bgColor: req.body.bgColor || "#22d3ee",
+        textColor: req.body.textColor || "#05060f",
+        duration: Number(req.body.duration || 4),
+        voiceEnabled: req.body.voiceEnabled === true,
+        voiceText: req.body.voiceText || "Merci pour ton follow {user} !"
+    };
+
+    saveClientSettings(clientId, clientSettings);
+
+    res.json({
+        success: true,
+        settings: clientSettings.followWelcome
+    });
+
+});
+
+app.get("/overlay/follow-welcome", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+    }
+    #cpFollowWelcome {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 28px;
+        border-radius: 16px;
+        font-size: 26px;
+        font-weight: 800;
+        opacity: 0;
+    }
+    #cpFollowWelcome img {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    /* Style : Bulle (fondu + zoom doux) */
+    #cpFollowWelcome.cpStyleBulle {
+        transform: translateY(30px) scale(0.9);
+        transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    #cpFollowWelcome.cpStyleBulle.cpShow {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    /* Style : Glissement latéral */
+    #cpFollowWelcome.cpStyleGlissement {
+        transform: translateX(-120%);
+        transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #cpFollowWelcome.cpStyleGlissement.cpShow {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    /* Style : Rebond */
+    #cpFollowWelcome.cpStyleRebond.cpShow {
+        opacity: 1;
+        animation: cpBounceIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    @keyframes cpBounceIn {
+        0% { transform: scale(0.3); opacity: 0; }
+        60% { transform: scale(1.1); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Style : Néon pulsé */
+    #cpFollowWelcome.cpStyleNeon {
+        transition: opacity 0.3s ease;
+    }
+    #cpFollowWelcome.cpStyleNeon.cpShow {
+        opacity: 1;
+        animation: cpNeonPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes cpNeonPulse {
+        0%, 100% { box-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
+        50% { box-shadow: 0 0 25px currentColor, 0 0 45px currentColor; }
+    }
+</style>
+</head>
+<body>
+
+<div id="cpFollowWelcome"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+
+const clientId = "${clientId}";
+const socket = io();
+
+socket.emit("register-client", clientId);
+
+let settings = {
+    enabled: true,
+    style: "bulle",
+    text: "Merci pour ton follow, {user} !",
+    bgColor: "#22d3ee",
+    textColor: "#05060f",
+    duration: 4
+};
+
+const styleClassMap = {
+    bulle: "cpStyleBulle",
+    glissement: "cpStyleGlissement",
+    rebond: "cpStyleRebond",
+    neon: "cpStyleNeon"
+};
+
+fetch("/followwelcome/settings?client=" + clientId)
+    .then(r => r.json())
+    .then(data => { settings = data; });
+
+socket.on("newFollowerWelcome", data => {
+
+    if (!settings.enabled) {
+        return;
+    }
+
+    const box =
+        document.getElementById("cpFollowWelcome");
+
+    box.className = "";
+    box.classList.add(styleClassMap[settings.style] || "cpStyleBulle");
+
+    box.style.background = settings.bgColor;
+    box.style.color = settings.textColor;
+
+    box.innerHTML = "";
+
+    if (data.avatar) {
+        const img = document.createElement("img");
+        img.src = data.avatar;
+        box.appendChild(img);
+    }
+
+    const span = document.createElement("span");
+    span.textContent =
+        (settings.text || "Merci pour ton follow, {user} !")
+            .replace("{user}", data.user || "quelqu'un");
+
+    box.appendChild(span);
+
+    // Force le navigateur à repartir de zéro avant de rejouer
+    // l'animation (utile si un follow arrive juste après un autre).
+    void box.offsetWidth;
+
+    box.classList.add("cpShow");
+
+    setTimeout(() => {
+        box.classList.remove("cpShow");
+    }, Number(settings.duration || 4) * 1000);
+
+});
+
+</script>
+</body>
+</html>
+    `);
 
 });
 
@@ -2692,40 +3148,21 @@ function attemptTikTokReconnect(clientId) {
 
     reconnectAttemptsByClient.set(clientId, attempts);
 
-    /*
-       5 premiers essais rapprochés (jusqu'à 3 min d'écart) pour les
-       coupures courtes. Au-delà, on ne renonce plus complètement —
-       on passe à un rythme lent (toutes les 5 min) pour ne pas
-       épuiser le quota Euler Stream partagé, tout en continuant
-       d'essayer en arrière-plan. La bannière prévient une seule
-       fois du passage en mode lent, avec un bouton pour forcer une
-       tentative immédiate si besoin.
-    */
-    const isFirstSlowAttempt =
-        attempts === 6;
-
-    if (isFirstSlowAttempt) {
-
+    if (attempts > 5) {
         console.log(
-            "Reconnexion TikTok toujours en cours pour", clientId,
-            "après 5 tentatives rapprochées — passage en tentatives espacées (toutes les 5 min)"
+            "Reconnexion TikTok abandonnée pour", clientId,
+            "après 5 tentatives — reconnexion manuelle nécessaire"
         );
-
-        emitToCreatorPilotClient(clientId, "tiktok-reconnect-failed", {
-            message: "La connexion à TikTok a été perdue. Nouvelle tentative automatique toutes les 5 minutes — tu peux aussi forcer une reconnexion immédiate."
-        });
-
+        return;
     }
 
     const delay =
-        attempts <= 5
-            ? Math.min(180000, 15000 * attempts)
-            : 300000;
+        Math.min(180000, 15000 * attempts);
 
     console.log(
         "Nouvelle tentative de reconnexion TikTok dans",
         Math.round(delay / 1000) + "s",
-        "(essai", attempts + (attempts <= 5 ? "/5" : ", mode lent") + ")"
+        "(essai", attempts + "/5)"
     );
 
     setTimeout(async () => {
@@ -2752,10 +3189,6 @@ function attemptTikTokReconnect(clientId) {
 
             stats.connected = true;
             emitLiveStats(clientId);
-
-            if (attempts > 5) {
-                emitToCreatorPilotClient(clientId, "tiktok-reconnect-succeeded", {});
-            }
 
             reconnectAttemptsByClient.set(clientId, 0);
 
@@ -2932,6 +3365,17 @@ function bindTikTokEvents(tiktokConnection, clientId) {
         const totalDiamonds =
             Number(data.diamondCount || 0) *
             Number(data.repeatCount || 1);
+
+        addToRecentGifts(clientId, {
+            user: user,
+            gift: giftName,
+            diamonds: totalDiamonds,
+            avatar:
+                data.profilePictureUrl ||
+                data.user?.profilePictureUrl ||
+                data.avatar ||
+                ""
+        });
 
         const matchingSoundAlert =
     (getClientSettings(clientId).soundAlerts || [])
@@ -3158,6 +3602,15 @@ tiktokConnection.on("social", data => {
     markClientActivity(clientId);
 
     applyChronoTime(clientId, getClientChrono(clientId).settings.perFollow);
+
+    announceNewFollower(clientId, {
+        user: data.nickname || data.uniqueId || "Quelqu'un",
+        avatar:
+            data.profilePictureUrl ||
+            data.user?.profilePictureUrl ||
+            data.avatar ||
+            ""
+    });
 
     console.log("TOUTES ALERTES SON :", getClientSettings(clientId).soundAlerts);
 

@@ -5355,6 +5355,152 @@ if (saveCoinJar) {
 
 }
 
+/* ==================== BANDEAU CADEAUX RÉCENTS ==================== */
+
+const customizeRecentGifts =
+    document.getElementById("customizeRecentGifts");
+
+const recentGiftsCustomize =
+    document.getElementById("recentGiftsCustomize");
+
+if (customizeRecentGifts && recentGiftsCustomize) {
+
+    customizeRecentGifts.onclick = async () => {
+
+        const isOpening =
+            recentGiftsCustomize.style.display === "none";
+
+        recentGiftsCustomize.style.display =
+            isOpening ? "block" : "none";
+
+        if (isOpening) {
+
+            try {
+
+                const response =
+                    await fetch("/recent-gifts/settings");
+
+                const s =
+                    await response.json();
+
+                document.getElementById("recentGiftsEnabled").checked = s.enabled !== false;
+                document.getElementById("recentGiftsBgColor").value = s.bgColor || "#0c1625";
+                document.getElementById("recentGiftsTextColor").value = s.textColor || "#ffffff";
+                document.getElementById("recentGiftsAccentColor").value = s.accentColor || "#22d3ee";
+                document.getElementById("recentGiftsSpeed").value = s.speed || 25;
+
+            } catch (error) {}
+
+        }
+
+    };
+
+}
+
+const saveRecentGifts =
+    document.getElementById("saveRecentGifts");
+
+if (saveRecentGifts) {
+
+    saveRecentGifts.onclick = async () => {
+
+        const settings = {
+            enabled: document.getElementById("recentGiftsEnabled").checked,
+            bgColor: document.getElementById("recentGiftsBgColor").value,
+            textColor: document.getElementById("recentGiftsTextColor").value,
+            accentColor: document.getElementById("recentGiftsAccentColor").value,
+            speed: Number(document.getElementById("recentGiftsSpeed").value || 25)
+        };
+
+        await fetch("/recent-gifts/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(settings)
+        });
+
+        showToast("Bandeau cadeaux sauvegardé !");
+
+    };
+
+}
+
+/* ==================== BIENVENUE NOUVEAU FOLLOWER ==================== */
+
+const customizeFollowWelcome =
+    document.getElementById("customizeFollowWelcome");
+
+const followWelcomeCustomize =
+    document.getElementById("followWelcomeCustomize");
+
+if (customizeFollowWelcome && followWelcomeCustomize) {
+
+    customizeFollowWelcome.onclick = async () => {
+
+        const isOpening =
+            followWelcomeCustomize.style.display === "none";
+
+        followWelcomeCustomize.style.display =
+            isOpening ? "block" : "none";
+
+        if (isOpening) {
+
+            try {
+
+                const response =
+                    await fetch("/followwelcome/settings");
+
+                const s =
+                    await response.json();
+
+                document.getElementById("followWelcomeEnabled").checked = s.enabled !== false;
+                document.getElementById("followWelcomeStyle").value = s.style || "bulle";
+                document.getElementById("followWelcomeText").value = s.text || "Merci pour ton follow, {user} !";
+                document.getElementById("followWelcomeBgColor").value = s.bgColor || "#22d3ee";
+                document.getElementById("followWelcomeTextColor").value = s.textColor || "#05060f";
+                document.getElementById("followWelcomeDuration").value = s.duration || 4;
+                document.getElementById("followWelcomeVoiceEnabled").checked = s.voiceEnabled === true;
+                document.getElementById("followWelcomeVoiceText").value = s.voiceText || "Merci pour ton follow {user} !";
+
+            } catch (error) {}
+
+        }
+
+    };
+
+}
+
+const saveFollowWelcome =
+    document.getElementById("saveFollowWelcome");
+
+if (saveFollowWelcome) {
+
+    saveFollowWelcome.onclick = async () => {
+
+        const settings = {
+            enabled: document.getElementById("followWelcomeEnabled").checked,
+            style: document.getElementById("followWelcomeStyle").value,
+            text: document.getElementById("followWelcomeText").value || "Merci pour ton follow, {user} !",
+            bgColor: document.getElementById("followWelcomeBgColor").value,
+            textColor: document.getElementById("followWelcomeTextColor").value,
+            duration: Number(document.getElementById("followWelcomeDuration").value || 4),
+            voiceEnabled: document.getElementById("followWelcomeVoiceEnabled").checked,
+            voiceText: document.getElementById("followWelcomeVoiceText").value || "Merci pour ton follow {user} !"
+        };
+
+        await fetch("/followwelcome/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(settings)
+        });
+
+        appSettings.followWelcome = settings;
+
+        showToast("Message de bienvenue sauvegardé !");
+
+    };
+
+}
+
 const resetCoinJar =
     document.getElementById("resetCoinJar");
 
@@ -5607,6 +5753,20 @@ socket.on("follow", data => {
         100,
         `⭐ ${data.user} vient de suivre !`
     );
+
+    if (
+        appSettings.followWelcome &&
+        appSettings.followWelcome.voiceEnabled
+    ) {
+
+        const phrase =
+            (appSettings.followWelcome.voiceText || "Merci pour ton follow {user} !")
+                .replace("{user}", data.user || "quelqu'un");
+
+        announceGoalMessage(phrase);
+
+    }
+
 });
 
 socket.on("share", data => {

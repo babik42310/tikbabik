@@ -1721,6 +1721,124 @@ value="/overlay/chrono"        readonly>
 
             <div class="webcamFrameCard">
 
+                <h3>🎁 Cadeaux récents (bandeau défilant)</h3>
+
+                <input
+                    type="text"
+                    class="overlayUrlInput"
+                    value="/overlay/recent-gifts"
+                    readonly>
+
+                <button class="copyOverlayUrl">📋 Copier URL</button>
+                <button class="testOverlayUrl">▶ Tester</button>
+                <button id="customizeRecentGifts">⚙️ Personnaliser</button>
+
+                <div id="recentGiftsCustomize" style="display:none;">
+
+                    <label>
+                        <input type="checkbox" id="recentGiftsEnabled" checked>
+                        Activer le bandeau
+                    </label>
+
+                    <label>Couleur de fond</label>
+                    <input type="color" id="recentGiftsBgColor" value="#0c1625">
+
+                    <label>Couleur du texte</label>
+                    <input type="color" id="recentGiftsTextColor" value="#ffffff">
+
+                    <label>Couleur des pseudos</label>
+                    <input type="color" id="recentGiftsAccentColor" value="#22d3ee">
+
+                    <label>Vitesse de défilement (secondes)</label>
+                    <input type="number" id="recentGiftsSpeed" value="25" min="5">
+
+                    <br><br>
+
+                    <button id="saveRecentGifts">
+                        💾 Sauvegarder Bandeau cadeaux
+                    </button>
+
+                </div>
+
+                <div class="webcamPreview">
+                    <iframe
+                        src="/overlay/recent-gifts"
+                        style="width:100%;height:100px;border:none;">
+                    </iframe>
+                </div>
+
+            </div>
+
+            <div class="webcamFrameCard">
+
+                <h3>💚 Bienvenue nouveau follower</h3>
+
+                <input
+                    type="text"
+                    class="overlayUrlInput"
+                    value="/overlay/follow-welcome"
+                    readonly>
+
+                <button class="copyOverlayUrl">📋 Copier URL</button>
+                <button class="testOverlayUrl">▶ Tester</button>
+                <button id="customizeFollowWelcome">⚙️ Personnaliser</button>
+
+                <div id="followWelcomeCustomize" style="display:none;">
+
+                    <label>
+                        <input type="checkbox" id="followWelcomeEnabled" checked>
+                        Activer le message de bienvenue
+                    </label>
+
+                    <label>Style de bulle</label>
+                    <select id="followWelcomeStyle">
+                        <option value="bulle">Bulle classique (fondu + zoom)</option>
+                        <option value="glissement">Glissement latéral</option>
+                        <option value="rebond">Rebond</option>
+                        <option value="neon">Néon pulsé</option>
+                    </select>
+
+                    <label>Texte (utilise {user} pour le pseudo)</label>
+                    <input type="text" id="followWelcomeText" value="Merci pour ton follow, {user} !">
+
+                    <label>Couleur de fond</label>
+                    <input type="color" id="followWelcomeBgColor" value="#22d3ee">
+
+                    <label>Couleur du texte</label>
+                    <input type="color" id="followWelcomeTextColor" value="#05060f">
+
+                    <label>Durée d'affichage (secondes)</label>
+                    <input type="number" id="followWelcomeDuration" value="4" min="1">
+
+                    <hr>
+
+                    <label>
+                        <input type="checkbox" id="followWelcomeVoiceEnabled">
+                        🔊 Lire le follow à voix haute
+                    </label>
+
+                    <label>Texte à lire (utilise {user} pour le pseudo)</label>
+                    <input type="text" id="followWelcomeVoiceText" value="Merci pour ton follow {user} !">
+
+                    <br><br>
+
+                    <button id="saveFollowWelcome">
+                        💾 Sauvegarder Bienvenue follower
+                    </button>
+
+                </div>
+
+                <div class="webcamPreview">
+                    <iframe
+                        src="/overlay/follow-welcome"
+                        style="width:100%;height:150px;border:none;">
+                    </iframe>
+                </div>
+
+            </div>
+
+            <div class="webcamFrameCard">
+
                 <h3>Cadre Webcam Simple</h3>
 
                 <input
