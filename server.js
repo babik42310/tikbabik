@@ -1555,7 +1555,7 @@ function guessGiftIcon(giftName) {
 // diamants, uniquement sur l'affichage).
 const COIN_JAR_MAX_VISIBLE_GIFTS = 60;
 
-function addToCoinJar(clientId, diamonds, giftName, giftImage) {
+function addToCoinJar(clientId, diamonds, giftName, giftImage, donorName, donorAvatar) {
 
     const jarSettings =
         getClientSettings(clientId).coinJar || {};
@@ -1588,6 +1588,12 @@ function addToCoinJar(clientId, diamonds, giftName, giftImage) {
     while (jar.settledGifts.length > COIN_JAR_MAX_VISIBLE_GIFTS) {
         jar.settledGifts.shift();
     }
+
+    jar.lastDonor = {
+        name: donorName || "Quelqu'un",
+        avatar: donorAvatar || "",
+        amount: diamonds
+    };
 
     emitToCreatorPilotClient(clientId, "coinJarGiftFell", {
         image: giftImage || "",
@@ -1641,7 +1647,20 @@ app.post("/coin-jar/test", (req, res) => {
     const randomAmount =
         10 + Math.floor(Math.random() * 90);
 
-    addToCoinJar(clientId, randomAmount, randomGift.name, randomGift.image);
+    const testNames =
+        ["Test User 1", "Test User 2", "Fan_TikTok", "Streamer_Ami"];
+
+    const randomName =
+        testNames[Math.floor(Math.random() * testNames.length)];
+
+    addToCoinJar(
+        clientId,
+        randomAmount,
+        randomGift.name,
+        randomGift.image,
+        randomName,
+        ""
+    );
 
     res.json({ success: true, gift: randomGift.name, amount: randomAmount });
 
@@ -2140,12 +2159,6 @@ app.get("/overlay/coin-jar", (req, res) => {
     const target =
         jarSettings.target || 1000;
 
-    const jarColor =
-        jarSettings.jarColor || "#22d3ee";
-
-    const bgColor =
-        jarSettings.transparent ? "transparent" : (jarSettings.bgColor || "#0c1625");
-
     const celebrationText =
         jarSettings.celebrationText || "Tirelire pleine !";
 
@@ -2155,13 +2168,8 @@ app.get("/overlay/coin-jar", (req, res) => {
 <head>
 <meta charset="UTF-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
 <style>
-
-@keyframes fallIntoJar {
-    0% { transform: translateY(-160px) rotate(0deg); opacity: 1; }
-    100% { transform: translateY(0) rotate(var(--finalRotate)); opacity: 1; }
-}
 
 @keyframes celebrationText {
     0% { transform: scale(0) rotate(-8deg); opacity: 0; }
@@ -2172,8 +2180,13 @@ app.get("/overlay/coin-jar", (req, res) => {
 
 @keyframes jarShake {
     0%, 100% { transform: rotate(0deg); }
-    25% { transform: rotate(-1.5deg); }
-    75% { transform: rotate(1.5deg); }
+    25% { transform: rotate(-1.2deg); }
+    75% { transform: rotate(1.2deg); }
+}
+
+@keyframes donorCardIn {
+    0% { transform: translateY(20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
 }
 
 body{
@@ -2181,70 +2194,50 @@ body{
     background:transparent;
     overflow:hidden;
     display:flex;
+    flex-direction:column;
     align-items:center;
     justify-content:center;
     height:100vh;
-    font-family:'Segoe UI', Arial, sans-serif;
+    font-family:'Rajdhani', sans-serif;
 }
 
 #jarWrap{
     position:relative;
-    width:220px;
-    height:280px;
+    width:260px;
+    height:340px;
 }
 
-#jarNeck{
-    position:absolute;
-    top:0;
-    left:50%;
-    transform:translateX(-50%);
-    width:70px;
-    height:26px;
-    background:${bgColor};
-    border:4px solid ${jarColor};
-    border-bottom:none;
-    border-radius:6px 6px 0 0;
-    box-sizing:border-box;
-    z-index:2;
-}
-
-#jarBody{
-    position:absolute;
-    top:22px;
-    left:0;
-    width:100%;
-    height:258px;
-    background:${bgColor};
-    border:4px solid ${jarColor};
-    border-radius:24px 24px 40px 40px;
-    box-sizing:border-box;
-    overflow:hidden;
-}
-
-#jarBody.shaking, #jarNeck.shaking{
+#jarWrap.shaking{
     animation: jarShake 0.4s ease-in-out 3;
 }
 
-/* Les cadeaux accumulés dans le bocal, chacun positionné à un
-   endroit fixe une fois "posé" (pas de vraie physique, juste un
-   agencement en grille légèrement aléatoire qui donne un effet
-   naturel d'empilement). */
-#giftsPile{
+#jarSvg{
     position:absolute;
     inset:0;
+    width:100%;
+    height:100%;
+}
+
+#giftsPile{
+    position:absolute;
+    left:18%;
+    right:18%;
+    bottom:14%;
+    top:46%;
     display:flex;
     flex-wrap:wrap-reverse;
     align-content:flex-start;
     align-items:flex-start;
     justify-content:center;
-    padding:8px;
+    padding:4px;
     box-sizing:border-box;
-    gap:2px;
+    gap:1px;
+    overflow:hidden;
 }
 
 .settledGift{
-    width:26px;
-    height:26px;
+    width:24px;
+    height:24px;
     flex-shrink:0;
 }
 
@@ -2252,40 +2245,40 @@ body{
     width:100%;
     height:100%;
     object-fit:contain;
-    filter:drop-shadow(0 2px 3px rgba(0,0,0,0.4));
+    filter:drop-shadow(0 2px 2px rgba(0,0,0,0.5));
 }
 
 .settledGift .emojiIcon{
-    font-size:22px;
-    line-height:26px;
+    font-size:20px;
+    line-height:24px;
     text-align:center;
     display:block;
 }
 
 #label{
     position:absolute;
-    top:-34px;
+    top:0px;
     left:0;
     right:0;
     text-align:center;
     font-family:'Orbitron', sans-serif;
-    font-size:16px;
+    font-size:15px;
     font-weight:800;
     color:#f5f7ff;
-    text-shadow:0 0 10px ${jarColor}aa;
+    text-shadow:0 2px 6px rgba(0,0,0,0.7);
     z-index:5;
 }
 
 #celebration{
     position:absolute;
-    top:35%;
+    top:38%;
     left:50%;
     transform:translate(-50%, -50%) scale(0);
     font-family:'Orbitron', sans-serif;
-    font-size:18px;
+    font-size:16px;
     font-weight:800;
-    color:${jarColor};
-    text-shadow:0 0 20px ${jarColor};
+    color:#ffd700;
+    text-shadow:0 0 20px #ffd700;
     text-align:center;
     white-space:nowrap;
     z-index:10;
@@ -2301,10 +2294,9 @@ body{
 .fallingGift{
     position:fixed;
     top:0;
-    width:34px;
-    height:34px;
+    width:32px;
+    height:32px;
     z-index:20;
-    animation:fallIntoJar 0.6s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
 }
 
 .fallingGift img{
@@ -2314,9 +2306,53 @@ body{
 }
 
 .fallingGift .emojiIcon{
-    font-size:30px;
+    font-size:28px;
     display:block;
     text-align:center;
+}
+
+#donorCard{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:linear-gradient(90deg, #1a1230ee, #241a3aee);
+    border:1px solid #ffffff22;
+    border-radius:14px;
+    padding:8px 16px 8px 8px;
+    margin-top:10px;
+    opacity:0;
+    box-shadow:0 6px 20px rgba(0,0,0,0.4);
+}
+
+#donorCard.show{
+    animation: donorCardIn 0.4s ease forwards;
+}
+
+#donorAvatar{
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    object-fit:cover;
+    background:#333;
+    flex-shrink:0;
+}
+
+#donorName{
+    font-size:16px;
+    font-weight:700;
+    color:#fff;
+    white-space:nowrap;
+}
+
+#donorAmount{
+    display:flex;
+    align-items:center;
+    gap:4px;
+    font-family:'Orbitron', sans-serif;
+    font-size:15px;
+    font-weight:800;
+    color:#ffd700;
+    margin-left:auto;
 }
 
 </style>
@@ -2324,12 +2360,73 @@ body{
 <body>
 
 <div id="jarWrap">
+
     <div id="label">0 / ${target}</div>
-    <div id="jarNeck"></div>
-    <div id="jarBody">
-        <div id="giftsPile"></div>
-    </div>
+
+    <svg id="jarSvg" viewBox="0 0 260 340" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="glassGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.28"/>
+                <stop offset="20%" stop-color="#ffffff" stop-opacity="0.06"/>
+                <stop offset="55%" stop-color="#ffffff" stop-opacity="0.14"/>
+                <stop offset="80%" stop-color="#ffffff" stop-opacity="0.04"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0.22"/>
+            </linearGradient>
+            <linearGradient id="lidGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#e8e8ee"/>
+                <stop offset="45%" stop-color="#b8b8c4"/>
+                <stop offset="55%" stop-color="#9a9aa8"/>
+                <stop offset="100%" stop-color="#c8c8d2"/>
+            </linearGradient>
+        </defs>
+
+        <!-- Corps du bocal -->
+        <path d="M 40 130
+                 C 40 100 55 92 75 88
+                 L 75 60
+                 L 185 60
+                 L 185 88
+                 C 205 92 220 100 220 130
+                 L 220 270
+                 C 220 305 195 325 130 325
+                 C 65 325 40 305 40 270
+                 Z"
+              fill="url(#glassGrad)"
+              stroke="#ffffff55"
+              stroke-width="2"/>
+
+        <!-- Col -->
+        <rect x="75" y="35" width="110" height="30" rx="4"
+              fill="url(#glassGrad)"
+              stroke="#ffffff55"
+              stroke-width="2"/>
+
+        <!-- Couvercle -->
+        <rect x="68" y="8" width="124" height="34" rx="6"
+              fill="url(#lidGrad)"
+              stroke="#7a7a88"
+              stroke-width="1.5"/>
+        <line x1="68" y1="16" x2="192" y2="16" stroke="#7a7a88" stroke-width="1"/>
+        <line x1="68" y1="23" x2="192" y2="23" stroke="#7a7a88" stroke-width="1"/>
+        <line x1="68" y1="30" x2="192" y2="30" stroke="#7a7a88" stroke-width="1"/>
+        <line x1="68" y1="37" x2="192" y2="37" stroke="#7a7a88" stroke-width="1"/>
+
+        <!-- Reflet lumineux -->
+        <path d="M 62 110 C 60 160 60 230 68 300"
+              stroke="#ffffff" stroke-opacity="0.35" stroke-width="10"
+              stroke-linecap="round" fill="none"/>
+    </svg>
+
+    <div id="giftsPile"></div>
+
     <div id="celebration">🎉 ${celebrationText} 🎉</div>
+
+</div>
+
+<div id="donorCard">
+    <img id="donorAvatar" src="">
+    <div id="donorName">—</div>
+    <div id="donorAmount">🪙 <span id="donorAmountValue">0</span></div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -2372,6 +2469,36 @@ function renderPile(settledGifts){
 
 }
 
+let donorCardTimeout = null;
+
+function showDonorCard(donor){
+
+    if (!donor) {
+        return;
+    }
+
+    const card = document.getElementById("donorCard");
+
+    document.getElementById("donorName").textContent = donor.name || "Quelqu'un";
+    document.getElementById("donorAmountValue").textContent = donor.amount || 0;
+
+    const avatarImg = document.getElementById("donorAvatar");
+    avatarImg.style.display = donor.avatar ? "block" : "none";
+    if (donor.avatar) {
+        avatarImg.src = donor.avatar;
+    }
+
+    card.classList.remove("show");
+    void card.offsetWidth;
+    card.classList.add("show");
+
+    clearTimeout(donorCardTimeout);
+    donorCardTimeout = setTimeout(() => {
+        card.classList.remove("show");
+    }, 5000);
+
+}
+
 function updateFromStatus(data){
 
     document.getElementById("label").textContent =
@@ -2387,6 +2514,10 @@ function updateFromStatus(data){
         celebration.classList.remove("active");
     }
 
+    if (data.lastDonor) {
+        showDonorCard(data.lastDonor);
+    }
+
 }
 
 socket.on("coinJarUpdated", data => {
@@ -2395,48 +2526,41 @@ socket.on("coinJarUpdated", data => {
 
 socket.on("coinJarGiftFell", data => {
 
-    // Anime la chute depuis le haut de l'écran jusqu'au bocal, puis
-    // laisse le prochain "coinJarUpdated" afficher la version posée
-    // dans la pile — évite d'avoir deux copies visibles en même temps.
     const jarRect =
-        document.getElementById("jarBody").getBoundingClientRect();
+        document.getElementById("jarWrap").getBoundingClientRect();
 
     const startX =
-        window.innerWidth / 2 - 17 + (Math.random() * 60 - 30);
+        jarRect.left + jarRect.width / 2 - 16 + (Math.random() * 50 - 25);
 
     const fallingEl =
         makeGiftEl(data, "fallingGift");
 
     fallingEl.style.left = startX + "px";
-    fallingEl.style.setProperty("--finalRotate", (Math.random() * 40 - 20) + "deg");
-    fallingEl.style.setProperty("--fallDistance", (jarRect.top + jarRect.height - 40) + "px");
-    fallingEl.style.transform = "translateY(" + (jarRect.top + jarRect.height - 40) + "px)";
-    fallingEl.style.animationName = "none";
+    fallingEl.style.top = (jarRect.top - 40) + "px";
 
     document.body.appendChild(fallingEl);
 
+    const landingY =
+        jarRect.top + jarRect.height * 0.68;
+
     requestAnimationFrame(() => {
-        fallingEl.style.transition = "transform 0.5s cubic-bezier(0.34, 1.2, 0.64, 1)";
-        fallingEl.style.transform =
-            "translateY(" + (jarRect.top + jarRect.height - 40) + "px) rotate(" +
-            (Math.random() * 40 - 20) + "deg)";
+        fallingEl.style.transition = "top 0.5s cubic-bezier(0.34, 1.2, 0.64, 1), transform 0.5s ease";
+        fallingEl.style.top = landingY + "px";
+        fallingEl.style.transform = "rotate(" + (Math.random() * 50 - 25) + "deg)";
     });
 
-    const jarBody = document.getElementById("jarBody");
-    const jarNeck = document.getElementById("jarNeck");
+    const jarWrap = document.getElementById("jarWrap");
 
     setTimeout(() => {
 
-        jarBody.classList.add("shaking");
-        jarNeck.classList.add("shaking");
+        jarWrap.classList.add("shaking");
         fallingEl.remove();
 
         setTimeout(() => {
-            jarBody.classList.remove("shaking");
-            jarNeck.classList.remove("shaking");
+            jarWrap.classList.remove("shaking");
         }, 400);
 
-    }, 500);
+    }, 480);
 
 });
 
@@ -2450,6 +2574,7 @@ fetch("/coin-jar/status?client=" + clientId)
 </html>
 `);
 });
+
 
 
 
@@ -3712,7 +3837,7 @@ if (clientGiftBattle.active) {
             getClientSettings(clientId).diamondsGoal
         );
 
-        addToCoinJar(clientId, totalDiamonds, giftName, data.giftPictureUrl);
+        addToCoinJar(clientId, totalDiamonds, giftName, data.giftPictureUrl, user, donorAvatar);
 
 emitToCreatorPilotClient(clientId, "gift", {
             user: user,
