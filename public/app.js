@@ -106,50 +106,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 });
 
-/*
-   ============================================================
-   SAUVEGARDE LOCALE AUTOMATIQUE (par navigateur/PC)
-
-   Copie régulièrement les réglages actuels dans le navigateur de
-   CE client précis, indépendamment du serveur. Sert de filet de
-   sécurité : si jamais la sauvegarde côté serveur pose problème,
-   chaque client garde quand même une copie récente chez lui.
-   ============================================================
-*/
-let lastLocalBackupSnapshot = "";
-
-setInterval(() => {
-
-    try {
-
-        if (typeof appSettings === "undefined" || !appSettings) {
-            return;
-        }
-
-        const snapshot =
-            JSON.stringify(appSettings);
-
-        if (snapshot === lastLocalBackupSnapshot) {
-            return;
-        }
-
-        lastLocalBackupSnapshot = snapshot;
-
-        localStorage.setItem(
-            "cp_settings_local_backup",
-            JSON.stringify({
-                savedAt: new Date().toISOString(),
-                settings: appSettings
-            })
-        );
-
-    } catch (error) {
-        // Sauvegarde locale best-effort : une erreur ici ne doit
-        // jamais bloquer le reste de l'app.
-    }
-
-}, 5000);
-
 function showToast(message) {
 
     let container =
@@ -2779,17 +2735,49 @@ function processTtsQueue() {
 
     ttsIsSpeaking = true;
 
-    speechSynthesis.speak(item.speech);
-
-    item.speech.onend = () => {
+    const finishItem = () => {
+        clearTimeout(safetyTimeout);
         ttsIsSpeaking = false;
         processTtsQueue();
     };
 
+    /*
+       Sécurité : certains navigateurs (Chrome en particulier) ont un
+       bug connu où la fin de lecture ne se déclenche jamais dans de
+       rares cas, ce qui bloquerait TOUS les messages suivants
+       indéfiniment. Si rien ne s'est passé après un délai large, on
+       force la suite plutôt que de rester coincé pour toujours.
+    */
+    const safetyTimeout =
+        setTimeout(() => {
+            console.log("⚠️ TTS bloqué trop longtemps, déblocage forcé de la file d'attente");
+            finishItem();
+        }, 20000);
+
+    // Voix IA (OpenAI) : l'audio est déjà prêt à l'avance (préparé
+    // avant d'entrer dans la file), on le joue simplement à son tour.
+    if (item.audio) {
+
+        item.audio.onended = finishItem;
+        item.audio.onerror = finishItem;
+
+        item.audio.play().catch(error => {
+            console.log("ERREUR PLAY TTS IA (file d'attente) :", error);
+            finishItem();
+        });
+
+        return;
+
+    }
+
+    // Voix Windows (SpeechSynthesis)
+    speechSynthesis.speak(item.speech);
+
+    item.speech.onend = finishItem;
+
     item.speech.onerror = (event) => {
         console.log("ERREUR SYNTHÈSE VOCALE :", event.error);
-        ttsIsSpeaking = false;
-        processTtsQueue();
+        finishItem();
     };
 
 }
@@ -5232,74 +5220,6 @@ socket.on("liveStats", data => {
 
 setInterval(renderLiveStats, 1000);
 
-/* ==================== CONNEXION TIKTOK PERDUE (échec de reconnexion auto) ==================== */
-
-socket.on("tiktok-reconnect-failed", data => {
-
-    const message =
-        (data && data.message) ||
-        "La connexion à TikTok a été perdue.";
-
-    let banner =
-        document.getElementById("cpReconnectBanner");
-
-    if (!banner) {
-
-        banner = document.createElement("div");
-        banner.id = "cpReconnectBanner";
-
-        banner.style.cssText =
-            "position:fixed;top:0;left:0;right:0;z-index:999999;" +
-            "background:linear-gradient(90deg,#ec4899,#a855f7);" +
-            "color:#05060f;font-weight:700;padding:14px 20px;" +
-            "display:flex;align-items:center;justify-content:center;gap:16px;" +
-            "font-family:sans-serif;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
-
-        document.body.appendChild(banner);
-
-    }
-
-    banner.innerHTML = "";
-
-    const text =
-        document.createElement("span");
-
-    text.textContent =
-        "⚠️ " + message;
-
-    const button =
-        document.createElement("button");
-
-    button.textContent =
-        "Reconnecter maintenant";
-
-    button.style.cssText =
-        "background:#05060f;color:#fff;border:none;padding:8px 16px;" +
-        "border-radius:8px;cursor:pointer;font-weight:700;";
-
-    button.onclick = () => {
-        document.getElementById("startConnectTikTokButton")?.click();
-        banner.remove();
-    };
-
-    banner.appendChild(text);
-    banner.appendChild(button);
-
-});
-
-socket.on("tiktok-reconnect-succeeded", () => {
-
-    const banner =
-        document.getElementById("cpReconnectBanner");
-
-    if (banner) {
-        banner.remove();
-    }
-
-    showToast("Connexion TikTok rétablie automatiquement !");
-
-});
-
 /* ==================== ANNONCE VOCALE D'OBJECTIF ATTEINT ==================== */
 
 function announceGoalMessage(text) {
@@ -6545,60 +6465,6 @@ fetch("/settings")
 .then(settings => {
 
     appSettings = settings;
-
-    /*
-       Sauvegarde locale de secours (par navigateur/PC, indépendante
-       du serveur). Si les réglages reçus du serveur semblent vides
-       de façon suspecte (aucune action, aucune alerte sonore) alors
-       qu'une sauvegarde locale plus riche existe sur cet ordinateur,
-       on propose de la restaurer.
-    */
-    try {
-
-        const localBackupRaw =
-            localStorage.getItem("cp_settings_local_backup");
-
-        const localBackup =
-            localBackupRaw ? JSON.parse(localBackupRaw) : null;
-
-        const serverLooksEmpty =
-            (!appSettings.actions || appSettings.actions.length === 0) &&
-            (!appSettings.soundAlerts || appSettings.soundAlerts.length === 0);
-
-        const localLooksRicher =
-            localBackup &&
-            (
-                (localBackup.actions && localBackup.actions.length > 0) ||
-                (localBackup.soundAlerts && localBackup.soundAlerts.length > 0)
-            );
-
-        if (serverLooksEmpty && localLooksRicher) {
-
-            const wantsRestore = confirm(
-                "Tes réglages semblent vides côté serveur, mais une sauvegarde locale plus complète existe sur cet ordinateur (datant du " +
-                (localBackup.savedAt ? new Date(localBackup.savedAt).toLocaleString("fr-FR") : "?") +
-                "). Veux-tu restaurer cette sauvegarde locale maintenant ?"
-            );
-
-            if (wantsRestore) {
-
-                appSettings = localBackup.settings || localBackup;
-
-                fetch("/settings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(appSettings)
-                }).then(() => {
-                    showToast("Sauvegarde locale restaurée sur le serveur !");
-                });
-
-            }
-
-        }
-
-    } catch (error) {
-        console.log("Vérification de la sauvegarde locale impossible :", error);
-    }
 
     // Les réglages du compte venant du serveur prennent toujours le dessus
     // sur les anciens caches locaux du navigateur.
