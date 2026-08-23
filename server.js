@@ -1580,10 +1580,18 @@ function addToCoinJar(clientId, diamonds, giftName, giftImage, donorName, donorA
         jar.settledGifts = [];
     }
 
-    jar.settledGifts.push({
+    // Position aléatoire fixée une fois pour toutes à la création —
+    // c'est exactement là que le cadeau restera, sans jamais être
+    // réorganisé en grille bien rangée.
+    const settledGift = {
         image: giftImage || "",
-        icon: giftImage ? "" : guessGiftIcon(giftName)
-    });
+        icon: giftImage ? "" : guessGiftIcon(giftName),
+        xPercent: 12 + Math.random() * 66,
+        rotate: Math.random() * 50 - 25,
+        stackIndex: jar.settledGifts.length
+    };
+
+    jar.settledGifts.push(settledGift);
 
     while (jar.settledGifts.length > COIN_JAR_MAX_VISIBLE_GIFTS) {
         jar.settledGifts.shift();
@@ -1598,6 +1606,8 @@ function addToCoinJar(clientId, diamonds, giftName, giftImage, donorName, donorA
     emitToCreatorPilotClient(clientId, "coinJarGiftFell", {
         image: giftImage || "",
         icon: giftImage ? "" : guessGiftIcon(giftName),
+        xPercent: settledGift.xPercent,
+        rotate: settledGift.rotate,
         giftName: giftName || "Cadeau",
         donorName: donorName || "Quelqu'un",
         donorAvatar: donorAvatar || "",
@@ -2238,21 +2248,13 @@ body{
     right:18%;
     bottom:14%;
     top:46%;
-    display:flex;
-    flex-wrap:wrap-reverse;
-    align-content:flex-start;
-    align-items:flex-start;
-    justify-content:center;
-    padding:4px;
-    box-sizing:border-box;
-    gap:1px;
     overflow:hidden;
 }
 
 .settledGift{
+    position:absolute;
     width:24px;
     height:24px;
-    flex-shrink:0;
 }
 
 .settledGift img{
@@ -2322,7 +2324,7 @@ body{
     width:32px;
     height:32px;
     z-index:20;
-    animation: fallIntoJarReal 0.7s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
+    animation: fallIntoJarReal 1.6s cubic-bezier(0.4, 0, 0.6, 1) forwards;
 }
 
 .fallingGift img{
@@ -2574,7 +2576,19 @@ function renderPile(settledGifts){
     pile.innerHTML = "";
 
     (settledGifts || []).forEach(gift => {
-        pile.appendChild(makeGiftEl(gift, "settledGift"));
+
+        const el =
+            makeGiftEl(gift, "settledGift");
+
+        // Chaque cadeau garde exactement sa position aléatoire de
+        // chute, empilée du bas vers le haut selon son ordre
+        // d'arrivée — jamais réorganisée en grille bien rangée.
+        el.style.left = (gift.xPercent || 50) + "%";
+        el.style.bottom = ((gift.stackIndex || 0) * 6) + "px";
+        el.style.transform = "rotate(" + (gift.rotate || 0) + "deg)";
+
+        pile.appendChild(el);
+
     });
 
 }
@@ -2639,22 +2653,31 @@ socket.on("coinJarGiftFell", data => {
     const jarRect =
         document.getElementById("jarWrap").getBoundingClientRect();
 
+    const pile =
+        document.getElementById("giftsPile");
+
+    const pileRect =
+        pile.getBoundingClientRect();
+
     const startY =
         jarRect.top - 60;
 
-    const landingY =
-        jarRect.top + jarRect.height * 0.68;
+    // Atterrit exactement à la position définitive (même xPercent
+    // que celle stockée côté serveur) — pas de saut visuel entre
+    // l'animation de chute et la place finale dans le tas.
+    const landingX =
+        pileRect.left + (pileRect.width * (data.xPercent || 50) / 100) - 12;
 
-    const startX =
-        jarRect.left + jarRect.width / 2 - 16 + (Math.random() * 50 - 25);
+    const landingY =
+        pileRect.top + pileRect.height - ((data.stackIndex || 0) * 6) - 24;
 
     const fallingEl =
         makeGiftEl(data, "fallingGift");
 
-    fallingEl.style.left = startX + "px";
+    fallingEl.style.left = landingX + "px";
     fallingEl.style.top = startY + "px";
     fallingEl.style.setProperty("--fallDistance", (landingY - startY) + "px");
-    fallingEl.style.setProperty("--fallRotate", (Math.random() * 50 - 25) + "deg");
+    fallingEl.style.setProperty("--fallRotate", (data.rotate || 0) + "deg");
 
     document.body.appendChild(fallingEl);
 
@@ -2668,14 +2691,14 @@ socket.on("coinJarGiftFell", data => {
             jarWrap.classList.remove("shaking");
         }, 400);
 
-    }, 700);
+    }, 1600);
 
     // Le cadeau reste visible, posé dans le bocal, jusqu'à ce que le
     // serveur confirme la mise à jour officielle du tas (2s) — pour
     // ne jamais avoir de moment où le bocal semble vide entre les deux.
     setTimeout(() => {
         fallingEl.remove();
-    }, 1950);
+    }, 1980);
 
     showGiftBubble(data);
 
