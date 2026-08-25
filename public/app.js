@@ -6985,7 +6985,10 @@ if (appSettings.webcamSimple) {
     action.type || "Son",
     action.keyShortcut || ""
 );
-if (appSettings.ttsChat) {
+        });
+    }
+
+    if (appSettings.ttsChat) {
 
     const tts =
         appSettings.ttsChat;
@@ -7073,8 +7076,6 @@ if (appSettings.ttsChat) {
         tts.filterCommands;
 
 }
-        });
-    }
 
     if (appSettings.actionEvents) {
         appSettings.actionEvents.forEach(event => {
@@ -8180,6 +8181,63 @@ if (resetDiamondsGoal) {
         if (frame) {
             frame.src = "/overlay/diamonds-goal?t=" + Date.now();
         }
+
+    };
+
+}
+
+const resetLikesGoal =
+    document.getElementById("resetLikesGoal");
+
+if (resetLikesGoal) {
+
+    resetLikesGoal.onclick = async () => {
+
+        if (!confirm("Réinitialiser l'objectif Likes à zéro ?")) {
+            return;
+        }
+
+        await fetch("/likes-goal/reset", { method: "POST" });
+
+        showToast("Objectif Likes réinitialisé !");
+
+    };
+
+}
+
+const resetFollowGoal =
+    document.getElementById("resetFollowGoal");
+
+if (resetFollowGoal) {
+
+    resetFollowGoal.onclick = async () => {
+
+        if (!confirm("Réinitialiser l'objectif Abonnés à zéro ?")) {
+            return;
+        }
+
+        await fetch("/follow-goal/reset", { method: "POST" });
+
+        showToast("Objectif Abonnés réinitialisé !");
+
+    };
+
+}
+
+const resetRecentGifts =
+    document.getElementById("resetRecentGifts");
+
+if (resetRecentGifts) {
+
+    resetRecentGifts.onclick = async () => {
+
+        if (!confirm("Vider le bandeau des cadeaux récents ?")) {
+            return;
+        }
+
+        await fetch("/recent-gifts/reset", { method: "POST" });
+
+        showToast("Bandeau cadeaux récents vidé !");
 
     };
 

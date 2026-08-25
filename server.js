@@ -9900,6 +9900,53 @@ app.post("/diamonds-goal/reset", (req, res) => {
 
 });
 
+app.post("/likes-goal/reset", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    likesGoalCountByClient.set(clientId, 0);
+
+    getGoalAnnouncedState(clientId).likes = false;
+
+    emitToCreatorPilotClient(clientId, "likesGoalUpdated", {
+        count: 0
+    });
+
+    res.json({ success: true });
+
+});
+
+app.post("/follow-goal/reset", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    followGoalCountByClient.set(clientId, 0);
+
+    getGoalAnnouncedState(clientId).follow = false;
+
+    emitToCreatorPilotClient(clientId, "followGoalUpdated", {
+        count: 0
+    });
+
+    res.json({ success: true });
+
+});
+
+app.post("/recent-gifts/reset", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    recentGiftsByClient.set(clientId, []);
+
+    emitToCreatorPilotClient(clientId, "recentGiftsUpdated", []);
+
+    res.json({ success: true });
+
+});
+
 app.get("/overlay/diamonds-goal", (req, res) => {
 
     const clientId =
