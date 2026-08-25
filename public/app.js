@@ -3680,6 +3680,9 @@ engine:
 
     /* Types de commentaires */
 
+    commentMode:
+        document.querySelector('input[name="ttsCommentMode"]:checked')?.value || "all",
+
     command:
         document.getElementById("ttsCommand")?.value || "!tts",
 
@@ -7049,6 +7052,13 @@ if (appSettings.webcamSimple) {
 
     if (ttsPointsModeInput) {
         ttsPointsModeInput.checked = true;
+    }
+
+    const ttsCommentModeInput =
+        document.querySelector('input[name="ttsCommentMode"][value="' + (tts.commentMode || "all") + '"]');
+
+    if (ttsCommentModeInput) {
+        ttsCommentModeInput.checked = true;
     }
 
     document.getElementById("ttsCommand").value =
