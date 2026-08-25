@@ -3660,11 +3660,20 @@ engine:
     topGifters:
         document.getElementById("ttsTopGifters")?.checked || false,
 
+    donors:
+        document.getElementById("ttsDonors")?.checked || false,
+
     whitelist:
         document.getElementById("ttsWhitelist")?.checked || false,
 
     whitelistUsernames:
         (document.getElementById("ttsWhitelistUsernames")?.value || "")
+            .split(",")
+            .map(u => u.trim().replace(/^@/, "").toLowerCase())
+            .filter(Boolean),
+
+    blacklistUsernames:
+        (document.getElementById("ttsBlacklistUsernames")?.value || "")
             .split(",")
             .map(u => u.trim().replace(/^@/, "").toLowerCase())
             .filter(Boolean),
@@ -4686,14 +4695,24 @@ function playAlert(sound, image, volume, text) {
 
 function isTtsUserAllowed(tts, userData) {
 
-    if (tts.allUsers) {
-        return true;
-    }
-
     const username =
         String(userData.uniqueId || userData.user || "")
             .replace(/^@/, "")
             .toLowerCase();
+
+    // La liste noire prime toujours sur tout le reste — même un
+    // abonné, un membre de l'équipe ou "tous les utilisateurs" activé
+    // ne fait jamais lire quelqu'un présent dans cette liste.
+    if (
+        Array.isArray(tts.blacklistUsernames) &&
+        tts.blacklistUsernames.includes(username)
+    ) {
+        return false;
+    }
+
+    if (tts.allUsers) {
+        return true;
+    }
 
     if (tts.followers && (userData.isFollower || userData.isFriend)) {
         return true;
@@ -4708,6 +4727,10 @@ function isTtsUserAllowed(tts, userData) {
     }
 
     if (tts.topGifters && userData.isTopGifter) {
+        return true;
+    }
+
+    if (tts.donors && userData.isDonor) {
         return true;
     }
 
@@ -4729,7 +4752,8 @@ function isTtsUserAllowed(tts, userData) {
 
     const anyToggleOn =
         tts.allUsers || tts.followers || tts.subscribers ||
-        tts.moderators || tts.team || tts.topGifters || tts.whitelist;
+        tts.moderators || tts.team || tts.topGifters ||
+        tts.donors || tts.whitelist;
 
     /* Réglages jamais sauvegardés (ancienne installation) : ne pas couper le TTS existant */
     if (!anyToggleOn) {
@@ -7005,11 +7029,17 @@ if (appSettings.ttsChat) {
     document.getElementById("ttsTopGifters").checked =
         tts.topGifters;
 
+    document.getElementById("ttsDonors").checked =
+        tts.donors;
+
     document.getElementById("ttsWhitelist").checked =
         tts.whitelist;
 
     document.getElementById("ttsWhitelistUsernames").value =
         (tts.whitelistUsernames || []).join(", ");
+
+    document.getElementById("ttsBlacklistUsernames").value =
+        (tts.blacklistUsernames || []).join(", ");
 
     const ttsPointsModeInput =
         document.querySelector('input[name="ttsPointsMode"][value="' + (tts.pointsMode || "free") + '"]');

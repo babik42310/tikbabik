@@ -3806,6 +3806,37 @@ setInterval(() => {
 
 const lastEventAtByClient = new Map();
 
+const donorsByClient = new Map();
+
+function markAsDonor(clientId, username) {
+
+    const normalized =
+        String(username || "").toLowerCase();
+
+    if (!normalized) {
+        return;
+    }
+
+    if (!donorsByClient.has(clientId)) {
+        donorsByClient.set(clientId, new Set());
+    }
+
+    donorsByClient.get(clientId).add(normalized);
+
+}
+
+function isKnownDonor(clientId, username) {
+
+    const normalized =
+        String(username || "").toLowerCase();
+
+    const set =
+        donorsByClient.get(clientId);
+
+    return !!(set && set.has(normalized));
+
+}
+
 function markClientActivity(clientId) {
     lastEventAtByClient.set(clientId, Date.now());
 }
@@ -3851,7 +3882,8 @@ function bindTikTokEvents(tiktokConnection, clientId) {
             isFriend: data.followRole === 2,
             isModerator: !!data.isModerator,
             isSubscriber: !!data.isSubscriber,
-            isTopGifter: data.topGifterRank !== null && data.topGifterRank !== undefined
+            isTopGifter: data.topGifterRank !== null && data.topGifterRank !== undefined,
+            isDonor: isKnownDonor(clientId, data.uniqueId || data.nickname)
         });
 
         trackPresence(clientId, data.nickname, data.profilePictureUrl || data.profilePicture || "");
@@ -3889,6 +3921,8 @@ function bindTikTokEvents(tiktokConnection, clientId) {
         if (isStreakable && !comboFinished) {
             return;
         }
+
+        markAsDonor(clientId, data.uniqueId || user);
 
         const totalDiamonds =
             Number(data.diamondCount || 0) *
