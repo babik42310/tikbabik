@@ -6745,6 +6745,7 @@ if (!savedUserAtStart || !savedUserAtStart.email) {
         .catch(() => {});
 
     if (appSettings.banner) {
+    try {
 
     document.getElementById("bannerText").value =
         appSettings.banner.text || "";
@@ -6760,9 +6761,13 @@ if (!savedUserAtStart || !savedUserAtStart.email) {
 
     updateBannerPreview();
 
+    } catch (error) {
+        console.log("Restauration d'un panneau incomplète (le reste continue normalement) :", error);
+    }
 }
 
     if (appSettings.followGoal) {
+    try {
 
     document.getElementById("followGoalText").value =
         appSettings.followGoal.text || "";
@@ -6804,9 +6809,13 @@ if (!savedUserAtStart || !savedUserAtStart.email) {
         appSettings.followGoal.announceMessage || "Objectif d'abonnés atteint ! Merci à tous !";
 
     updateFollowGoalPreview();
+    } catch (error) {
+        console.log("Restauration d'un panneau incomplète (le reste continue normalement) :", error);
+    }
 }
 
     if (appSettings.likesGoal) {
+    try {
 
     document.getElementById("likesGoalText").value =
         appSettings.likesGoal.text || "";
@@ -6848,9 +6857,13 @@ document.getElementById("likesGoalBarColor").value =
         appSettings.likesGoal.announceMessage || "Objectif de likes atteint ! Merci à tous !";
 
     updateLikesGoalPreview();
+    } catch (error) {
+        console.log("Restauration d'un panneau incomplète (le reste continue normalement) :", error);
+    }
 }
 
     if (appSettings.diamondsGoal) {
+    try {
 
     document.getElementById("diamondsGoalText").value =
         appSettings.diamondsGoal.text || "Objectif Diamants";
@@ -6894,18 +6907,26 @@ document.getElementById("likesGoalBarColor").value =
     document.getElementById("diamondsGoalAnnounceMessage").value =
         appSettings.diamondsGoal.announceMessage || "Objectif de diamants atteint ! Merci à tous !";
 
+    } catch (error) {
+        console.log("Restauration d'un panneau incomplète (le reste continue normalement) :", error);
+    }
 }
 
     if (appSettings.webcamCustom) {
+    try {
 
     document.getElementById("webcamCustomStyle").value =
         appSettings.webcamCustom.style || "neon";
 
     updateWebcamCustomFrame();
 
+    } catch (error) {
+        console.log("Restauration d'un panneau incomplète (le reste continue normalement) :", error);
+    }
 }
 
 if (appSettings.webcamSimple) {
+    try {
 
     document.getElementById("webcamSimpleColor").value =
         appSettings.webcamSimple.color || "#35cfff";
@@ -6921,10 +6942,14 @@ if (appSettings.webcamSimple) {
 
     updateWebcamSimpleFrame();
 
+    } catch (error) {
+        console.log("Restauration d'un panneau incomplète (le reste continue normalement) :", error);
+    }
 }
     console.log("SETTINGS CHARGÉS :", appSettings);
 
     if (appSettings.ttsChat) {
+    try {
 
     const tts =
         appSettings.ttsChat;
@@ -6998,11 +7023,15 @@ if (appSettings.webcamSimple) {
 
 }
 
+    } catch (error) {
+        console.log("Restauration d'un panneau incomplète (le reste continue normalement) :", error);
+    }
 }
 
     updateProLocks();
 
     if (appSettings.actions) {
+    try {
         appSettings.actions.forEach(action => {
             createGiftRuleRow(
     action.name,
@@ -7013,6 +7042,9 @@ if (appSettings.webcamSimple) {
     action.keyShortcut || ""
 );
         });
+    } catch (error) {
+        console.log("Restauration d'un panneau incomplète (le reste continue normalement) :", error);
+    }
     }
 
     if (appSettings.ttsChat) {
