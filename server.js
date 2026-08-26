@@ -3332,6 +3332,10 @@ app.post("/connect-tiktok", async (req, res) => {
             tiktokConnections.delete(clientId);
         }
 
+        // Nouveau live = nouveaux compteurs de donateurs du jour,
+        // repartis de zéro (pas cumulés sur les lives précédents).
+        donorsByClient.delete(clientId);
+
         const connection =
             new WebcastPushConnection(
                 username,
@@ -3808,7 +3812,7 @@ const lastEventAtByClient = new Map();
 
 const donorsByClient = new Map();
 
-function markAsDonor(clientId, username) {
+function markAsDonor(clientId, username, diamonds) {
 
     const normalized =
         String(username || "").toLowerCase();
@@ -3818,10 +3822,19 @@ function markAsDonor(clientId, username) {
     }
 
     if (!donorsByClient.has(clientId)) {
-        donorsByClient.set(clientId, new Set());
+        donorsByClient.set(clientId, new Map());
     }
 
-    donorsByClient.get(clientId).add(normalized);
+    const clientDonors =
+        donorsByClient.get(clientId);
+
+    const currentTotal =
+        clientDonors.get(normalized) || 0;
+
+    clientDonors.set(
+        normalized,
+        currentTotal + Number(diamonds || 0)
+    );
 
 }
 
@@ -3830,10 +3843,22 @@ function isKnownDonor(clientId, username) {
     const normalized =
         String(username || "").toLowerCase();
 
-    const set =
+    const map =
         donorsByClient.get(clientId);
 
-    return !!(set && set.has(normalized));
+    return !!(map && map.has(normalized));
+
+}
+
+function getDonorAmount(clientId, username) {
+
+    const normalized =
+        String(username || "").toLowerCase();
+
+    const map =
+        donorsByClient.get(clientId);
+
+    return (map && map.get(normalized)) || 0;
 
 }
 
@@ -3883,7 +3908,8 @@ function bindTikTokEvents(tiktokConnection, clientId) {
             isModerator: !!data.isModerator,
             isSubscriber: !!data.isSubscriber,
             isTopGifter: data.topGifterRank !== null && data.topGifterRank !== undefined,
-            isDonor: isKnownDonor(clientId, data.uniqueId || data.nickname)
+            isDonor: isKnownDonor(clientId, data.uniqueId || data.nickname),
+            donorAmount: getDonorAmount(clientId, data.uniqueId || data.nickname)
         });
 
         trackPresence(clientId, data.nickname, data.profilePictureUrl || data.profilePicture || "");
@@ -3922,11 +3948,11 @@ function bindTikTokEvents(tiktokConnection, clientId) {
             return;
         }
 
-        markAsDonor(clientId, data.uniqueId || user);
-
         const totalDiamonds =
             Number(data.diamondCount || 0) *
             Number(data.repeatCount || 1);
+
+        markAsDonor(clientId, data.uniqueId || user, totalDiamonds);
 
         addToRecentGifts(clientId, {
             user: user,

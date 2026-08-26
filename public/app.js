@@ -106,6 +106,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
 });
 
+document.querySelectorAll(".ttsDonorAmountPreset").forEach(button => {
+
+    button.onclick = () => {
+
+        const amount =
+            button.dataset.amount;
+
+        document.getElementById("ttsDonorMinAmount").value =
+            amount;
+
+        document.getElementById("ttsDonors").checked =
+            true;
+
+    };
+
+});
+
 function showToast(message) {
 
     let container =
@@ -3663,6 +3680,9 @@ engine:
     donors:
         document.getElementById("ttsDonors")?.checked || false,
 
+    donorMinAmount:
+        Number(document.getElementById("ttsDonorMinAmount")?.value || 1),
+
     whitelist:
         document.getElementById("ttsWhitelist")?.checked || false,
 
@@ -4733,7 +4753,11 @@ function isTtsUserAllowed(tts, userData) {
         return true;
     }
 
-    if (tts.donors && userData.isDonor) {
+    if (
+        tts.donors &&
+        userData.isDonor &&
+        (userData.donorAmount || 0) >= Number(tts.donorMinAmount || 1)
+    ) {
         return true;
     }
 
@@ -6993,6 +7017,8 @@ if (appSettings.webcamSimple) {
 
     if (appSettings.ttsChat) {
 
+    try {
+
     const tts =
         appSettings.ttsChat;
 
@@ -7037,6 +7063,9 @@ if (appSettings.webcamSimple) {
 
     document.getElementById("ttsDonors").checked =
         tts.donors;
+
+    document.getElementById("ttsDonorMinAmount").value =
+        tts.donorMinAmount || 1;
 
     document.getElementById("ttsWhitelist").checked =
         tts.whitelist;
@@ -7084,6 +7113,10 @@ if (appSettings.webcamSimple) {
 
     document.getElementById("ttsFilterCommands").checked =
         tts.filterCommands;
+
+    } catch (error) {
+        console.log("Restauration TTS Chat incomplète (un champ manquant n'a pas bloqué le reste) :", error);
+    }
 
 }
 
