@@ -6287,7 +6287,7 @@ if (!data.winnersShown) {
 });
 }
 
-setInterval(load, 1000);
+setInterval(load, 15000);
 load();
 </script>
 
@@ -6763,7 +6763,7 @@ document.getElementById("blueName").innerHTML =
 
 }
 
-setInterval(load, 1000);
+setInterval(load, 15000);
 load();
 
 </script>
@@ -7244,7 +7244,7 @@ async function load() {
     });
 }
 
-setInterval(load, 1000);
+setInterval(load, 15000);
 load();
 </script>
 
@@ -7673,7 +7673,7 @@ async function load() {
     });
 }
 
-setInterval(load, 1000);
+setInterval(load, 15000);
 load();
 </script>
 
@@ -8110,7 +8110,7 @@ async function load() {
     });
 }
 
-setInterval(load, 1000);
+setInterval(load, 15000);
 load();
 </script>
 
@@ -8583,7 +8583,7 @@ async function load(){
     wasSpinning = data.spinning;
 }
 
-setInterval(load, 1000);
+setInterval(load, 15000);
 load();
 </script>
 
@@ -9082,7 +9082,7 @@ async function load(){
         String(s).padStart(2, "0");
 }
 
-setInterval(load, 1000);
+setInterval(load, 15000);
 load();
 </script>
 
@@ -9686,7 +9686,7 @@ async function updateLikesGoal(){
         percent + "%";
 }
 
-setInterval(updateLikesGoal, 1000);
+setInterval(updateLikesGoal, 15000);
 updateLikesGoal();
 </script>
 </body>
@@ -9898,7 +9898,7 @@ async function updateFollowGoal(){
 
 }
 
-setInterval(updateFollowGoal, 1000);
+setInterval(updateFollowGoal, 15000);
 updateFollowGoal();
 </script>
 
@@ -10139,7 +10139,7 @@ async function updateDiamondsGoal(){
 
 }
 
-setInterval(updateDiamondsGoal, 1000);
+setInterval(updateDiamondsGoal, 15000);
 updateDiamondsGoal();
 </script>
 

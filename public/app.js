@@ -123,6 +123,17 @@ document.querySelectorAll(".ttsDonorAmountPreset").forEach(button => {
 
 });
 
+function updateBannerPreview() {
+
+    const frame =
+        document.querySelector(".bannerFrame");
+
+    if (frame) {
+        frame.src = "/overlay/banner?t=" + Date.now();
+    }
+
+}
+
 function showToast(message) {
 
     let container =
