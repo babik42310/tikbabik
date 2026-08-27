@@ -1,6 +1,6 @@
 {
   "name": "tikbabik",
-  "version": "2.0.11",
+  "version": "2.0.12",
   "description": "TikBabik - outil interactif TikTok LIVE",
   "main": "main.js",
   "scripts": {

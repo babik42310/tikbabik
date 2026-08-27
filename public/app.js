@@ -2494,6 +2494,7 @@ const closeTopLikesSettings =
 
 let voiceEnabled = true;
 let appSettings = {};
+let cpSettingsReady = false;
 let topGifters = {};
 let giftHistory = [];
 let lastTtsTime = 0;
@@ -6642,6 +6643,11 @@ addEventRule.onclick = () => {
 /* SAUVEGARDE */
 
 saveSettings.onclick = () => {
+
+    if (!cpSettingsReady) {
+        showToast("Réglages encore en cours de chargement — attends quelques secondes");
+        return;
+    }
     const actionRows = document.querySelectorAll("#giftRulesBody tr");
     const eventRows = document.querySelectorAll("#eventsBody tr");
 
@@ -6821,6 +6827,53 @@ function saveStats() {
 
 
 /* ==========================================================
+   CHARGEMENT RÉSILIENT AU DÉMARRAGE
+   Un nouveau déploiement Railway peut mettre quelques secondes
+   avant d'accepter les requêtes. On réessaie au lieu de charger
+   silencieusement des réglages vides.
+   ========================================================== */
+async function cpFetchJsonWithRetry(url, options = {}, retryOptions = {}) {
+    const attempts = Number(retryOptions.attempts || 10);
+    const delayMs = Number(retryOptions.delayMs || 600);
+    const timeoutMs = Number(retryOptions.timeoutMs || 8000);
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status + " sur " + url);
+            }
+
+            return await response.json();
+        } catch (error) {
+            lastError = error;
+            console.log(
+                "CreatorPilot : tentative " + attempt + "/" + attempts +
+                " échouée pour " + url + " :",
+                error.message
+            );
+
+            if (attempt < attempts) {
+                const wait = Math.min(delayMs * attempt, 2500);
+                await new Promise(resolve => setTimeout(resolve, wait));
+            }
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+
+    throw lastError || new Error("Impossible de charger " + url);
+}
+
+/* ==========================================================
    RESTAURATION DES PERSONNALISATIONS DU COMPTE
    Le serveur /settings est la source principale. localStorage
    reste seulement un cache pratique pour certaines previews.
@@ -6985,11 +7038,11 @@ if (saveSoundAlerts) {
 
 }
 
-fetch("/settings")
-.then(response => response.json())
+cpFetchJsonWithRetry("/settings", {}, { attempts: 10, delayMs: 700 })
 .then(settings => {
 
     appSettings = settings;
+    cpSettingsReady = true;
 
     // Les réglages du compte venant du serveur prennent toujours le dessus
     // sur les anciens caches locaux du navigateur.
@@ -7010,8 +7063,7 @@ if (!savedUserAtStart || !savedUserAtStart.email) {
        serveur (session réelle) si ce client est vraiment PRO,
        et on met à jour l'affichage en conséquence.
     */
-    fetch("/me")
-        .then(response => response.json())
+    cpFetchJsonWithRetry("/me", {}, { attempts: 8, delayMs: 600 })
         .then(meData => {
 
             if (meData.loggedIn && meData.user) {
@@ -7037,7 +7089,16 @@ if (!savedUserAtStart || !savedUserAtStart.email) {
             }
 
         })
-        .catch(() => {});
+        .catch(error => {
+            // Ne jamais écraser l'état du compte uniquement parce que Railway
+            // a mis quelques secondes à répondre. Les réglages déjà chargés
+            // restent affichés et une prochaine ouverture retentera normalement.
+            console.log("CreatorPilot : /me indisponible après plusieurs tentatives :", error.message);
+            applyProDisplay();
+            if (typeof updateProLocks === "function") {
+                updateProLocks();
+            }
+        });
 
     if (appSettings.banner) {
     try {
@@ -7493,15 +7554,24 @@ if (typeof applyProDisplay === "function") {
     applyProDisplay();
 }
 
+})
+.catch(error => {
+    cpSettingsReady = false;
+    console.error("CreatorPilot : impossible de charger les réglages du compte :", error);
+    if (typeof showToast === "function") {
+        showToast("Chargement des réglages impossible — nouvelle tentative au prochain lancement");
+    }
 });
 
-fetch("/stats")
-.then(response => response.json())
+cpFetchJsonWithRetry("/stats", {}, { attempts: 8, delayMs: 600 })
 .then(stats => {
     topGifters = stats.topGifters || {};
     giftHistory = stats.giftHistory || [];
 
     refreshStatsDisplay();
+})
+.catch(error => {
+    console.log("CreatorPilot : stats indisponibles au démarrage :", error.message);
 });
 
 if (openGiftGalleryButton) {
@@ -7578,6 +7648,11 @@ function showPanel(panelId) {
 }
 
 function saveAppSettings(message = "Paramètres sauvegardés !") {
+    if (!cpSettingsReady) {
+        showToast("Réglages encore en cours de chargement — sauvegarde non envoyée");
+        return;
+    }
+
     fetch("/settings", {
         method: "POST",
         headers: {

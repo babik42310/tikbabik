@@ -43,11 +43,15 @@ autoUpdater.on("update-available", info => {
         type: "info",
         title: "Mise à jour CreatorPilot",
         message: "Une nouvelle version (" + info.version + ") a été trouvée.",
-        detail: "Elle va se télécharger en arrière-plan et s'installera au prochain lancement de l'app.",
+        detail: "Elle se télécharge maintenant en arrière-plan. CreatorPilot restera actif jusqu'à la fin du téléchargement.",
         buttons: ["OK"]
-    }).then(() => {
-        finishAndQuit();
+    }).catch(error => {
+        console.log("Erreur boîte de dialogue update :", error);
     });
+
+    // IMPORTANT : ne pas appeler finishAndQuit() ici.
+    // electron-updater doit rester vivant jusqu'à l'événement update-downloaded.
+
 
 });
 
