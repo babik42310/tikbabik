@@ -3902,6 +3902,117 @@ saveObsSettings.onclick = () => {
 
 };
 
+/* ==================== VRAIE CONNEXION OBS (depuis le navigateur, en local) ==================== */
+
+let obsWebSocketInstance = null;
+
+const testObsConnectionButton =
+    document.getElementById("testObsConnection");
+
+const disconnectObsButton =
+    document.getElementById("disconnectObsButton");
+
+const obsConnectionStatusEl =
+    document.getElementById("obsConnectionStatus");
+
+if (testObsConnectionButton) {
+
+    testObsConnectionButton.onclick = async () => {
+
+        if (typeof OBSWebSocket === "undefined") {
+            obsConnectionStatusEl.textContent = "🔴 Bibliothèque OBS non chargée — réessaie de recharger la page.";
+            return;
+        }
+
+        const ip =
+            obsIp.value || "127.0.0.1";
+
+        const port =
+            obsPort.value || "4455";
+
+        const password =
+            obsPassword.value || "";
+
+        testObsConnectionButton.disabled = true;
+        testObsConnectionButton.textContent = "Connexion...";
+        obsConnectionStatusEl.textContent = "🟡 Connexion en cours...";
+
+        try {
+
+            if (obsWebSocketInstance) {
+                try {
+                    await obsWebSocketInstance.disconnect();
+                } catch (error) {}
+            }
+
+            obsWebSocketInstance = new OBSWebSocket();
+
+            await obsWebSocketInstance.connect(
+                "ws://" + ip + ":" + port,
+                password || undefined
+            );
+
+            obsConnectionStatusEl.textContent = "🟢 Connecté à OBS !";
+            obsConnectionStatusEl.style.color = "#22d3ee";
+
+            testObsConnectionButton.style.display = "none";
+            disconnectObsButton.style.display = "inline-block";
+
+            obsWebSocketInstance.on("ConnectionClosed", () => {
+                obsConnectionStatusEl.textContent = "⚪ Non connecté";
+                obsConnectionStatusEl.style.color = "";
+                testObsConnectionButton.style.display = "inline-block";
+                disconnectObsButton.style.display = "none";
+            });
+
+            showToast("Connecté à OBS !");
+
+        } catch (error) {
+
+            console.log("Erreur connexion OBS :", error);
+
+            let message = "Connexion impossible.";
+
+            if (error?.message?.includes("Authentication")) {
+                message = "Mot de passe incorrect.";
+            } else if (error?.code === 1006 || error?.message?.includes("failed")) {
+                message = "OBS injoignable — vérifie qu'OBS est ouvert, que le serveur WebSocket est activé (Outils → Paramètres du serveur WebSocket) et que l'adresse/le port sont corrects.";
+            }
+
+            obsConnectionStatusEl.textContent = "🔴 " + message;
+            obsConnectionStatusEl.style.color = "#ff5c5c";
+
+        }
+
+        testObsConnectionButton.disabled = false;
+        testObsConnectionButton.textContent = "🔌 Connecter OBS";
+
+    };
+
+}
+
+if (disconnectObsButton) {
+
+    disconnectObsButton.onclick = async () => {
+
+        if (obsWebSocketInstance) {
+            try {
+                await obsWebSocketInstance.disconnect();
+            } catch (error) {}
+        }
+
+        obsConnectionStatusEl.textContent = "⚪ Non connecté";
+        obsConnectionStatusEl.style.color = "";
+
+        testObsConnectionButton.style.display = "inline-block";
+        disconnectObsButton.style.display = "none";
+
+        showToast("Déconnecté d'OBS.");
+
+    };
+
+}
+
 saveMinecraftSettings.onclick = () => {
 
     appSettings.minecraft = {
