@@ -3,6 +3,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const { exec } = require("child_process");
 const { WebcastPushConnection } = require("tiktok-live-connector");
+const tmi = require("tmi.js");
 const fs = require("fs");
 const multer = require("multer");
 const crypto = require("crypto");
@@ -3258,6 +3259,22 @@ console.log("SETTINGS TIKTOK :", settings.tiktokUsername);
 const tiktokConnections = new Map();
 const tiktokUsernames = new Map();
 
+/*
+   ============================================================
+   CONNEXION TWITCH (chat uniquement)
+
+   Contrairement à TikTok, la lecture du chat Twitch ne nécessite
+   pas de compte développeur ni de clé API — une simple connexion
+   anonyme en lecture seule au canal IRC de Twitch suffit.
+   ============================================================
+*/
+const twitchConnections = new Map();
+const twitchChannels = new Map();
+
+function getTwitchConnection(clientId) {
+    return twitchConnections.get(clientId) || null;
+}
+
 function getTikTokConnection(clientId) {
     return tiktokConnections.get(clientId) || null;
 }
@@ -3276,6 +3293,142 @@ function emitToCreatorPilotClient(
 console.log(
     "TikTok en attente : aucune connexion automatique au démarrage"
 );
+
+app.post("/connect-twitch", async (req, res) => {
+
+    const clientId =
+        String(req.body.clientId || "")
+            .trim();
+
+    if (isRateLimited("connect-twitch:" + (clientId || req.ip), 6, 60000)) {
+        return res.status(429).json({
+            success: false,
+            error: "Trop de tentatives de connexion Twitch, réessaie dans une minute."
+        });
+    }
+
+    try {
+
+        const channel =
+            String(req.body.channel || "")
+                .replace("#", "")
+                .trim()
+                .toLowerCase();
+
+        if (!clientId) {
+            return res.status(400).json({
+                success: false,
+                error: "Identifiant local CreatorPilot manquant"
+            });
+        }
+
+        if (!channel) {
+            return res.status(400).json({
+                success: false,
+                error: "Nom de chaîne Twitch manquant"
+            });
+        }
+
+        const existing =
+            twitchConnections.get(clientId);
+
+        if (existing) {
+            try {
+                await existing.disconnect();
+            } catch (error) {}
+            twitchConnections.delete(clientId);
+        }
+
+        const client =
+            new tmi.Client({
+                channels: [channel]
+            });
+
+        client.on("message", (twitchChannel, tags, message, self) => {
+
+            if (self) {
+                return;
+            }
+
+            markClientActivity(clientId);
+
+            emitToCreatorPilotClient(clientId, "chat", {
+                platform: "twitch",
+                user: tags["display-name"] || tags.username,
+                uniqueId: tags.username,
+                message: message,
+                isFollower: false,
+                isFriend: false,
+                isModerator: !!tags.mod,
+                isSubscriber: !!tags.subscriber,
+                isTopGifter: false,
+                isDonor: false,
+                donorAmount: 0
+            });
+
+        });
+
+        client.on("disconnected", () => {
+            console.log("Twitch déconnecté pour", clientId);
+        });
+
+        await client.connect();
+
+        twitchConnections.set(clientId, client);
+        twitchChannels.set(clientId, channel);
+
+        console.log("Twitch connecté pour", clientId, "→ chaîne :", channel);
+
+        res.json({
+            success: true,
+            channel: channel
+        });
+
+    } catch (error) {
+
+        console.log("Erreur connexion Twitch :", error.message);
+
+        res.status(500).json({
+            success: false,
+            error: "Impossible de se connecter à ce canal Twitch : " + error.message
+        });
+
+    }
+
+});
+
+app.post("/disconnect-twitch", async (req, res) => {
+
+    const clientId =
+        String(req.body.clientId || "")
+            .trim();
+
+    const connection =
+        twitchConnections.get(clientId);
+
+    if (connection) {
+        try {
+            await connection.disconnect();
+        } catch (error) {}
+        twitchConnections.delete(clientId);
+        twitchChannels.delete(clientId);
+    }
+
+    res.json({ success: true });
+
+});
+
+app.get("/twitch-status", (req, res) => {
+
+    const clientId =
+        resolveClientId(req);
+
+    res.json({
+        connected: twitchConnections.has(clientId),
+        channel: twitchChannels.get(clientId) || null
+    });
+
+});
 
 app.post("/connect-tiktok", async (req, res) => {
 
@@ -3912,6 +4065,7 @@ function bindTikTokEvents(tiktokConnection, clientId) {
         applyChronoTime(clientId, getClientChrono(clientId).settings.perChat);
 
         emitToCreatorPilotClient(clientId, "chat", {
+            platform: "tiktok",
             user: data.nickname,
             uniqueId: data.uniqueId,
             message: data.comment,

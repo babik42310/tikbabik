@@ -152,4 +152,8 @@ body::after{opacity:.55!important}
 .cpLiveChatMessages .cpLiveChatMsg b{color:#65edff;margin-right:6px}
 @keyframes cpLiveChatIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
+.cpLiveChatColumns{display:flex;gap:12px;flex:1;overflow:hidden;height:100%}
+.cpLiveChatColumn{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.cpLiveChatColumn .cpLiveChatMessages{flex:1}
+
 #cpDownloadAppLink{display:inline-flex!important;align-items:center;justify-content:center;text-decoration:none!important;}

@@ -430,6 +430,9 @@ const setupHome =
 const connectTikTokSetupPage =
     document.getElementById("connectTikTokSetupPage");
 
+const connectTwitchSetupPage =
+    document.getElementById("connectTwitchSetupPage");
+
 const tiktokUsernameInput =
     document.getElementById("tiktokUsernameInput");
 
@@ -3711,6 +3714,9 @@ engine:
 
     /* Types de commentaires */
 
+    source:
+        document.querySelector('input[name="ttsSource"]:checked')?.value || "both",
+
     commentMode:
         document.querySelector('input[name="ttsCommentMode"]:checked')?.value || "all",
 
@@ -4017,7 +4023,152 @@ connectTikTokSetupTab.onclick = () => {
     tikBabikProSetupPage.style.display = "none";
     agencyPage.style.display = "none";
     accountSetupPage.style.display = "none";
+    if (connectTwitchSetupPage) connectTwitchSetupPage.style.display = "none";
 };
+
+const connectTwitchSetupTab =
+    document.getElementById("connectTwitchSetupTab");
+
+if (connectTwitchSetupTab) {
+
+    connectTwitchSetupTab.onclick = () => {
+
+        setupHome.style.display = "none";
+        connectTikTokSetupPage.style.display = "none";
+        pointsSystemSetupPage.style.display = "none";
+        subscriberBonusSetupPage.style.display = "none";
+        obsConnectionSetupPage.style.display = "none";
+        streamerBotSetupPage.style.display = "none";
+        minecraftSetupPage.style.display = "none";
+        resetPointsSetupPage.style.display = "none";
+        tikBabikProSetupPage.style.display = "none";
+        agencyPage.style.display = "none";
+        accountSetupPage.style.display = "none";
+        connectTwitchSetupPage.style.display = "block";
+
+        document
+            .querySelectorAll(".setupTab")
+            .forEach(tab => tab.classList.remove("active"));
+
+        connectTwitchSetupTab.classList.add("active");
+
+        refreshTwitchStatus();
+
+    };
+
+}
+
+async function refreshTwitchStatus() {
+
+    try {
+
+        const response =
+            await fetch("/twitch-status");
+
+        const data =
+            await response.json();
+
+        const statusEl =
+            document.getElementById("twitchConnectionStatus");
+
+        const connectBtn =
+            document.getElementById("connectTwitchButton");
+
+        const disconnectBtn =
+            document.getElementById("disconnectTwitchButton");
+
+        if (data.connected) {
+            statusEl.textContent = "🟢 Connecté à la chaîne : " + data.channel;
+            statusEl.style.color = "#22d3ee";
+            connectBtn.style.display = "none";
+            disconnectBtn.style.display = "inline-block";
+        } else {
+            statusEl.textContent = "Non connecté";
+            statusEl.style.color = "";
+            connectBtn.style.display = "inline-block";
+            disconnectBtn.style.display = "none";
+        }
+
+    } catch (error) {}
+
+}
+
+const connectTwitchButton =
+    document.getElementById("connectTwitchButton");
+
+if (connectTwitchButton) {
+
+    connectTwitchButton.onclick = async () => {
+
+        const channel =
+            document.getElementById("twitchChannelInput")?.value
+                .trim()
+                .toLowerCase();
+
+        if (!channel) {
+            alert("Entre le nom de ta chaîne Twitch d'abord.");
+            return;
+        }
+
+        connectTwitchButton.disabled = true;
+        connectTwitchButton.textContent = "Connexion...";
+
+        try {
+
+            const response =
+                await fetch("/connect-twitch", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        clientId: getCreatorPilotClientId(),
+                        channel: channel
+                    })
+                });
+
+            const data =
+                await response.json();
+
+            if (data.success) {
+                showToast("Connecté au chat Twitch de " + data.channel + " !");
+            } else {
+                alert(data.error || "Erreur de connexion Twitch");
+            }
+
+        } catch (error) {
+            alert("Impossible de contacter CreatorPilot.");
+        }
+
+        connectTwitchButton.disabled = false;
+        connectTwitchButton.textContent = "🟣 Connecter Twitch";
+
+        refreshTwitchStatus();
+
+    };
+
+}
+
+const disconnectTwitchButton =
+    document.getElementById("disconnectTwitchButton");
+
+if (disconnectTwitchButton) {
+
+    disconnectTwitchButton.onclick = async () => {
+
+        await fetch("/disconnect-twitch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                clientId: getCreatorPilotClientId()
+            })
+        });
+
+        showToast("Déconnecté du chat Twitch.");
+
+        refreshTwitchStatus();
+
+    };
+
+}
 
 /* CORRECTIF : bouton Accueil > Connecter à TikTok LIVE */
 if (startConnectTikTokButton) {
@@ -4089,6 +4240,7 @@ pointsSystemSetupTab.onclick = () => {
     tikBabikProSetupPage.style.display = "none";
     agencyPage.style.display = "none";
     accountSetupPage.style.display = "none";
+    if (connectTwitchSetupPage) connectTwitchSetupPage.style.display = "none";
 };
 
 subscriberBonusSetupTab.onclick = () => {
@@ -4103,6 +4255,7 @@ subscriberBonusSetupTab.onclick = () => {
     tikBabikProSetupPage.style.display = "none";
     agencyPage.style.display = "none";
     accountSetupPage.style.display = "none";
+    if (connectTwitchSetupPage) connectTwitchSetupPage.style.display = "none";
 };
 
 obsConnectionSetupTab.onclick = () => {
@@ -4117,6 +4270,7 @@ obsConnectionSetupTab.onclick = () => {
     tikBabikProSetupPage.style.display = "none";
     agencyPage.style.display = "none";
     accountSetupPage.style.display = "none";
+    if (connectTwitchSetupPage) connectTwitchSetupPage.style.display = "none";
 };
 
 streamerBotSetupTab.onclick = () => {
@@ -4135,6 +4289,7 @@ streamerBotSetupTab.onclick = () => {
     tikBabikProSetupPage.style.display = "none";
     agencyPage.style.display = "none";
     accountSetupPage.style.display = "none";
+    if (connectTwitchSetupPage) connectTwitchSetupPage.style.display = "none";
 
 };
 
@@ -4154,6 +4309,7 @@ minecraftSetupTab.onclick = () => {
     tikBabikProSetupPage.style.display = "none";
     agencyPage.style.display = "none";
     accountSetupPage.style.display = "none";
+    if (connectTwitchSetupPage) connectTwitchSetupPage.style.display = "none";
 
 };
 
@@ -4169,6 +4325,7 @@ resetPointsSetupTab.onclick = () => {
     tikBabikProSetupPage.style.display = "none";
     agencyPage.style.display = "none";
     accountSetupPage.style.display = "none";
+    if (connectTwitchSetupPage) connectTwitchSetupPage.style.display = "none";
 
 };
 
@@ -4184,6 +4341,7 @@ tikBabikProSetupTab.onclick = () => {
     tikBabikProSetupPage.style.display = "block";
     agencyPage.style.display = "none";
     accountSetupPage.style.display = "none";
+    if (connectTwitchSetupPage) connectTwitchSetupPage.style.display = "none";
 
 };
 
@@ -4728,6 +4886,17 @@ function playAlert(sound, image, volume, text) {
 /* ==================== TTS : permissions, coût en points, voix spéciales ==================== */
 
 function isTtsUserAllowed(tts, userData) {
+
+    const source =
+        tts.source || "both";
+
+    if (
+        source !== "both" &&
+        userData.platform &&
+        userData.platform !== source
+    ) {
+        return false;
+    }
 
     const username =
         String(userData.uniqueId || userData.user || "")
@@ -5670,7 +5839,11 @@ socket.on("chat", data => {
     messages.prepend(div);
 
     const liveChatMessages =
-        document.getElementById("cpLiveChatMessages");
+        document.getElementById(
+            data.platform === "twitch"
+                ? "cpLiveChatMessagesTwitch"
+                : "cpLiveChatMessagesTikTok"
+        );
 
     if (liveChatMessages) {
 
@@ -7133,6 +7306,13 @@ if (appSettings.webcamSimple) {
         ttsCommentModeInput.checked = true;
     }
 
+    const ttsSourceInput =
+        document.querySelector('input[name="ttsSource"][value="' + (tts.source || "both") + '"]');
+
+    if (ttsSourceInput) {
+        ttsSourceInput.checked = true;
+    }
+
     document.getElementById("ttsCommand").value =
         tts.command;
 
@@ -7516,6 +7696,7 @@ function updateProLocks() {
 if (typeof connectTikTokAccountButton !== "undefined" && connectTikTokAccountButton) {
     connectTikTokAccountButton.onclick = () => {
         accountSetupPage.style.display = "none";
+    if (connectTwitchSetupPage) connectTwitchSetupPage.style.display = "none";
         connectTikTokSetupPage.style.display = "block";
     };
 }
