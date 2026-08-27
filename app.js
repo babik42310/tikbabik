@@ -7220,23 +7220,6 @@ document.getElementById("likesGoalBarColor").value =
     }
 }
 
-    if (appSettings.obs) {
-    try {
-
-    document.getElementById("obsIp").value =
-        appSettings.obs.ip || "127.0.0.1";
-
-    document.getElementById("obsPort").value =
-        appSettings.obs.port || 4455;
-
-    document.getElementById("obsPassword").value =
-        appSettings.obs.password || "";
-
-    } catch (error) {
-        console.log("Restauration d'un panneau incomplète (le reste continue normalement) :", error);
-    }
-}
-
 if (appSettings.webcamSimple) {
     try {
 
