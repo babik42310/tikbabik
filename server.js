@@ -153,22 +153,19 @@ async function initDatabase() {
     console.log("Base PostgreSQL prête");
 }
 
-/*
-   PostgreSQL doit être complètement prêt AVANT que le serveur HTTP
-   commence à accepter des requêtes. Sinon un navigateur peut appeler
-   /me ou /settings pendant l'initialisation et tomber temporairement
-   sur une session anonyme.
-*/
-let databaseReadyPromise = Promise.resolve();
-
 if (process.env.DATABASE_URL) {
-    databaseReadyPromise = (async () => {
-        await initDatabase();
-        const result = await pool.query("SELECT NOW()");
-        console.log("PostgreSQL connecté :", result.rows[0]);
-    })();
+    initDatabase().catch(console.error);
 } else {
     console.log("PostgreSQL désactivé en local");
+}
+if (process.env.DATABASE_URL) {
+    pool.query("SELECT NOW()")
+        .then(result => {
+            console.log("PostgreSQL connecté :", result.rows[0]);
+        })
+        .catch(error => {
+            console.error("Erreur PostgreSQL :", error);
+        });
 }
 
 const stripeSecretKey =
@@ -3000,7 +2997,7 @@ app.get("/api/mobile/status", (req, res) => {
     res.json({
         success: true,
         app: "CreatorPilot",
-        version: "2.0.12",
+        version: "2.0.7",
         tiktokUsername: clientSettings.tiktokUsername || "",
         pro: clientSettings.pro === true,
         ttsEnabled: clientSettings.ttsChat?.enabled === true,
@@ -3957,6 +3954,7 @@ setInterval(() => {
             );
 
             try {
+                connection.removeAllListeners();
                 connection.disconnect();
             } catch (error) {
                 // La connexion était déjà morte de toute façon, sans importance.
@@ -10601,23 +10599,6 @@ app.post("/api/live-assistant/reset", async (req, res) => {
 const CP_PORT =
     process.env.PORT || 3000;
 
-async function startCreatorPilotServer() {
-    try {
-        await databaseReadyPromise;
-
-        server.listen(CP_PORT, () => {
-            console.log("CreatorPilot lancé sur le port " + CP_PORT);
-        });
-    } catch (error) {
-        /*
-           En production, mieux vaut laisser Railway redémarrer le service
-           plutôt que servir CreatorPilot avec une base non initialisée et
-           risquer de charger des réglages anonymes/par défaut.
-        */
-        console.error("Démarrage CreatorPilot impossible : PostgreSQL n'est pas prêt :", error);
-        process.exitCode = 1;
-        setTimeout(() => process.exit(1), 250);
-    }
-}
-
-startCreatorPilotServer();
+server.listen(CP_PORT, () => {
+    console.log("CreatorPilot lancé sur le port " + CP_PORT);
+});
