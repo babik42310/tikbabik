@@ -3257,6 +3257,7 @@ console.log("SETTINGS TIKTOK :", settings.tiktokUsername);
 
 
 const tiktokConnections = new Map();
+const tiktokConnectionsInProgress = new Set();
 const tiktokUsernames = new Map();
 
 /*
@@ -3450,6 +3451,23 @@ app.post("/connect-tiktok", async (req, res) => {
         });
     }
 
+    /*
+       Verrou anti double-clic : si une connexion pour ce même
+       clientId est déjà en train de s'établir (ça peut prendre
+       plusieurs secondes), on refuse immédiatement toute nouvelle
+       tentative plutôt que de laisser deux connexions TikTok
+       tourner en parallèle — ce qui faisait compter chaque cadeau
+       deux fois.
+    */
+    if (tiktokConnectionsInProgress.has(clientId)) {
+        return res.status(429).json({
+            success: false,
+            error: "Connexion déjà en cours, patiente quelques secondes."
+        });
+    }
+
+    tiktokConnectionsInProgress.add(clientId);
+
     try {
 
         const username =
@@ -3584,6 +3602,8 @@ app.post("/connect-tiktok", async (req, res) => {
                 error.message ||
                 "Erreur TikTok"
         });
+    } finally {
+        tiktokConnectionsInProgress.delete(clientId);
     }
 });
 
