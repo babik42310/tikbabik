@@ -3257,7 +3257,6 @@ console.log("SETTINGS TIKTOK :", settings.tiktokUsername);
 
 
 const tiktokConnections = new Map();
-const tiktokConnectionsInProgress = new Set();
 const tiktokUsernames = new Map();
 
 /*
@@ -3451,22 +3450,8 @@ app.post("/connect-tiktok", async (req, res) => {
         });
     }
 
-    /*
-       Verrou anti double-clic : si une connexion pour ce même
-       clientId est déjà en train de s'établir (ça peut prendre
-       plusieurs secondes), on refuse immédiatement toute nouvelle
-       tentative plutôt que de laisser deux connexions TikTok
-       tourner en parallèle — ce qui faisait compter chaque cadeau
-       deux fois.
-    */
-    if (tiktokConnectionsInProgress.has(clientId)) {
-        return res.status(429).json({
-            success: false,
-            error: "Connexion déjà en cours, patiente quelques secondes."
-        });
-    }
-
-    tiktokConnectionsInProgress.add(clientId);
+    let pendingConnection = null;
+    let connectionGeneration = null;
 
     try {
 
@@ -3495,6 +3480,11 @@ app.post("/connect-tiktok", async (req, res) => {
             await ensurePersistentUserStateLoaded(req.authUser.userId);
         }
 
+        // Une connexion manuelle remplace toute reconnexion programmée.
+        // Le numéro de génération empêche une ancienne tentative asynchrone
+        // de reprendre la main si elle se termine plus tard.
+        connectionGeneration = cancelTikTokReconnect(clientId, true);
+
         const previousConnection =
             getTikTokConnection(clientId);
 
@@ -3519,25 +3509,27 @@ app.post("/connect-tiktok", async (req, res) => {
         // repartis de zéro (pas cumulés sur les lives précédents).
         donorsByClient.delete(clientId);
 
-        const connection =
-            new WebcastPushConnection(
-                username,
-                process.env.EULER_API_KEY
-                    ? { signApiKey: process.env.EULER_API_KEY }
-                    : {}
-            );
+        pendingConnection = createTikTokConnection(username);
 
         bindTikTokEvents(
-            connection,
+            pendingConnection,
             clientId
         );
 
         const state =
-            await connection.connect();
+            await pendingConnection.connect();
+
+        if (getTikTokConnectionGeneration(clientId) !== connectionGeneration) {
+            await closeTikTokConnection(pendingConnection);
+            return res.status(409).json({
+                success: false,
+                error: "Cette tentative de connexion a été remplacée par une plus récente."
+            });
+        }
 
         tiktokConnections.set(
             clientId,
-            connection
+            pendingConnection
         );
 
         tiktokUsernames.set(
@@ -3582,19 +3574,20 @@ app.post("/connect-tiktok", async (req, res) => {
             error
         );
 
-        const connection =
-            getTikTokConnection(clientId);
+        await closeTikTokConnection(pendingConnection);
 
-        if (connection) {
-            try {
-                connection.removeAllListeners();
-                await connection.disconnect();
-            } catch {}
+        // Ne jamais supprimer une connexion plus récente à cause de l'échec
+        // tardif d'une ancienne requête.
+        if (
+            connectionGeneration === null ||
+            getTikTokConnectionGeneration(clientId) === connectionGeneration
+        ) {
+            if (getTikTokConnection(clientId) === pendingConnection) {
+                tiktokConnections.delete(clientId);
+            }
+            tiktokUsernames.delete(clientId);
+            lastEventAtByClient.delete(clientId);
         }
-
-        tiktokConnections.delete(clientId);
-        tiktokUsernames.delete(clientId);
-        lastEventAtByClient.delete(clientId);
 
         return res.json({
             success: false,
@@ -3602,8 +3595,6 @@ app.post("/connect-tiktok", async (req, res) => {
                 error.message ||
                 "Erreur TikTok"
         });
-    } finally {
-        tiktokConnectionsInProgress.delete(clientId);
     }
 });
 
@@ -3850,61 +3841,119 @@ function emitLiveStats(clientId) {
 }
 
 const reconnectAttemptsByClient = new Map();
+const reconnectTimersByClient = new Map();
+const reconnectInFlightByClient = new Set();
+const connectionGenerationByClient = new Map();
+const endedTikTokConnections = new WeakSet();
+
+function getTikTokConnectionGeneration(clientId) {
+    return connectionGenerationByClient.get(clientId) || 0;
+}
+
+function cancelTikTokReconnect(clientId, invalidateConnection = false) {
+    const timer = reconnectTimersByClient.get(clientId);
+
+    if (timer) {
+        clearTimeout(timer);
+        reconnectTimersByClient.delete(clientId);
+    }
+
+    if (invalidateConnection) {
+        const generation = getTikTokConnectionGeneration(clientId) + 1;
+        connectionGenerationByClient.set(clientId, generation);
+        reconnectAttemptsByClient.set(clientId, 0);
+        return generation;
+    }
+
+    return getTikTokConnectionGeneration(clientId);
+}
+
+function createTikTokConnection(username) {
+    return new WebcastPushConnection(
+        username,
+        process.env.EULER_API_KEY
+            ? { signApiKey: process.env.EULER_API_KEY }
+            : {}
+    );
+}
+
+async function closeTikTokConnection(connection) {
+    if (!connection) {
+        return;
+    }
+
+    try {
+        connection.removeAllListeners();
+    } catch {}
+
+    try {
+        await connection.disconnect();
+    } catch {}
+}
 
 function attemptTikTokReconnect(clientId) {
+    const username = tiktokUsernames.get(clientId);
 
-    const username =
-        tiktokUsernames.get(clientId);
-
-    if (!username) {
+    if (
+        !username ||
+        tiktokConnections.has(clientId) ||
+        reconnectTimersByClient.has(clientId) ||
+        reconnectInFlightByClient.has(clientId)
+    ) {
         return;
     }
 
-    const attempts =
-        (reconnectAttemptsByClient.get(clientId) || 0) + 1;
+    const attempt = (reconnectAttemptsByClient.get(clientId) || 0) + 1;
+    reconnectAttemptsByClient.set(clientId, attempt);
 
-    reconnectAttemptsByClient.set(clientId, attempts);
-
-    if (attempts > 5) {
-        console.log(
-            "Reconnexion TikTok abandonnée pour", clientId,
-            "après 5 tentatives — reconnexion manuelle nécessaire"
-        );
-        return;
-    }
-
-    const delay =
-        Math.min(180000, 15000 * attempts);
+    // 5 s, 10 s, 20 s, 40 s puis 60 s maximum. On garde une seule
+    // tentative planifiée afin d'éviter les boucles et les quotas API.
+    const delay = Math.min(60000, 5000 * Math.pow(2, Math.min(attempt - 1, 4)));
+    const generation = getTikTokConnectionGeneration(clientId);
 
     console.log(
-        "Nouvelle tentative de reconnexion TikTok dans",
+        "Reconnexion TikTok dans",
         Math.round(delay / 1000) + "s",
-        "(essai", attempts + "/5)"
+        "(essai", attempt + ") pour", clientId
     );
 
-    setTimeout(async () => {
+    const timer = setTimeout(async () => {
+        reconnectTimersByClient.delete(clientId);
+
+        if (
+            getTikTokConnectionGeneration(clientId) !== generation ||
+            tiktokUsernames.get(clientId) !== username ||
+            tiktokConnections.has(clientId)
+        ) {
+            return;
+        }
+
+        reconnectInFlightByClient.add(clientId);
+
+        let connection = null;
+        let shouldRetry = false;
 
         try {
-
-            const connection =
-                new WebcastPushConnection(
-                    username,
-                    process.env.EULER_API_KEY
-                        ? { signApiKey: process.env.EULER_API_KEY }
-                        : {}
-                );
-
+            connection = createTikTokConnection(username);
             bindTikTokEvents(connection, clientId);
 
-            const state =
-                await connection.connect();
+            const state = await connection.connect();
+
+            if (
+                getTikTokConnectionGeneration(clientId) !== generation ||
+                tiktokUsernames.get(clientId) !== username ||
+                tiktokConnections.has(clientId)
+            ) {
+                await closeTikTokConnection(connection);
+                return;
+            }
 
             tiktokConnections.set(clientId, connection);
+            markClientActivity(clientId);
 
-            const stats =
-                getLiveSessionStats(clientId);
-
+            const stats = getLiveSessionStats(clientId);
             stats.connected = true;
+            stats.username = username;
             emitLiveStats(clientId);
 
             reconnectAttemptsByClient.set(clientId, 0);
@@ -3913,86 +3962,34 @@ function attemptTikTokReconnect(clientId) {
                 "Reconnexion TikTok réussie pour", clientId,
                 "Room ID :", state.roomId
             );
-
         } catch (error) {
+            await closeTikTokConnection(connection);
+            shouldRetry =
+                getTikTokConnectionGeneration(clientId) === generation &&
+                tiktokUsernames.get(clientId) === username;
 
             console.log(
                 "Échec reconnexion TikTok pour", clientId, ":",
                 error.message
             );
+        } finally {
+            reconnectInFlightByClient.delete(clientId);
 
-            attemptTikTokReconnect(clientId);
-
+            if (shouldRetry) {
+                attemptTikTokReconnect(clientId);
+            }
         }
-
     }, delay);
 
+    reconnectTimersByClient.set(clientId, timer);
 }
 
 /*
-   ============================================================
-   CHIEN DE GARDE — détecte les connexions TikTok "zombies"
-
-   Certaines connexions TikTok restent marquées "connectées" côté
-   serveur alors que TikTok a arrêté d'envoyer quoi que ce soit
-   (aucun cadeau, chat, like, ni même mise à jour du nombre de
-   viewers) — sans jamais déclencher l'événement "disconnected".
-   L'app semblait alors "plantée" et nécessitait un relancement
-   manuel. Cette vérification périodique force une reconnexion
-   dès qu'un silence anormal est détecté.
-   ============================================================
+   Aucun redémarrage n'est déclenché sur une simple période calme.
+   L'ancien watchdog coupait une connexion saine après 90 secondes sans
+   événement et provoquait des reconnexions en boucle. La reconnexion est
+   maintenant déclenchée uniquement par une vraie déconnexion du connecteur.
 */
-
-const STALE_CONNECTION_TIMEOUT_MS = 90000; // 90 secondes sans aucun signal
-
-setInterval(() => {
-
-    const now = Date.now();
-
-    tiktokConnections.forEach((connection, clientId) => {
-
-        const lastEventAt =
-            lastEventAtByClient.get(clientId);
-
-        if (!lastEventAt) {
-            return;
-        }
-
-        const stats =
-            getLiveSessionStats(clientId);
-
-        if (!stats.connected) {
-            return;
-        }
-
-        if (now - lastEventAt > STALE_CONNECTION_TIMEOUT_MS) {
-
-            console.log(
-                "⚠️  Connexion TikTok silencieuse depuis plus de",
-                Math.round(STALE_CONNECTION_TIMEOUT_MS / 1000) + "s",
-                "pour", clientId, "— reconnexion forcée"
-            );
-
-            try {
-                connection.removeAllListeners();
-                connection.disconnect();
-            } catch (error) {
-                // La connexion était déjà morte de toute façon, sans importance.
-            }
-
-            tiktokConnections.delete(clientId);
-            lastEventAtByClient.delete(clientId);
-
-            stats.connected = false;
-            emitLiveStats(clientId);
-
-            attemptTikTokReconnect(clientId);
-
-        }
-
-    });
-
-}, 30000);
 
 const lastEventAtByClient = new Map();
 
@@ -4062,11 +4059,42 @@ function bindTikTokEvents(tiktokConnection, clientId) {
 
     markClientActivity(clientId);
 
+    // TikTok envoie streamEnd juste avant disconnected lorsque le créateur
+    // termine réellement son live. Dans ce cas, ne pas consommer l'API en
+    // essayant de se reconnecter à un live qui n'existe plus.
+    tiktokConnection.on("streamEnd", () => {
+        endedTikTokConnections.add(tiktokConnection);
+    });
+
     tiktokConnection.on("disconnected", () => {
+        // Un ancien connecteur peut encore émettre après avoir été remplacé.
+        // Seul le connecteur actuellement actif a le droit de modifier l'état.
+        if (getTikTokConnection(clientId) !== tiktokConnection) {
+            return;
+        }
+
         console.log("TikTok LIVE déconnecté (stream terminé ou coupure)");
+        tiktokConnections.delete(clientId);
+        lastEventAtByClient.delete(clientId);
         getLiveSessionStats(clientId).connected = false;
         emitLiveStats(clientId);
+
+        if (endedTikTokConnections.has(tiktokConnection)) {
+            reconnectAttemptsByClient.set(clientId, 0);
+            console.log("Live TikTok terminé : reconnexion automatique arrêtée pour", clientId);
+            return;
+        }
+
         attemptTikTokReconnect(clientId);
+    });
+
+    // Évite qu'une erreur réseau non gérée fasse tomber tout le serveur.
+    // L'événement "disconnected" reste l'unique déclencheur de reconnexion.
+    tiktokConnection.on("error", error => {
+        console.log(
+            "Erreur connexion TikTok pour", clientId, ":",
+            error?.message || error
+        );
     });
 
     tiktokConnection.on("roomUser", data => {
