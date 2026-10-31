@@ -4398,6 +4398,32 @@ tiktokConnection.on("social", data => {
     console.log("SOCIAL REÇU :", data);
 });
 
+tiktokConnection.on("share", data => {
+    console.log("PARTAGE REÇU :", data.nickname || data.uniqueId);
+
+    markClientActivity(clientId);
+
+    const matchingSoundAlert =
+        (getClientSettings(clientId).soundAlerts || [])
+            .find(alert =>
+                alert.enabled &&
+                String(alert.trigger || "").toLowerCase() === "share"
+            );
+
+    console.log("ALERTE SON PARTAGE :", matchingSoundAlert);
+
+    if (matchingSoundAlert && matchingSoundAlert.sound) {
+        emitToCreatorPilotClient(clientId, "play-sound-alert", {
+            sound: matchingSoundAlert.sound,
+            volume: matchingSoundAlert.volume || 100
+        });
+    }
+
+    emitToCreatorPilotClient(clientId, "share", {
+        user: data.nickname || data.uniqueId || "Utilisateur"
+    });
+});
+
  tiktokConnection.on("follow", data => {
 
     console.log("FOLLOW REÇU :", data.nickname);
