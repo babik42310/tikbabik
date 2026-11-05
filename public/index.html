@@ -2476,6 +2476,8 @@ value="/overlay/chrono"        readonly>
     💬 TTS Chat
 </button>
 
+        <button class="soundTab" id="babikMicFilterBtn" type="button">🛡️ Filtre vocal &amp; TTS</button>
+
         <button class="soundTab" id="chatBotTab">
     🤖 ChatBot
 </button>
@@ -4235,6 +4237,29 @@ value="/overlay/chrono"        readonly>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5/dist/obs-ws.min.js"></script>
+<div id="babikMicFilterDialog" role="dialog" aria-modal="true" aria-label="Filtre vocal et TTS" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:2147483000;padding:3vh 3vw;box-sizing:border-box;">
+  <div style="height:100%;background:#101521;border:1px solid #3c475e;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;">
+    <div style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;background:#191f31;color:white;">
+      <strong>🛡️ Babik MicFilter — mots interdits TTS</strong>
+      <button id="babikMicFilterClose" type="button" style="cursor:pointer;background:#334155;border:0;color:white;border-radius:8px;padding:8px 16px;">✕ Fermer</button>
+    </div>
+    <iframe id="babikMicFilterFrame" title="Réglages Babik MicFilter" style="border:0;width:100%;flex:1;background:#0e1422;" loading="lazy"></iframe>
+  </div>
+</div>
+<script>
+(function(){
+  const button=document.getElementById('babikMicFilterBtn');
+  const dialog=document.getElementById('babikMicFilterDialog');
+  const frame=document.getElementById('babikMicFilterFrame');
+  const close=document.getElementById('babikMicFilterClose');
+  if(!button||!dialog||!frame||!close)return;
+  button.addEventListener('click',function(event){event.preventDefault();event.stopPropagation();frame.src='/micfilter';dialog.style.display='block';});
+  close.addEventListener('click',function(){dialog.style.display='none';frame.src='about:blank';});
+  dialog.addEventListener('click',function(e){if(e.target===dialog)close.click();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&dialog.style.display==='block')close.click();});
+})();
+</script>
+
 <script src="app.js"></script>
 <script src="v2-hub.js"></script>
 <script src="premium-shell.js"></script>

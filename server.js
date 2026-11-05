@@ -408,6 +408,30 @@ async function getAuthSession(req) {
 }
 
 /*
+   Session de test strictement locale.
+   Elle n'est disponible que lorsque DATABASE_URL est absente. Sur Railway,
+   l'authentification PostgreSQL normale reste obligatoire.
+*/
+function getLocalTestAuthSession(req) {
+
+    if (process.env.DATABASE_URL) {
+        return null;
+    }
+
+    const localId =
+        String(req.cpSessionId || "creatorpilot-local")
+            .replace(/[^a-zA-Z0-9_-]/g, "")
+            .slice(0, 80) || "creatorpilot-local";
+
+    return {
+        userId: "local-" + localId,
+        email: "local-test@creatorpilot.invalid",
+        localTest: true
+    };
+
+}
+
+/*
    À utiliser devant toute route qui doit exiger un compte
    réellement connecté (pas juste "prétendu connecté" côté
    navigateur). Exemple : app.get("/route", requireAuthSession, ...)
@@ -415,7 +439,8 @@ async function getAuthSession(req) {
 async function requireAuthSession(req, res, next) {
 
     const session =
-        await getAuthSession(req);
+        await getAuthSession(req) ||
+        getLocalTestAuthSession(req);
 
     if (!session) {
         return res.status(401).json({
@@ -626,11 +651,17 @@ app.use(express.json());
 /* Relie les requêtes authentifiées au user_id permanent. */
 app.use(async (req, res, next) => {
     try {
-        const session = await getAuthSession(req);
+        const session =
+            await getAuthSession(req) ||
+            getLocalTestAuthSession(req);
+
         if (session) {
             req.authUser = session;
             req.cpOwnerKey = userOwnerKey(session.userId);
-            await attachClientToUserAfterLogin(req, session.userId);
+
+            if (!session.localTest) {
+                await attachClientToUserAfterLogin(req, session.userId);
+            }
         } else {
             req.cpOwnerKey = req.cpSessionId;
         }
@@ -3140,6 +3171,71 @@ setInterval(() => {
 
 }, 300000);
 
+/* ============================================================
+   Babik MicFilter - filtrage serveur du TTS OpenAI
+   Regles par compte, sauvegardees dans les reglages CreatorPilot.
+   N'intercepte pas les TTS produits directement dans le navigateur.
+   ============================================================ */
+function babikMicFilterWords(value) {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value
+        .filter(word => typeof word === "string")
+        .map(word => word.trim())
+        .filter(word => word.length >= 1 && word.length <= 60)
+        .slice(0, 200))];
+}
+
+function babikFilterText(text, filterSettings) {
+    const value = String(text || "");
+    if (!filterSettings || filterSettings.enabled !== true) return value;
+    const words = babikMicFilterWords(filterSettings.words);
+    if (!words.length) return value;
+    const escaped = words.map(word => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const expression = new RegExp(
+        "(?<![\\p{L}\\p{N}_])(?:" + escaped.join("|") + ")(?![\\p{L}\\p{N}_])",
+        "giu"
+    );
+    const replacement = filterSettings.replacement === "silence" ? "" : "mot masqué";
+    const filtered = value.replace(expression, replacement).replace(/\s{2,}/g, " ").trim();
+    return filtered || "Message masqué";
+}
+
+app.get("/micfilter", requireAuthSession, (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.sendFile(path.join(__dirname, "public", "micfilter.html"));
+});
+
+app.get("/api/micfilter/settings", requireAuthSession, (req, res) => {
+    const current = getClientSettings(userOwnerKey(req.authUser.userId)).babikMicFilter || {};
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+        enabled: current.enabled === true,
+        words: babikMicFilterWords(current.words),
+        replacement: current.replacement === "silence" ? "silence" : "mask"
+    });
+});
+
+app.post("/api/micfilter/settings", requireAuthSession, (req, res) => {
+    const body = req.body || {};
+    if (!Array.isArray(body.words) || body.words.length > 200 ||
+        body.words.some(w => typeof w !== "string" || w.length > 60)) {
+        return res.status(400).json({ error: "Liste de mots invalide (200 max, 60 caracteres/mot)." });
+    }
+    const ownerKey = userOwnerKey(req.authUser.userId);
+    const next = {
+        enabled: body.enabled === true,
+        words: babikMicFilterWords(body.words),
+        replacement: body.replacement === "silence" ? "silence" : "mask"
+    };
+    saveClientSettings(ownerKey, { babikMicFilter: next });
+    res.json({ success: true, settings: next });
+});
+
+app.post("/api/micfilter/test", requireAuthSession, (req, res) => {
+    const config = getClientSettings(userOwnerKey(req.authUser.userId)).babikMicFilter || {};
+    res.json({ text: babikFilterText(String(req.body?.text || "").slice(0, 1000), config) });
+});
+
 app.post("/tts/openai", async (req, res) => {
 
     try {
@@ -3159,8 +3255,14 @@ app.post("/tts/openai", async (req, res) => {
             });
         }
 
-        const text =
-            (req.body.text || "").slice(0, 500);
+        const text = babikFilterText(
+            (req.body.text || "").slice(0, 500),
+            // Utiliser les reglages de la session authentifiee uniquement.
+            // Les appels anonymes restent sans filtre pour ne pas melanger les comptes.
+            req.authUser?.userId
+                ? getClientSettings(userOwnerKey(req.authUser.userId)).babikMicFilter
+                : null
+        );
 
         const voice =
             req.body.voice || "alloy";

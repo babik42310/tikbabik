@@ -5149,7 +5149,74 @@ function getTtsSpecialVoicePreset(tts, userData) {
     return TTS_SPECIAL_VOICE_PRESETS[match.voice] || null;
 }
 
-function playTtsMessage(text, userData = {}) {
+
+/* ============================================================
+   Babik MicFilter — filtre TTS côté navigateur (voix Windows et IA)
+   La source des réglages reste l'API de CreatorPilot, par compte.
+   ============================================================ */
+let cpMicFilterCachedSettings = null;
+let cpMicFilterLastFetch = 0;
+let cpMicFilterPending = null;
+
+async function cpMicFilterGetSettings() {
+    const now = Date.now();
+    if (cpMicFilterCachedSettings && now - cpMicFilterLastFetch < 5000) {
+        return cpMicFilterCachedSettings;
+    }
+    if (cpMicFilterPending) return cpMicFilterPending;
+    cpMicFilterPending = (async () => {
+        try {
+            const response = await fetch('/api/micfilter/settings', {
+                credentials: 'same-origin', cache: 'no-store'
+            });
+            // Pas connecté : garder l'ancien fonctionnement du TTS.
+            if (response.status === 401) {
+                cpMicFilterCachedSettings = { enabled: false, words: [], replacement: 'mask' };
+                cpMicFilterLastFetch = Date.now();
+                return cpMicFilterCachedSettings;
+            }
+            if (!response.ok) throw new Error('API filtre HTTP ' + response.status);
+            cpMicFilterCachedSettings = await response.json();
+            cpMicFilterLastFetch = Date.now();
+            return cpMicFilterCachedSettings;
+        } catch (error) {
+            console.warn('Babik MicFilter : impossible de lire les réglages', error);
+            // Si le filtrage était actif, conserver ses derniers réglages.
+            // Si le statut est inconnu, ne pas lire un TTS potentiellement non filtré.
+            return cpMicFilterCachedSettings;
+        } finally {
+            cpMicFilterPending = null;
+        }
+    })();
+    return cpMicFilterPending;
+}
+
+function cpMicFilterTransform(text, config) {
+    const input = String(text || '');
+    if (!config.enabled || !Array.isArray(config.words) || !config.words.length) return input;
+    const words = config.words
+        .filter(word => typeof word === 'string' && word.trim())
+        .map(word => word.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (!words.length) return input;
+    const pattern = new RegExp('(?<![\\p{L}\\p{N}_])(?:' + words.join('|') + ')(?![\\p{L}\\p{N}_])', 'giu');
+    const replacement = config.replacement === 'silence' ? '' : 'mot masqué';
+    return input.replace(pattern, replacement).replace(/\s{2,}/g, ' ').trim();
+}
+
+async function cpMicFilterBeforeSpeech(text) {
+    const config = await cpMicFilterGetSettings();
+    if (!config) return null; // incertitude sur les réglages = pas de lecture
+    return cpMicFilterTransform(text, config);
+}
+
+// Lors d'un enregistrement dans l'iframe de réglages, invalider le cache.
+window.addEventListener('message', event => {
+    if (event.origin === location.origin && event.data === 'babik-micfilter-settings-updated') {
+        cpMicFilterLastFetch = 0;
+    }
+});
+
+async function playTtsMessage(text, userData = {}) {
 
     if (!appSettings.ttsChat || !appSettings.ttsChat.enabled) {
         return;
@@ -5266,6 +5333,10 @@ if (
 if (!text) {
     return;
 }
+
+// Filtrage TTS avant génération OpenAI ou création de la voix Windows.
+text = await cpMicFilterBeforeSpeech(text);
+if (!text) return;
 
 if (
     tts.engine === "openai" &&
@@ -5565,11 +5636,14 @@ setInterval(renderLiveStats, 1000);
 
 /* ==================== ANNONCE VOCALE D'OBJECTIF ATTEINT ==================== */
 
-function announceGoalMessage(text) {
+async function announceGoalMessage(text) {
 
     if (!text) {
         return;
     }
+
+    text = await cpMicFilterBeforeSpeech(text);
+    if (!text) return;
 
     const tts =
         appSettings.ttsChat || {};
