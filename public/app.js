@@ -2802,6 +2802,34 @@ function processTtsQueue() {
 
     }
 
+    // Véritable bip audio pour remplacer un mot interdit.
+    if (item.beep) {
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            const audioContext = window.__cpTtsAudioContext ||
+                (window.__cpTtsAudioContext = new AudioContextClass());
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            const duration = Math.max(0.2, Math.min(1.2, Number(item.duration || 0.48)));
+            const volume = Math.max(0.05, Math.min(1, Number(item.volume || 0.35)));
+            oscillator.type = 'sine';
+            oscillator.frequency.value = 950;
+            gainNode.gain.setValueAtTime(0.0001, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(volume, audioContext.currentTime + 0.015);
+            gainNode.gain.setValueAtTime(volume, audioContext.currentTime + duration - 0.06);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + duration);
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.onended = finishItem;
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + duration + 0.01);
+        } catch (error) {
+            console.log('ERREUR BIP TTS :', error);
+            finishItem();
+        }
+        return;
+    }
+
     // Voix Windows (SpeechSynthesis)
     speechSynthesis.speak(item.speech);
 
@@ -5199,8 +5227,39 @@ function cpMicFilterTransform(text, config) {
         .map(word => word.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     if (!words.length) return input;
     const pattern = new RegExp('(?<![\\p{L}\\p{N}_])(?:' + words.join('|') + ')(?![\\p{L}\\p{N}_])', 'giu');
-    const replacement = config.replacement === 'silence' ? '' : 'mot masqué';
+    const replacement = config.replacement === 'silence'
+        ? ''
+        : config.replacement === 'beep'
+            ? 'BIP'
+            : 'mot masqué';
     return input.replace(pattern, replacement).replace(/\s{2,}/g, ' ').trim();
+}
+
+function cpMicFilterCreateSegments(text, config) {
+    const input = String(text || '');
+    if (!config || config.enabled !== true || config.replacement !== 'beep' ||
+        !Array.isArray(config.words) || !config.words.length) {
+        return [{ type: 'speech', text: cpMicFilterTransform(input, config || {}) }];
+    }
+    const words = config.words
+        .filter(word => typeof word === 'string' && word.trim())
+        .map(word => word.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (!words.length) return [{ type: 'speech', text: input }];
+    const pattern = new RegExp(
+        '(?<![\\p{L}\\p{N}_])(?:' + words.join('|') + ')(?![\\p{L}\\p{N}_])',
+        'giu'
+    );
+    const segments = [];
+    let start = 0;
+    for (const match of input.matchAll(pattern)) {
+        if (match.index > start) {
+            segments.push({ type: 'speech', text: input.slice(start, match.index) });
+        }
+        segments.push({ type: 'beep', duration: 0.48 });
+        start = match.index + match[0].length;
+    }
+    if (start < input.length) segments.push({ type: 'speech', text: input.slice(start) });
+    return segments.filter(segment => segment.type === 'beep' || segment.text.trim());
 }
 
 async function cpMicFilterBeforeSpeech(text) {
@@ -5335,8 +5394,14 @@ if (!text) {
 }
 
 // Filtrage TTS avant génération OpenAI ou création de la voix Windows.
-text = await cpMicFilterBeforeSpeech(text);
-if (!text) return;
+// En mode bip, on conserve aussi les segments afin de jouer un vrai son
+// entre les morceaux de phrase autorisés.
+const cpFilterConfig = await cpMicFilterGetSettings();
+if (!cpFilterConfig) return;
+const cpFilteredSegments = cpMicFilterCreateSegments(text, cpFilterConfig);
+const cpHasRealBeep = cpFilteredSegments.some(segment => segment.type === 'beep');
+text = cpMicFilterTransform(text, cpFilterConfig);
+if (!text && !cpHasRealBeep) return;
 
 if (
     tts.engine === "openai" &&
@@ -5344,6 +5409,56 @@ if (
 ) {
 
         console.log("OPENAI TTS ACTIF");
+
+    if (cpHasRealBeep) {
+        try {
+            const maxQueue = Number(tts.queueLength || 5);
+            if (maxQueue > 0 && ttsQueue.length >= maxQueue) return;
+
+            const preparedItems = [];
+            const beepVolume = Math.max(0.08, Math.min(1, Number(tts.volume || 100) / 100));
+
+            // Prépare les morceaux de voix IA, puis les place dans la file
+            // dans le même ordre que les bips.
+            for (const segment of cpFilteredSegments) {
+                if (segment.type === 'beep') {
+                    preparedItems.push({
+                        beep: true,
+                        duration: segment.duration || 0.48,
+                        volume: beepVolume
+                    });
+                    continue;
+                }
+
+                const segmentText = String(segment.text || '').trim();
+                if (!segmentText || !/[\p{L}\p{N}]/u.test(segmentText)) continue;
+
+                const response = await fetch('/tts/openai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: segmentText,
+                        voice: tts.voice || 'alloy',
+                        volume: tts.volume || 100
+                    })
+                });
+                if (!response.ok) throw new Error('Erreur TTS IA HTTP ' + response.status);
+                const blob = await response.blob();
+                if (blob.size < 1000) throw new Error('Réponse TTS IA vide');
+                const audio = new Audio(URL.createObjectURL(blob));
+                audio.volume = Math.min(1, Number(tts.volume || 100) / 100);
+                preparedItems.push({ audio });
+            }
+
+            if (!preparedItems.length) return;
+            ttsQueue.push(...preparedItems);
+            processTtsQueue();
+        } catch (error) {
+            console.log('ERREUR TTS IA AVEC BIP :', error);
+            alert(error.message);
+        }
+        return;
+    }
 
     fetch("/tts/openai", {
         method: "POST",
@@ -5427,10 +5542,7 @@ if (
 
 }
 
-    const speech =
-        new SpeechSynthesisUtterance(text);
-
-       const voices =
+    const voices =
     speechSynthesis.getVoices();
 
 let selectedVoice = null;
@@ -5445,12 +5557,12 @@ if (tts.randomVoice) {
         );
 }
 
-if (
-    selectedVoice &&
-    isProUser()
-) {
-    speech.voice = selectedVoice;
-}
+const createWindowsSpeech = segmentText => {
+    const speech = new SpeechSynthesisUtterance(segmentText);
+
+    if (selectedVoice && isProUser()) {
+        speech.voice = selectedVoice;
+    }
 
     speech.lang =
         tts.language === "English (US)"
@@ -5464,15 +5576,15 @@ if (
         Number(tts.speed || 50) / 50;
 
     if (isProUser()) {
-
-        const specialPreset =
-            getTtsSpecialVoicePreset(tts, userData);
-
+        const specialPreset = getTtsSpecialVoicePreset(tts, userData);
         if (specialPreset) {
             speech.pitch = specialPreset.pitch;
             speech.rate = speech.rate * specialPreset.rate;
         }
     }
+
+    return speech;
+};
 
     const maxQueue =
     Number(tts.queueLength || 5);
@@ -5484,9 +5596,25 @@ if (
     return;
 }
 
-ttsQueue.push({
-    speech
-});
+if (cpHasRealBeep) {
+    const beepVolume = Math.max(0.08, Math.min(1, Number(tts.volume || 100) / 100));
+    cpFilteredSegments.forEach(segment => {
+        if (segment.type === 'beep') {
+            ttsQueue.push({
+                beep: true,
+                duration: segment.duration || 0.48,
+                volume: beepVolume
+            });
+            return;
+        }
+        const segmentText = String(segment.text || '').trim();
+        if (segmentText && /[\p{L}\p{N}]/u.test(segmentText)) {
+            ttsQueue.push({ speech: createWindowsSpeech(segmentText) });
+        }
+    });
+} else {
+    ttsQueue.push({ speech: createWindowsSpeech(text) });
+}
 
 processTtsQueue();
 

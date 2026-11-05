@@ -3195,7 +3195,11 @@ function babikFilterText(text, filterSettings) {
         "(?<![\\p{L}\\p{N}_])(?:" + escaped.join("|") + ")(?![\\p{L}\\p{N}_])",
         "giu"
     );
-    const replacement = filterSettings.replacement === "silence" ? "" : "mot masqué";
+    const replacement = filterSettings.replacement === "silence"
+        ? ""
+        : filterSettings.replacement === "beep"
+            ? "BIP"
+            : "mot masqué";
     const filtered = value.replace(expression, replacement).replace(/\s{2,}/g, " ").trim();
     return filtered || "Message masqué";
 }
@@ -3211,7 +3215,9 @@ app.get("/api/micfilter/settings", requireAuthSession, (req, res) => {
     res.json({
         enabled: current.enabled === true,
         words: babikMicFilterWords(current.words),
-        replacement: current.replacement === "silence" ? "silence" : "mask"
+        replacement: ["beep", "silence"].includes(current.replacement)
+            ? current.replacement
+            : "mask"
     });
 });
 
@@ -3225,7 +3231,9 @@ app.post("/api/micfilter/settings", requireAuthSession, (req, res) => {
     const next = {
         enabled: body.enabled === true,
         words: babikMicFilterWords(body.words),
-        replacement: body.replacement === "silence" ? "silence" : "mask"
+        replacement: ["beep", "silence"].includes(body.replacement)
+            ? body.replacement
+            : "mask"
     };
     saveClientSettings(ownerKey, { babikMicFilter: next });
     res.json({ success: true, settings: next });
